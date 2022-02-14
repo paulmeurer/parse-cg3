@@ -243,7 +243,7 @@
 (defparameter *sentence-end-strings* '("." "?" "!" "…" ";" ":"))
 
 ;; todo: check if grammar has changed
-(defmethod cg3-disambiguate-text ((text parse::text)
+(defmethod cg3-disambiguate-text ((text parse::parsed-text)
 				  &key (variety :og) (tracep t) (load-grammar t)
 				    (sentence-end-strings *sentence-end-strings*))
   (with-process-lock (+disambiguate-lock+)

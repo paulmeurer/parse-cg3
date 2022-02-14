@@ -14,6 +14,8 @@
 	"NET.ASERVE"
         "FRAMEWORK"
         "GRAPH"
-        ))
+        )
+  (:export "PARSED-TEXT"
+           "TEXT-ARRAY"))
 
 :eof

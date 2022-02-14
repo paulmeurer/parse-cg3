@@ -2,7 +2,7 @@
 
 (in-package :parse)
 
-(defclass text ()
+(defclass parsed-text ()
   ((name :initform nil :initarg :name :reader name)
    (variety :initform :ng :initarg :variety :accessor variety)
    (orthography :initform :standard :initarg :orthography :reader orthography)
@@ -15,16 +15,20 @@
    (depid-array :initform nil :accessor depid-array)) ;; dependency node ids
   )
 
-(defmethod token-array ((text text))
+(defmethod token-array ((text parsed-text))
   (text-array text))
 
 (defmethod transliterate ((language t) str)
   str)
 
+;; to be overridden
+(defun text-class ()
+  'parsed-text)
+
 (defmethod parse-text ((text string) &key variety load-grammar (disambiguate t) lookup-guessed)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
-  (let ((gnc-text (make-instance 'text)))
+  (let ((gnc-text (make-instance (text-class))))
     (cl-fst:fst-map-tokens
      (if (eq variety :abk)
 	 *abk-tokenizer*
@@ -59,7 +63,7 @@
 	(t
 	 token)))
 
-(defmethod parse-text ((text text) &key variety load-grammar (disambiguate t) lookup-guessed)
+(defmethod parse-text ((text parsed-text) &key variety load-grammar (disambiguate t) lookup-guessed)
   (when (eq variety :kat) (setf variety :ng))
   (process-text text :analyze
 		    :variety variety
@@ -101,7 +105,41 @@
   (declare (ignore word))
   nil)
 
-(defmethod process-text ((text text) (mode (eql :analyze))
+(defparameter *infix-table* (make-hash-table :test #'equal))
+
+#-(or windows)
+(u:with-file-lines (infix "projects:gnc;morphology;fst;tmesis.txt")
+  (setf (gethash infix *infix-table*) t))
+
+#+test
+(print (split-tmesis "გან-ხოლო-თუ-ვითარ-იკურნოს"))
+
+#+test
+(print (split-tmesis "ცასა-მე-ა")) ;; -ა should be Q
+
+
+;; splits tmesis into list of infixes plus concatenation of prefix and suffix
+;; if infixes are in *infix-table*.
+;; returns NIL if no tmesis found
+(defun split-tmesis (word)
+  (when (find #\- word)
+    (let ((segments (u:split word #\-)))
+      (when (string= (nth (1- (length segments)) segments) "ა")
+	(setf (nth (1- (length segments)) segments) "-ა"))
+      (when (> (length segments) 2)
+	(let* ((prefix (pop segments))
+	       (non-prefixes segments)
+	       (infix-list
+		(loop for (infix . rest) on non-prefixes
+		   while (and rest (gethash infix *infix-table*))
+		   collect infix
+		   do (pop segments))))
+	  (when infix-list
+	    (append infix-list (list (apply #'concatenate 'string prefix segments)))))))))
+
+;; lexicon is stored in .lex file in save-all-new-words()
+;; it stores the values of :new-morphology
+(defmethod process-text ((text parsed-text) (mode (eql :analyze))
                          &key (variety :og) correct-spelling-errors
                            (normalize t) (lookup-guessed t)
                            ;; experimental; keeps MWE and non-MWE readings;
@@ -349,7 +387,7 @@
 			     ;; was: (cddr (print (dat:string-tree-get lexicon token)))
 			     :new-morphology)))))))))
 
-(defmethod process-text ((text text) (mode (eql :disambiguate))
+(defmethod process-text ((text parsed-text) (mode (eql :disambiguate))
 			     &key (variety :og) (load-grammar t)
 			       (sentence-end-strings vislcg3::*sentence-end-strings*)
 			       &allow-other-keys)
@@ -393,7 +431,7 @@
 
 ;; *text*
 
-(defmethod write-text-json ((text text) stream
+(defmethod write-text-json ((text parsed-text) stream
                             &key tracep split-trace
                               (suppress-discarded-p t)
                               (lemma t)
@@ -621,7 +659,7 @@
 				      ,@(when show-rules `("rules" ,trace)))))))))))
 
 
-(defmethod get-token-table ((text text) &key node-id &allow-other-keys)
+(defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
   (assert node-id)
   (let* ((id-table (make-hash-table :test #'equal))
 	 (secedge-table (make-hash-table :test #'equal))
@@ -732,7 +770,7 @@
   slash-relations
   atts)
 
-(defmethod build-dep-graph ((text text) &key node-id &allow-other-keys)
+(defmethod build-dep-graph ((text parsed-text) &key node-id &allow-other-keys)
   (assert (not (null node-id)))
   (multiple-value-bind (token-table node-id) (get-token-table text :node-id node-id)
     (let ((node-table (make-hash-table :test #'equal)) ;; rehashed in display-dep-graph() below; populated where?

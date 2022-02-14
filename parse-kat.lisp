@@ -2,6 +2,14 @@
 
 (in-package :parse)
 
+(defparameter *tokenizer* nil)
+(defparameter *ng-tokenizer* nil)
+(defparameter *og-analyzer* nil)
+(defparameter *xm-analyzer* nil)
+(defparameter *hm-analyzer* nil)
+(defparameter *mg-analyzer* nil)
+(defparameter *ng-analyzer* nil)
+
 (defmethod init-transducers ((language (eql :kat))
                              &key ng-only
                                ;; symlinked to georgian-morph/regex
@@ -176,250 +184,30 @@
 	    (t
 	     nil)))))
 
-#+moved
-(defmethod process-gnc-text ((text text) (mode (eql :analyze))
-			     &key (variety :og) correct-spelling-errors
-			       (normalize t) (lookup-guessed t)
-			     ;; experimental; keeps MWE and non-MWE readings;
-			     ;; MWE second (third) word are accessible in CG
-			     ;; Therefore, some rules will have to be adapted
-			     keep-non-mwe-readings
-			       ;; lexicon
-			       unknown-only-p &allow-other-keys)
-  ;;(print (list :process-gnc-text :mode :analyze :variety variety))
-  (setf (text-lexicon text) (dat:make-string-tree))
-  (let ((token-array (text-array text))
-	(norm-table (make-hash-table :test #'equal)) ;; calculated anew from .lex file
-	;;(lexicon (or lexicon (text-lexicon text)))
-	(lang-stack (list variety))
-	(lexicon (text-lexicon text))
-	(extracted-table (make-hash-table :test #'equal))) ;; table of all words that have been treated
-    ;;#+test ;; *text*
-    ;; (describe lexicon)
-    (let ((lex-file (when (location text) (merge-pathnames ".lex" (location text)))))
-      ;;(debug lex-file)
-      (when (and lex-file (probe-file lex-file))
-	(Print :lex-file-found)
-	;; corr is treated like norm if not used as base for text correction
-	(u:with-file-fields ((token norm lemma code pos features
-				    &optional class present future aorist
-				    perfect
-				    corr comment
-				    approved
-				    )
-			     lex-file)
-	  (declare (ignore lemma code pos features class present future aorist perfect comment))
-	  ;;(print (list token norm lemma))
-	  (unless (equal approved "false")
-	    (setf (gethash token extracted-table)
-		  t
-		  #+ignore
-		  (list norm lemma pos code features
-			class present future aorist perfect corr comment approved)))
-	  (unless (and (or (null norm) (equal norm "-") (equal norm ""))
-		       (or (null corr) (equal corr "-") (equal corr "")))
-	    ;;(debug norm)
-	    (setf (gethash token norm-table) (or norm corr)))))
-      (labels ((node-token (node)
-		 (let* ((word (cadr node))
-			(norm-list (getf (cddr node) :norm))
-			(norm (when norm-list
-				(assert (null (cddr norm-list)))
-				(getf (car norm-list) :characters)))
-			(dipl-list (getf (cddr node) :dipl))
-			(dipl (when dipl-list
-				(assert (null (cddr dipl-list)))
-				(getf (car dipl-list) :characters)))
-			(lex-norm (gethash (or word dipl) norm-table)) ;; from .lex-file
-			(computed-norm (unless lex-norm
-					 ;; normalize ellipsis in stuttering etc.
-					 (computed-norm word)))
-			)
-		   (when (and (null norm) (or lex-norm computed-norm))
-		     (setf (getf (cddr node) :norm)
-			   (list (list :characters (or lex-norm computed-norm)))))
-		   ;;(when lex-norm (debug lex-norm))
-		   (values (or norm
-			       lex-norm
-			       computed-norm
-			       ;; not sure this is correct
-			       (let ((dipl (getf (cddr node) :dipl)))
-				 (when dipl
-				   (let ((str ""))
-				     (dolist (elt dipl)
-				       (when (eq (car elt) :characters)
-					 (setf str (u:concat str (cadr elt)))))
-				     (delete-if (lambda (c) (find c "{}[]|/\\‹›")) str))))
-			       word
-			       dipl)
-			   (or word dipl)
-			   lex-norm))))
-	(loop with mwe-positions = ()
-	   for node across token-array
-	   for i from 0
-	   do (case (car node)
-		(:start-element
-		 (push (let ((lang (getf node :|xml:lang|)))
-			 (cond ((null lang)
-				nil)
-			       ((equal lang "oge")
-				:og)
-			       ((or (equal lang "mge") (equal lang "kat-mg"))
-				:mg)
-			       ((equal lang "kat")
-				:ng)
-			       ((equal lang "jge")
-				:jg)
-			       (t
-				(intern (string-upcase lang) :keyword))))
-			lang-stack))
-		(:end-element
-		 (pop lang-stack))
-		(:word
-		 (multiple-value-bind (token word lex-norm) (node-token node)
-		   (declare (ignore lex-norm))
-		   (let* ((next-token+j2 (loop for j from (1+ i) below (length token-array)
-					    for node = (aref token-array j)
-					    when (eq (car node) :word)
-					    do (return (list (node-token node) j))))
-			  (next-token+j3 (when next-token+j2
-					   (loop for j from (1+ (cadr next-token+j2))
-					      below (length token-array)
-					      for node = (aref token-array j)
-					      when (eq (car node) :word)
-					      do (return (list (node-token node) (cadr next-token+j2) j)))))
-			  (variety (find-if-not #'null lang-stack))
-			  (normalized-token (when token
-					      (transliterate-to-mkhedruli
-					       (cond ((and normalize (> (length token) 1))
-							   (remove-if (lambda (c) (find c "()[]/\\")) token))
-						     (t
-						      token)))))
-			  (readings (when token ;; TODO: use second value (norm)
-				      (lookup-morphology normalized-token
-							 :lookup-guessed lookup-guessed 
-							 :variety variety
-							 :orthography (orthography text))))
-			  #+not-used
-			  (word-readings (when (and token (string/= token word))
-					   (lookup-morphology word
-							      :lookup-guessed lookup-guessed 
-							      :variety variety)))
-			  ;; fetch from DB; used in parsing interface
-			  (new-morphology (when (and #+gekko nil (null readings)
-						     (null (location text)))
-					    (get-word-codes token :source "parse" :variety variety)))
-			  (ignore (and (null readings)
-				       (find-if (lambda (c) (or (char<= #\a c #\z)
-								(char<= #\A c #\Z)
-								(char<= #\0 c #\9)))
-						(cadr node))))
-			  (segments (unless readings (split-tmesis token))))
-		     (multiple-value-bind (guess eq)
-			 (when (and correct-spelling-errors
-				    (> (length token) 6)
-				    (or (null readings)
-					(find-if (lambda (r) (search " Comp " r))
-						 readings :key #'cadr))
-				    (null (getf (cddr node) :norm)))
-			   (guess-correct-spelling token))
-		       (let* ((guess-readings (when (and guess (not eq))
-						(lookup-morphology guess
-								   :variety variety
-								   :lookup-guessed lookup-guessed 
-								   :guess t)))
-			      (mwe2-reading (when (and (car next-token+j2)
-						       (not (find (char token 0) ",;.:?!“”«»–"))
-						       (not (find (char (car next-token+j2) 0)
-								  ",;.:?!“”«»")))
-					     (lookup-morphology (u:concat token " " (car next-token+j2))
-								:lookup-guessed lookup-guessed 
-								:variety variety :mwe t
-								:orthography (orthography text))))
-			      (mwe3-reading (when (and (not mwe2-reading)
-						       (not (find (char token 0) ",;.:?!“”«»–"))
-						       (car next-token+j3)
-						       (not (find (char (car next-token+j2) 0)
-								  ",;.:?!“”«»–"))
-						       (not (find (char (car next-token+j3) 0)
-								  ",;.:?!“”«»–")))
-					      (lookup-morphology (u:concat token
-									   " " (car next-token+j2)
-									   " " (car next-token+j3))
-								 :lookup-guessed lookup-guessed 
-								 :variety variety :mwe t
-								 :orthography (orthography text))))
-			      (mwe-reading (or mwe2-reading mwe3-reading))
-			      (mwe-length (if mwe3-reading 3 2))
-			      (next-token+j (if mwe3-reading next-token+j3 next-token+j2)))
-			 (when mwe-reading
-			   (setf readings (if keep-non-mwe-readings
-					      (progn (mapc (lambda (r)
-							     (setf (cadr r) (u:concat (cadr r) " MWE")))
-							   mwe-reading)
-						     (append mwe-reading readings))
-					      mwe-reading)) ;; discard regular readings
-			   (unless keep-non-mwe-readings
-			     (setf (getf (cddr node) :mwe) mwe-length))
-			   (dolist (i (cdr next-token+j)) (push i mwe-positions)))
-			 ;;(debug readings)
-			 (cond ((find i mwe-positions)
-				(setf (getf (cddr node) :morphology)
-				      (if keep-non-mwe-readings
-					  (cons (list "" "<MWE>" nil nil) readings)
-					  (list (list "" "<MWE>" nil nil)))))
-			       (guess-readings
-				(setf (getf (cddr node) :norm)
-				      (list (list :characters  guess))
-				      (getf (cddr node) :morphology) guess-readings))
-			       (readings
-				(setf (getf (cddr node) :morphology) readings))
-			       (new-morphology
-				(setf (getf (cddr node) :new-morphology) new-morphology))
-			       ((find variety '(:og :xm :hm :mg))
-				(setf (getf (cddr node) :tmesis-msa)
-				      (loop for (segment . rest) on segments
-					 collect (cons segment
-						       (lookup-morphology
-							segment
-							:lookup-guessed nil
-							:tmesis-segment (if rest :infix :verb)
-							:variety variety))))))
-			 (when (gethash word extracted-table)
-			   (setf (getf (dat:string-tree-get lexicon word) :extracted) t))
-			 ;; need to know which lexicon words have been corrected and are no longer in the text
-			 (setf (getf (dat:string-tree-get lexicon word) :in-text) t)
-			 (unless (and unknown-only-p
-				      (or readings segments))
-			   (cond (ignore
-				  nil)
-				 (readings
-				  (setf (getf (dat:string-tree-get lexicon word)
-					      :morphology)
-					readings))
-				 (segments
-				  (setf (getf (dat:string-tree-get lexicon word)
-					      :tmesis-msa)
-					(getf (cddr node) :tmesis-msa))))
-			   ;; ("ბატონ-ყმიანა" "w4960") 
-			   ;; (print (list word (getf node :|xml:id|)))
-			   (push (getf node :|xml:id|) ;; concordance of the token
-				 (getf (dat:string-tree-get lexicon word)
-				       :wids))
-			   (incf (getf (dat:string-tree-get lexicon word)
-				       :count 0))))))))))
-	(when (and lex-file (probe-file lex-file))
-	  (u:with-file-fields ((word norm lemma code pos features
-				      &optional class present future aorist perfect corr comment
-				      approved)
-			       lex-file)
-	    (when t ;; (dat:string-tree-get lexicon token)
-	      (pushnew (list norm lemma code pos features class 
-			     present future aorist perfect corr comment
-			     approved)
-		       (getf (dat:string-tree-get lexicon word)
-			     ;; was: (cddr (print (dat:string-tree-get lexicon token)))
-			     :new-morphology)))))))))
+(defparameter *redup-scanner* ;; splits like: 0/1=2/3+4
+  (cl-ppcre:create-scanner
+   "^([^\\/\\=\\+]+)/([^\\/\\=\\+]+)=([^\\/\\=\\+]+)/([^\\/\\=\\+]+)\\+(.*)$"))
+
+#+test
+(debug
+ (cl-ppcre:scan
+  *redup-scanner*
+  "გა-ჭენება/ჭენ=გამო-ჭენებ[ა]/ჭენ+V+Act+Aor+Pv+Redup+<S-DO>+<S:Erg>+<DO:Nom>+S:3Sg+DO:3+NonStand"
+  ))
+#+test
+(debug
+ (normalize-reduplication-reading
+  "გა-ჭენება/ჭენ=გამო-ჭენებ[ა]/ჭენ+V+Act+Aor+Pv+Redup+<S-DO>+<S:Erg>+<DO:Nom>+S:3Sg+DO:3+NonStand"))
+
+(defun normalize-reduplication-reading (reading)
+  (multiple-value-bind (start end match-starts match-ends)
+      (cl-ppcre:scan *redup-scanner* reading)
+    (declare (ignore start end))
+    (flet ((seg (i)
+	     (subseq reading (aref match-starts i) (aref match-ends i))))
+      (if (string= (seg 1) (seg 3))
+	  (format nil "~a=~a/~a+~a" (seg 0) (seg 2) (seg 1) (seg 4))
+	  (format nil "~a=~a/~a=~a+~a" (seg 0) (seg 2) (seg 1) (seg 3) (seg 4))))))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) tmesis-segment guess mwe
@@ -522,7 +310,7 @@
     (values lemmas+features stripped-word)))
 
 #+moved
-(defmethod process-gnc-text ((text text) (mode (eql :disambiguate))
+(defmethod process-gnc-text ((text parsed-text) (mode (eql :disambiguate))
 			     &key (variety :og) (load-grammar t)
 			       (sentence-end-strings vislcg3::*sentence-end-strings*)
 			       &allow-other-keys)
@@ -591,7 +379,7 @@
 
 ;; *text*
 
-(defmethod write-gnc-text-json ((text text) stream
+(defmethod write-gnc-text-json ((text parsed-text) stream
 				&key tracep split-trace
 				  (suppress-discarded-p t)
 				  (lemma t)
@@ -817,7 +605,7 @@
 				      ,@(when show-rules `("rules" ,trace)))))))))))
 
 
-(defmethod get-token-table ((text text) &key node-id &allow-other-keys)
+(defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
   (assert node-id)
   (let* ((id-table (make-hash-table :test #'equal))
 	 (secedge-table (make-hash-table :test #'equal))
