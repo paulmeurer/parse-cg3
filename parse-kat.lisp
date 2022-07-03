@@ -113,22 +113,21 @@
     )
   (print :done))
 
-(defparameter *kat-feature-name-table* (make-hash-table :test #'equal))
+;; (defparameter *kat-feature-name-table* (make-hash-table :test #'equal))
 
-(defparameter *kat-gnc-to-ud-table* (make-hash-table :test #'equal))
+;; (defparameter *kat-gnc-to-ud-table* (make-hash-table :test #'equal))
 
 (defun load-feature-names (file)
-  (clrhash *kat-feature-name-table*)
-  (clrhash *kat-gnc-to-ud-table*)
+  (clrhash *feature-name-table*)
+  ;; (clrhash *kat-gnc-to-ud-table*)
   (block read
     (u:with-file-fields ((f &optional ud variety posp used-with eng-desc kat-code kat-desc comment)
                          file :empty-to-nil t)
       (when (equal f "###") (return-from read))
       (unless (char= (char f 0) #\#)
-        (setf (gethash f *kat-feature-name-table*)
+        (setf (gethash f *feature-name-table*)
               (mapcar (lambda (str) (unless (equal str "") str))
                       (list ud kat-code variety posp used-with eng-desc kat-desc comment)))))))
-
 
 #+test
 (print (parse-text "ძალიან კარგი" :variety :ng :disambiguate t :lookup-guessed nil))
@@ -482,7 +481,7 @@
 (defun gnc-to-ud-features (features)
   (format nil "~{~a~^ ~}"
 	  (loop for f in (u:split features #\space)
-	     for ud = (car (gethash f *kat-feature-name-table*))
+	     for ud = (car (gethash f *feature-name-table*))
 	     when (and ud (not (equal ud "-")))
 	     collect (string-left-trim "*" ud))))
 

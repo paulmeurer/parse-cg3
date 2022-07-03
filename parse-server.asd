@@ -11,7 +11,7 @@
   :depends-on (:cl-fst
 	       :acl-compat
                :graph
-               :framework
+               :framework-shib
                :aserve
                :aserve-custom
 	       :cl-vislcg3)

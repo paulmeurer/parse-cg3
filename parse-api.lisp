@@ -1,7 +1,7 @@
 ;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: PARSE; Base: 10 -*-
 ;;
 ;; Copyright (c) 2017, Paul Meurer, University of Bergen
-;; http://clarino.uib.no
+;; https://clarino.uib.no
 ;; All rights reserved.
 ;; 
 
@@ -43,7 +43,7 @@
 	     :base-url (base-url *framework*)
 	     :type :json)
   (debug (request-query request))
-  (with-database-connection ()
+  (clsql:with-database-connection ()
     (block rest
       (multiple-value-bind (user-id user-name login-type expired-p)
 	  (fw::session-index->user :session-index (or login-index session-index) :login-code login-code)
@@ -82,7 +82,7 @@
 		(otherwise
 		 (json "error" (format nil "The command ~a is not implemented." command))))
 	    (error (cond)
-	      (json "error" (setf *error-string* (format nil "~a" cond)))))))))
+	      (json "error" (format nil "~a" cond))))))))
   (terpri stream))
 
 

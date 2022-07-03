@@ -137,6 +137,11 @@
 	  (when infix-list
 	    (append infix-list (list (apply #'concatenate 'string prefix segments)))))))))
 
+;; TODO: use variety
+(defmethod get-word-codes (token (variety t) &key (source "parse"))
+  (declare (ignore source token))
+  nil)
+
 ;; lexicon is stored in .lex file in save-all-new-words()
 ;; it stores the values of :new-morphology
 (defmethod process-text ((text parsed-text) (mode (eql :analyze))
@@ -272,7 +277,7 @@
 			  ;; fetch from DB; used in parsing interface
 			  (new-morphology (when (and #+gekko nil (null readings)
 						     (null (location text)))
-					    (get-word-codes token :source "parse" :variety variety)))
+					    (get-word-codes token variety :source "parse")))
 			  (ignore (and (null readings)
 				       (find-if (lambda (c) (or (char<= #\a c #\z)
 								(char<= #\A c #\Z)
@@ -531,10 +536,12 @@
 				 when rest
 				 do #m(gnc:tmesis/)))))))))))))
 
+(defparameter *feature-name-table* (make-hash-table :test #'equal))
+
 (defun gnc-to-ud-features (features)
   (format nil "~{~a~^ ~}"
 	  (loop for f in (u:split features #\space)
-	     for ud = (car (gethash f *kat-feature-name-table*))
+	     for ud = (car (gethash f *feature-name-table*))
 	     when (and ud (not (equal ud "-")))
 	     collect (string-left-trim "*" ud))))
 

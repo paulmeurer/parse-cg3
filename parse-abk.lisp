@@ -274,7 +274,7 @@
                    )))
              
              (setf lemmas+features
-                   (sort (debug lemmas+features)
+                   (sort lemmas+features
                          (lambda (lf1 lf2)
                            (or (string< (car lf1) (car lf2))
                                (and (string= (car lf1) (car lf2))
