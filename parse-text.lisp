@@ -40,16 +40,16 @@
 	 (setf token (normalize-token token))
 	 (vector-push-extend (list :word token) (text-array gnc-text)))))
     (process-text gnc-text :analyze
-		      :variety variety
-                      :lookup-guessed lookup-guessed
-		      ;;:correct-spelling-errors (eq variety :ng)
-                      )
+                  :variety variety
+                  :lookup-guessed lookup-guessed
+                  ;;:correct-spelling-errors (eq variety :ng)
+                  )
     (when disambiguate
       (process-text gnc-text :disambiguate
-			:variety variety
-                        :lookup-guessed lookup-guessed
-			:load-grammar load-grammar
-			:sentence-end-strings '("." "?" "!" "…")))
+                    :variety variety
+                    :lookup-guessed lookup-guessed
+                    :load-grammar load-grammar
+                    :sentence-end-strings '("." "?" "!" "…")))
     gnc-text))
 
 (defun normalize-token (token)

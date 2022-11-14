@@ -14,17 +14,21 @@
 ;; request: http://clarino.uib.no/gnc/parse-api?command=<command>&…
 ;; examples:
 
-;; http://clarino.uib.no/gnc/parse-api?command=get-session
+;; https://clarino.uib.no/gnc/parse-api?command=get-session
 ;; returns: 
 ;; {"session-id":"242097204858072","user-id":[],"user-name":[]}
 
-;; http://clarino.uib.no/gnc/parse-api?session-id=242097204858072&command=parameter&attribute=features&value=false
+
+
+;; attributes: features, dependencies
+;; https://clarino.uib.no/gnc/parse-api?session-id=242097204858072&command=parameter&attribute=features&value=false
 ;; returns:
 ;; {"success":true}
 
-;; http://clarino.uib.no/gnc/parse-api?session-id=242097204858072&command=parse&text=გამარჯობა.
+;; https://clarino.uib.no/gnc/parse-api?session-id=242097204858072&command=parse&text=გამარჯობა.
 ;; returns:
 ;; {"tokens":[{"word":"გამარჯობა","msa":[{"lemma":"გამარჯობა","features":"Interj"}]},{"word":".","msa":[{"lemma":".","features":"Punct Period"}]}]}
+
 
 (define-url-function parse-api-json
     (request ((session-id integer)
@@ -40,10 +44,10 @@
 	      value
 	      )
 	     :path "/parse-api"
-	     :base-url (base-url *framework*)
+	     :base-url nil ;; (base-url *framework*)
 	     :type :json)
   (debug (request-query request))
-  (clsql:with-database-connection ()
+  (progn ;; clsql:with-database-connection ()
     (block rest
       (multiple-value-bind (user-id user-name login-type expired-p)
 	  (fw::session-index->user :session-index (or login-index session-index) :login-code login-code)
@@ -51,6 +55,7 @@
 	(when expired-p
 	  (json "error" "Session has expired." "session-expired" t)
 	  (return-from rest))
+        (print (list session-id user-id))
 	(let ((session (get-session :gnc-text session-id :user-id user-id)))
 	  (handler-case
 	      (case command
@@ -62,7 +67,6 @@
 		       "user-id" user-id
 		       "user-name" user-name))
 		(:parameter
-		 (debug value)
 		 (when attribute
 		   (setf (getf (session-av-list session) attribute)
 			 (if (string-equal value "true") t nil))
@@ -70,10 +74,11 @@
 		   (json "success" t)))
 		(:parse
 		 (let ((gnc-text (parse::parse-text
-				  text
+				  (debug text)
 				  :variety (or variety :ng)
 				  :load-grammar nil)))
 		   ;;(setf gnc.text::*text* gnc-text)
+                   (debug gnc-text)
 		   (setf (getf (session-av-list session) :gnc-text) gnc-text)
 		   (apply #'parse::write-gnc-text-json
 			  gnc-text

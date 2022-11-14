@@ -389,32 +389,33 @@
 				  rid ;; whether to show rid
 				  manual ;; for manual disambiguation
 				  &allow-other-keys)
+  ;;(debug (list :disambiguate disambiguate :dependencies dependencies :rid rid))
   (let ((start-cpos nil)
 	(end-cpos nil))
-    (json
-     "tokens"
-     (loop for node across (text-array text)
-	for id from 0
-	for cpos = (getf node :cpos)
-	when (eq (car node) :word)
-	collect (progn
-		  (setf end-cpos cpos)
-		  (unless start-cpos (setf start-cpos cpos))
-		  (write-word-json node
-				   :id id
-				   :tracep tracep
-				   :split-trace split-trace
-				   :suppress-discarded-p suppress-discarded-p
-				   :lemma lemma
-				   :features features
-				   :disambiguate disambiguate
-				   :dependencies dependencies
-				   :show-rules show-rules
-				   :rid rid
-				   :manual manual)))
-     "startCpos" start-cpos ;; not needed?
-     "endCpos" end-cpos ;; not needed?
-     )))
+    (debug (json
+            `("tokens"
+              ,(loop for node across (text-array text)
+                  for id from 0
+                  for cpos = (getf node :cpos)
+                  when (eq (car node) :word)
+                  collect (progn
+                            (setf end-cpos cpos)
+                            (unless start-cpos (setf start-cpos cpos))
+                            (write-word-json node
+                                             :id id
+                                             :tracep tracep
+                                             :split-trace split-trace
+                                             :suppress-discarded-p suppress-discarded-p
+                                             :lemma lemma
+                                             :features features
+                                             :disambiguate disambiguate
+                                             :dependencies dependencies
+                                             :show-rules show-rules
+                                             :rid rid
+                                             :manual manual)))
+              ,@(when start-cpos `("startCpos" start-cpos)) ;; not needed?
+              ,@(when start-cpos `("endCpos" end-cpos)) ;; not needed?
+              )))))
 
 (defun write-word-json (node &key id
 			       tracep ;; traces in view mode?
@@ -590,7 +591,7 @@
   (let ((morphology (filter-morphology morphology :tagset :full-tagset #+orig *tagset*)))
     (u:collecting
       (loop for reading in morphology
-	 for rid from 0
+	 for rule-id from 0
 	 do (destructuring-bind (l f &optional flag trace ids) reading
 	      (declare (ignore ids)) ;; equivalent readings after filtering; not used here
 	      (unless (and suppress-discarded-p (eq flag :discarded-cg))
@@ -599,7 +600,7 @@
 				      ,@(unless suppress-discarded-p
 						`("status" ,(string-downcase flag)))
 				      ,@(when features `("features" ,f))
-				      ,@(when rid `("rid" ,rid))
+				      ,@(when rid `("rid" ,rule-id))
 				      ,@(when manual `("manual" :null))
 				      ,@(when show-rules `("rules" ,trace)))))))))))
 
