@@ -15,16 +15,18 @@
                                ;; symlinked to georgian-morph/regex
                                (transducer-dir "projects:gnc;morphology;fst;")
                                &allow-other-keys)
-  (let* ((ng-file (u:concat transducer-dir "georgian-morph-ng" ".fst"))
-	 (og-file (u:concat transducer-dir "georgian-morph-og" ".fst"))
-	 (xm-file (u:concat transducer-dir "georgian-morph-xanmeti" ".fst"))
-	 (hm-file (u:concat transducer-dir "georgian-morph-haemeti" ".fst"))
+  (let* ((type (string-downcase +fst+))
+         (ng-file (u:concat transducer-dir "georgian-morph-ng." type))
+	 (og-file (u:concat transducer-dir "georgian-morph-og." type))
+	 (xm-file (u:concat transducer-dir "georgian-morph-xanmeti." type))
+	 (hm-file (u:concat transducer-dir "georgian-morph-haemeti." type))
 	 (ng-net nil)
 	 (comp-ng-net nil)
 	 (og-net nil)
 	 (xm-net nil)
 	 (hm-net nil)
-	 )
+         )
+    (debug ng-file)
     (format t "~&Loading transducers for ~a…~%" language)
     (labels ((load-morph (file-list)
 	       (u:collecting
@@ -34,41 +36,41 @@
 		      (case name
 			(:georgian-morph-ng
 			 (u:collect (or ng-net
-					(setf ng-net (make-instance 'cl-fst:fst-net
+					(setf ng-net (make-instance 'fst-net
 								    :file ng-file :name :ng)))))
 			(:georgian-comp-ng
 			 (u:collect (or comp-ng-net
 					(setf comp-ng-net
-					      (make-instance 'cl-fst:fst-net
+					      (make-instance 'fst-net
 							     :file og-file :name :comp-ng)))))
 			(:georgian-morph-og
 			 (u:collect (or og-net
-					(setf og-net (make-instance 'cl-fst:fst-net
+					(setf og-net (make-instance 'fst-net
 								    :file og-file :name :og)))))
 			(:georgian-morph-xanmeti
 			 (u:collect (or xm-net
-					(setf xm-net (make-instance 'cl-fst:fst-net
+					(setf xm-net (make-instance 'fst-net
 								    :file xm-file :name :xm)))))
 			(:georgian-morph-haemeti
 			 (u:collect (or hm-net
-					(setf hm-net (make-instance 'cl-fst:fst-net
+					(setf hm-net (make-instance 'fst-net
 								    :file hm-file :name :hm)))))
                         (otherwise
-			 (let ((file (u:concat transducer-dir name ".fst")))
+			 (let ((file (u:concat transducer-dir name "." type)))
 			   (format t "~&loading: ~s~%" file) 
 			   (if (probe-file file)
 			       (u:collect
 				   (make-instance
-				    'cl-fst:fst-net
+				    'fst-net
 				    :file file
 				    :name (intern (string-upcase name) :keyword)))
 			       (warn "File not found: ~a" file)))))))))
       (setf *ng-tokenizer*
-	    (make-instance 'cl-fst:fst-tokenizer :token-boundary #.(string #\newline)
-			   :file (u:concat transducer-dir "georgian-tokenize-ng.fst")))
+	    (make-instance 'fst-tokenizer :token-boundary #.(string #\newline)
+			   :file (u:concat transducer-dir "georgian-tokenize-ng." type)))
       (setf *tokenizer*
-	    (make-instance 'cl-fst:fst-tokenizer :token-boundary #.(string #\newline)
-			   :file (u:concat transducer-dir "geo-tokenize.fst")))
+	    (make-instance 'fst-tokenizer :token-boundary #.(string #\newline)
+			   :file (u:concat transducer-dir "geo-tokenize." type)))
       (setf *og-analyzer*
             (load-morph '(:georgian-morph-og
                           :georgian-morph-ng
@@ -119,7 +121,6 @@
 
 (defun load-feature-names (file)
   (clrhash *feature-name-table*)
-  ;; (clrhash *kat-gnc-to-ud-table*)
   (block read
     (u:with-file-fields ((f &optional ud variety posp used-with eng-desc kat-code kat-desc comment)
                          file :empty-to-nil t)
@@ -128,18 +129,6 @@
         (setf (gethash f *feature-name-table*)
               (mapcar (lambda (str) (unless (equal str "") str))
                       (list ud kat-code variety posp used-with eng-desc kat-desc comment)))))))
-
-#+test
-(print (parse-text "ძალიან კარგი" :variety :ng :disambiguate t :lookup-guessed nil))
-
-#+test
-(write-gnc-text-json (parse-text "ძალიან კარგი" :variety :ng)
-                     *standard-output*)
-
-#+test
-(write-gnc-text-json (parse-text "Аӡҕаб бзиоуп." :variety :abk)
-                     *standard-output*)
-
 
 ;; remove subsumption:
 ;; removes reading with specific preverb if equal form with preverb wildcard * is found
@@ -228,7 +217,7 @@
 		    (otherwise nil)
 		    )))
     (cond (analyzer
-           (cl-fst:fst-lookup ;; cl-foma:foma-lookup
+           (fst-lookup
             analyzer
             stripped-word
             (lambda (w l+f net)
@@ -242,13 +231,13 @@
                      (og-readings
                       (when (find variety '(:xm :hm))
                         (block og
-                          (cl-fst:fst-lookup *og-analyzer*
-                                             stripped-word
-                                             (lambda (w l+f net)
-                                               (declare (ignore w net))
-                                               (return-from og l+f)))))))
+                          (fst-lookup *og-analyzer*
+                                      stripped-word
+                                      (lambda (w l+f net)
+                                        (declare (ignore w net))
+                                        (return-from og l+f)))))))
                 (dolist (reading (remove-subsumed-preverbs (sort readings #'string<)))
-                  (when (and net (eq (cl-fst::name net) :georgian-redup-ng))
+                  (when (and net (eq (net-name net) :georgian-redup-ng))
                     (setf reading (normalize-reduplication-reading reading))
                     #+debug(debug reading))
                   (unless (and (eq (string< prev reading) (length prev))
@@ -256,11 +245,11 @@
                     (let* ((f-start nil)
                            (xm-only (when (and (find variety '(:xm :hm))
                                                (find #\ხ stripped-word)
-                                               (eq (cl-fst::name net) :xm))
+                                               (eq (net-name net) :xm))
                                       (not (search reading og-readings))))
                            (hm-only (when (and (find variety '(:xm :hm))
                                                (find #\ჰ stripped-word)
-                                               (eq (cl-fst::name net) :hm))
+                                               (eq (net-name net) :hm))
                                       (not (search reading og-readings)))))
                       (loop for i from 0
                          for c across reading
@@ -296,16 +285,16 @@
 	  (t
 	   (setf lemmas+features (list (list "-" (format nil "Foreign ~a" variety) nil nil)))))
     #+test
-    (cl-fst::fst-lookup *georgian-guessed* w
-			(lambda (w l+f net)
-			  (declare (ignore w net))
-			  (unless lemmas+features
-			    (dolist (reading (u:split l+f #\newline nil nil t))
-			      (let* ((f-start (position #\+ reading))
-				     (features (subseq reading f-start))
-				     (reading (subseq reading 0 f-start)))
-				(pushnew (list reading (substitute #\space #\+ features))
-					 lemmas+features :test #'equal))))))
+    (:fst-lookup *georgian-guessed* w
+                 (lambda (w l+f net)
+                   (declare (ignore w net))
+                   (unless lemmas+features
+                     (dolist (reading (u:split l+f #\newline nil nil t))
+                       (let* ((f-start (position #\+ reading))
+                              (features (subseq reading f-start))
+                              (reading (subseq reading 0 f-start)))
+                         (pushnew (list reading (substitute #\space #\+ features))
+                                  lemmas+features :test #'equal))))))
     (values lemmas+features stripped-word)))
 
 #+moved
@@ -341,6 +330,7 @@
 
 (defparameter *project* :gnc) ;; :abnc)
 
+#+obsolete??
 (define-url-function parse-text-json
     (request ((login-code string nil :global t)
 	      (session-index string nil :global t t)
@@ -716,13 +706,26 @@
   slash-relations
   atts)
 
-(time (init-transducers :kat))
+(init-transducers :kat)
+
+;; Takes a txt file as input and outputs a json array.
+;; Make sure there are no line breaks in sentences.
+;; Each element in the array is a parsed sentence.
+(defun parse-kat-file (file)
+  (let ((out-file (merge-pathnames ".json" file)))
+    (with-open-file (stream out-file :direction :output :if-exists :supersede)
+      (write-string "[ " stream)
+      (u:with-file-lines (line file)
+        (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil)
+                         stream)
+        (terpri stream))
+      (write-string "]" stream))))
+
+;; Example:
 
 #+test
-(print (parse-text "ძალიან კარგი" :variety :ng :disambiguate t :lookup-guessed nil))
+(parse-kat-file "projects:parse-cg3;example-text-kat.txt")
 
-#+test
-(write-text-json (parse-text "ძალიან კარგი" :variety :ng)
-                     *standard-output*)
 
+    
 :eof

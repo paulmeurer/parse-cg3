@@ -29,7 +29,7 @@
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
   (let ((gnc-text (make-instance (text-class))))
-    (cl-fst:fst-map-tokens
+    (fst-map-tokens
      (if (eq variety :abk)
 	 *abk-tokenizer*
 	 *ng-tokenizer*)
@@ -399,6 +399,7 @@
   (vislcg3::cg3-disambiguate-text text :variety variety :load-grammar load-grammar
 				  :sentence-end-strings sentence-end-strings))
 
+#+obsolete??
 (define-url-function parse-text-json
     (request ((login-code string nil :global t)
 	      (session-index string nil :global t t)
@@ -448,7 +449,8 @@
                               manual ;; for manual disambiguation
                               &allow-other-keys)
   (let ((start-cpos nil)
-	(end-cpos nil))
+	(end-cpos nil)
+        (st-json:*output-literal-unicode* t))
     (json
      "tokens"
      (loop for node across (text-array text)
@@ -665,7 +667,6 @@
 				      ,@(when manual `("manual" :null))
 				      ,@(when show-rules `("rules" ,trace)))))))))))
 
-
 (defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
   (assert node-id)
   (let* ((id-table (make-hash-table :test #'equal))
@@ -763,9 +764,6 @@
 ;;  *text*
 
 (defparameter *root* nil)
-
-#+test
-(print (build-dep-graph *text* :node-id 6))
 
 (defstruct token-list
   terminal-p

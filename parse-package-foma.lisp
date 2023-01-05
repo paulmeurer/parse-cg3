@@ -9,7 +9,7 @@
 
 (defpackage "PARSE"
   (:use "COMMON-LISP"
-        "CL-FST"
+        "CL-FOMA"
 	"ACL-COMPAT.MP"
 	"ASERVE"
 	"NET.ASERVE"
