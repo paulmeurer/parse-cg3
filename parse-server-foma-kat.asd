@@ -3,7 +3,7 @@
 (in-package :cl-user)
 
 (asdf:defsystem :parse-server-foma-kat
-  :name "parse-server"
+  :name "parse-server-foma-kat"
   :author "Paul Meurer <paul.meurer@uib.no>"
   :maintainer "Paul Meurer <paul.meurer@uib.no>"
   :licence "BSD 3 term"

@@ -12,8 +12,9 @@
 
 (defmethod init-transducers ((language (eql :kat))
                              &key ng-only
-                               ;; symlinked to georgian-morph/regex
-                               (transducer-dir "projects:gnc;morphology;fst;")
+                               (transducer-dir (ecase +fst+
+                                                 (:foma "projects:parse-cg3;regex;")
+                                                 (:fst "projects:georgian-morph;regex;")))
                                &allow-other-keys)
   (let* ((type (string-downcase +fst+))
          (ng-file (u:concat transducer-dir "georgian-morph-ng." type))
@@ -26,7 +27,6 @@
 	 (xm-net nil)
 	 (hm-net nil)
          )
-    (debug ng-file)
     (format t "~&Loading transducers for ~a…~%" language)
     (labels ((load-morph (file-list)
 	       (u:collecting
@@ -58,7 +58,7 @@
                         (otherwise
 			 (let ((file (u:concat transducer-dir name "." type)))
 			   (format t "~&loading: ~s~%" file) 
-			   (if (probe-file file)
+			   (if (debug (probe-file file))
 			       (u:collect
 				   (make-instance
 				    'fst-net
@@ -114,10 +114,6 @@
                           "foreign-morph"))))
     )
   (print :done))
-
-;; (defparameter *kat-feature-name-table* (make-hash-table :test #'equal))
-
-;; (defparameter *kat-gnc-to-ud-table* (make-hash-table :test #'equal))
 
 (defun load-feature-names (file)
   (clrhash *feature-name-table*)
@@ -201,7 +197,6 @@
                               &key (variety :ng) tmesis-segment guess mwe
                                 (lookup-guessed t)
                                 &allow-other-keys)
-  ;;(print (list word variety))
   (let ((lemmas+features ())
 	(stripped-word
 	 (remove-if (lambda (c) 
@@ -310,11 +305,6 @@
 (defconstant +mkhedruli+ "აბგდევზჱთიკლმნჲოპჟრსტჳუფქღყშჩცძწჭხჴჯჰჵ")
 (defconstant +mtavruli+ "ᲐᲑᲒᲓᲔᲕᲖᲱᲗᲘᲙᲚᲛᲜᲲᲝᲞᲟᲠᲡᲢᲳᲣᲤᲥᲦᲧᲨᲩᲪᲫᲬᲭᲮᲴᲯᲰᲵ")
 
-#+test
-(u:with-file-fields ((asomtavruli nuskhuri mkhedruli  mtavruli &rest rest)
-		   "projects:gnc;data;character-table1.tsv")
-  (write-string mtavruli))
-
 (defmethod transliterate ((language (eql :kat)) str)
   (transliterate-to-mkhedruli str))
 
@@ -327,8 +317,7 @@
      do (setf (char str i) (char +mkhedruli+ pos)))
   str)
 
-
-(defparameter *project* :gnc) ;; :abnc)
+(defparameter *project* :gnc)
 
 #+obsolete??
 (define-url-function parse-text-json
@@ -594,7 +583,6 @@
 				      ,@(when manual `("manual" :null))
 				      ,@(when show-rules `("rules" ,trace)))))))))))
 
-
 (defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
   (assert node-id)
   (let* ((id-table (make-hash-table :test #'equal))
@@ -689,13 +677,6 @@
 	       token-table)
       (values token-table (1+ (position node-id ids))))))
 
-;;  *text*
-
-(defparameter *root* nil)
-
-#+test
-(print (build-dep-graph *text* :node-id 6))
-
 (defstruct token-list
   terminal-p
   id
@@ -706,7 +687,13 @@
   slash-relations
   atts)
 
+;; Initialize the transducers
 (init-transducers :kat)
+
+;; if you are interested in Modern Georgian only use this instead:
+#+test
+(init-transducers :kat :ng-only t)
+
 
 ;; Takes a txt file as input and outputs a json array.
 ;; Make sure there are no line breaks in sentences.
@@ -726,6 +713,8 @@
 #+test
 (parse-kat-file "projects:parse-cg3;example-text-kat.txt")
 
+#+test
+(write-text-json (parse-text "აბა" :variety :ng :disambiguate t :lookup-guessed nil)
+                 *standard-output*)
 
-    
 :eof

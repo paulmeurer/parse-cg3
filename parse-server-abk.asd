@@ -3,7 +3,7 @@
 (in-package :cl-user)
 
 (asdf:defsystem :parse-server-abk
-  :name "parse-server"
+  :name "parse-server-abk"
   :author "Paul Meurer <paul.meurer@uib.no>"
   :maintainer "Paul Meurer <paul.meurer@uib.no>"
   :licence "BSD 3 term"

@@ -4,24 +4,24 @@
   nil #+ignore
   (print (vislcg3::cg3-grammar-load
 	  (namestring (translate-logical-pathname
-		       "projects:gnc;morphology;cg3;geo-og-dis.cg3")))))
+		       "projects:parse-cg3;cg3;geo-og-dis.cg3")))))
 
 (defparameter *mg-grammar*
   nil #+ignore
   (print (vislcg3::cg3-grammar-load
 	  (namestring (translate-logical-pathname
-		       "projects:gnc;morphology;cg3;geo-mg-dis.cg3")))))
+		       "projects:parse-cg3;cg3;geo-mg-dis.cg3")))))
 
 (defparameter *ng-grammar*
   nil #+ignore
   (print (vislcg3::cg3-grammar-load
 	  (namestring (translate-logical-pathname
-		       "projects:gnc;morphology;cg3;geo-ng-dis.cg3")))))
+		       "projects:parse-cg3;cg3;geo-ng-dis.cg3")))))
 
 (defparameter *abk-grammar* nil)
 
 (defparameter *grammar-path* 
-  (translate-logical-pathname "projects:gnc;morphology;cg3;"))
+  (translate-logical-pathname "projects:parse-cg3;cg3;"))
 
 #+test
 (print (grammar-initialization-error-message "geo-og-dis.cg3"))
@@ -32,8 +32,7 @@
 	  (substitute #\newline #\
 		      (u:trim-whitespace
 		       (with-output-to-string (stream)
-			 (ccl::run-program #+gekko "~/lisp/projects/cg/vislcg3/src/vislcg3"
-					   #-gekko "vislcg3"
+			 (ccl::run-program "vislcg3"
 					   (list "--grammar"
 						 (u:concat (or path (namestring *grammar-path*))
 							   grammar)
@@ -47,9 +46,9 @@
 (load-grammar :ng)
 
 (defun split-grammar-file ()
-  (let ((og-file "projects:gnc;morphology;cg3;geo-og-dis.cg3")
-	(mg-file "projects:gnc;morphology;cg3;geo-mg-dis.cg3")
-	(ng-file "projects:gnc;morphology;cg3;geo-ng-dis.cg3")
+  (let ((og-file "projects:parse-cg3;cg3;geo-og-dis.cg3")
+	(mg-file "projects:parse-cg3;cg3;geo-mg-dis.cg3")
+	(ng-file "projects:parse-cg3;cg3;geo-ng-dis.cg3")
 	(in-og t)
 	(in-mg t)
 	(in-ng t)
@@ -57,7 +56,7 @@
     (with-open-file (og-stream og-file :direction :output :if-exists :supersede)
       (with-open-file (mg-stream mg-file :direction :output :if-exists :supersede)
 	(with-open-file (ng-stream ng-file :direction :output :if-exists :supersede)
-	  (u:with-file-lines (line "projects:gnc;morphology;cg3;geo-dis.cg3")
+	  (u:with-file-lines (line "projects:parse-cg3;cg3;geo-dis.cg3")
 	    (cond (in-rule
 		   (write-line (if in-og line "") og-stream)
 		   (write-line (if in-mg line "") mg-stream)
@@ -130,22 +129,7 @@
 	 (setf *abk-grammar*
 	       (cg3-grammar-load (u:concat (namestring *grammar-path*) grammar-file))))))))
 
-#+test
-(print (cg3-grammar-load (namestring (truename "projects:cg;cg3;nn_morf-utf8.cg"))))
-
-#+test
-(grammar-initialization-error-message "nn_morf-utf8.cg"
-				      "/home/paul/lisp/projects/cg/cg3/"
-				      ;;"/raid/svn/lisp/projects/cg/cg3/"
-				      )
-
-;; gnc.text::*text*
-
-#+test
-(time (cg3-disambiguate-text gnc.text::*text*))
-
 (defun rule-name (ruletype &optional line discarded)
-  ;;(debug ruletype)
   (let ((name (ecase ruletype
 		(15 "add")
 		(16 "map")
@@ -162,9 +146,6 @@
     (if line
 	(format nil "~:[~;; ~]~a:~d" discarded name line)
 	name)))
-
-#+test
-(cg3-disambiguate-text gnc.text::*text*)
 
 (defun name-type-to-prop-tag (name-type)
   (ecase (intern (string-upcase name-type) :keyword)
@@ -223,9 +204,6 @@
 	  (t
 	   (cons (list "[??]" (format nil "N Prop ~a <Name>" prop-tag) nil nil)
 		 morphology)))))
-
-#+test
-(cg3-disambiguate-text gnc.text::*text* :variety :ng)
 
 #+test
 (:TMESIS-MSA
@@ -500,8 +478,6 @@
 	   when (getf subtoken :parent)
 	   do (setf (getf subtoken :parent) (1+ (or (position (getf subtoken :parent) ids) -2)))))
       text)))
-
-;; gnc.text::*text*
 
 (defun msa-set-disambiguation (cohort morphology)
   (let* ((added nil)

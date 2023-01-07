@@ -12,7 +12,7 @@
 	       :acl-compat
                :graph
                :st-json
-               ;:framework-shib
+               :framework-shib
                :aserve
                :aserve-custom
 	       :cl-vislcg3)
@@ -22,7 +22,7 @@
    (:file "macros")
    (:file "parse-text")
    (:file "cg3-disambiguate")
-   ;;(:file "parse-api")
+   (:file "parse-api")
    ))
 
 :eof
