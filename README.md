@@ -54,7 +54,7 @@ After that, when you have started Clozure Common Lisp, evaluate
 
       (ql:register-local-projects)
 
-in the REPL (the Emacs buffer called *slime-repl clozure*)
+in the REPL (the Emacs buffer called *slime-repl clozure*). This is needed only once.
 
 Then you can start the Georgian parser by evaluating
 
