@@ -2,13 +2,13 @@
 
 (in-package :cl-user)
 
-(asdf:defsystem :parse-server-kat
-  :name "parse-server-kat"
+(asdf:defsystem :parse-cg3-kat
+  :name "parse-cg3-kat"
   :author "Paul Meurer <paul.meurer@uib.no>"
   :maintainer "Paul Meurer <paul.meurer@uib.no>"
   :licence "BSD 3 term"
   :description "FST/CG morphosyntax parse code"
-  :depends-on (:parse-server)
+  :depends-on (:parse-cg3)
   :serial t
   :components
   ((:file "parse-kat")))

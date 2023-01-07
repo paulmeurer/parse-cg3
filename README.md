@@ -58,7 +58,7 @@ in the REPL (the Emacs buffer called *slime-repl clozure*)
 
 Then you can start the Georgian parser by evaluating
 
-     (ql:quickload :parse-server-foma-kat)
+     (ql:quickload :parse-cg3-foma-kat)
 
 Third-party libraries are installed automatically.
 
