@@ -1,0 +1,373 @@
+# ============================================ #
+# Georgian disambiguator                       #
+# This file combines rules for OG, MG and NG.  #
+# Rules that are only valid for a subset of    #
+# varieties should be prepended by the variety #
+# name(s): o, m, n, plus hyphen.               #
+# E.g., om-SELECT …			       #
+# ============================================ #
+
+# run like:
+# cat test.vrt | vislcg3 --grammar geo-ng-dis.rle --trace > test.dis
+
+# OBS: do not use [0], [1] etc. as tags since they are used internally in the Lisp interface
+
+# ========== #
+# Delimiters #
+# ========== #
+
+DELIMITERS = "<.>" "<!>" "<?>" "<…>" "<;>" "<–>" ;
+
+# ============= #
+# Tags and sets #
+# ============= #
+
+
+# ========
+   SETS
+# ========
+
+SET BOS = (>>>) | (<s>) ;
+SET BOP = (>>>) | (Comma) | (Semicolon) ;
+
+LIST N = N ;
+LIST V = V ;
+LIST A = A ;
+LIST VN = VN ;
+LIST Prop = Prop ;
+LIST Anthr = Anthr ;
+LIST Top = Top ;
+LIST Area = Area ;
+LIST Adv = Adv ;
+LIST Num = Num ;
+LIST Q = Q ;
+# LIST ALLQ = ALLQ ;
+LIST Dem = Dem ;
+LIST Card = Card ;
+LIST Ord = Ord ;
+LIST Roman = Roman ;
+LIST Pp = Pp ;
+LIST Cj = Cj ;
+LIST Sub = Sub ;
+LIST FutPart = FutPart ;
+LIST PresPart = PresPart ;
+LIST PastPart = PastPart ;
+LIST NegPart = NegPart ;
+LIST Part = Part ;
+LIST Modal = Modal ;
+LIST SIndef = SIndet SIndef ; # SIndet to be removed
+LIST Neg = Neg ;
+LIST Pv = Pv ;
+LIST Hum = Hum ;
+
+SET NOM = N | A | Part | Card | SIndef ;
+SET NA = N | A ;
+SET NADem = N | A | Dem ;
+SET NAProp = N | A | Prop ;
+SET NAPropPart = N | VN | A | Prop | Part ;
+SET NADemProp = N | A | Dem | Prop ;
+SET NProp = N | Prop ;
+SET NACProp = N | VN | A | Card | Prop ;
+SET NACDemProp = N | A | VN | Card | Dem | Prop | Part | SIndef ;
+SET NACDemPropPron = N | A | Card | Dem | Prop | (Pron Pers) | Part | SIndef ;
+SET ADJ = A | Num ;
+SET ADemNum = A | Dem | Num ;
+SET APart = A | Part ;
+SET NAPart = N | A | Part ;
+SET INDEF = (Pron SIndet) | (Pron Indet) | (Pron SIndef) | (Pron Indef) ; # Indet to be removed
+
+
+SET PREP = ("<გარდა>" Pp) | ("<მიუხედავად>" Pp) ;
+
+SET POSTP = Pp - PREP ;
+
+SET PERSON = (Hum) | Anthr ;
+
+LIST Bound = Bound ;
+LIST Interj = Interj ;
+LIST Pr = Pr ;
+LIST Pron = Pron ;
+LIST Pers = Pers ;
+LIST Int = Int ;
+LIST Refl = Refl ;
+LIST Rel = Rel ;
+LIST Recipr = Recipr ;
+LIST Poss = Poss ;
+LIST Interr = Interr ;
+LIST Quant = Quant ;
+LIST Nom = Nom ;
+LIST Erg = Erg ;
+LIST Gen = Gen ;
+LIST Dat = Dat ;
+LIST Inst = Inst ;
+LIST Advb = Advb ;
+LIST Voc = Voc ;
+LIST Abs = Abs ;
+LIST Ben = Ben ;
+LIST Dir = Dir ;
+LIST CASE = Nom Erg Dat Gen Advb Inst Voc Abs Ben Dir ;
+LIST CASEnoAdvb = Nom Erg Dat Gen Inst Voc Abs Ben Dir ;
+LIST DatAdv = Dat Advb ;
+LIST DatGen = Dat Gen ;
+LIST NomGenInst = Nom Gen Inst ;
+LIST <Gen> = <Gen> ;
+LIST <Dat> = <Dat> ;
+LIST <Dat/Gen> = <Dat/Gen> ;
+LIST <Inst> = <Inst> ;
+LIST <Advb> = <Advb> ;
+LIST Sg = Sg ;
+LIST Pl = Pl ;
+LIST OldPl = OldPl ;
+LIST NewPl = NewPl ;
+SET NUMBER = Sg | OldPl | NewPl ;
+
+LIST Cmp = Cmp ;
+LIST Elat = Elat ;
+LIST Superl = Superl ;
+LIST Prs = Prs ;
+LIST Prt = Prt ;
+LIST 1Sg = 1Sg ;
+LIST 2Sg = 2Sg ;
+LIST 3Sg = 3Sg ;
+LIST Inf = Inf ;
+LIST Imp = Imp ;
+LIST Sup = Sup ;
+LIST Punct = Punct ;
+LIST Comma = Comma ;
+LIST IntMark = IntMark ;
+LIST ExclPoint = ExclPoint ;
+
+LIST Aux = Encl:Aux ;
+
+LIST Pres = Pres ;
+LIST Impf = Impf ;
+LIST ConjPres = ConjPres ;
+
+LIST Fut = Fut ;
+LIST Cond = Cond ;
+LIST ConjFut = ConjFut ;
+
+LIST Aor = Aor ;
+LIST Opt = Opt ;
+LIST Conj-II = Conj-II ;
+LIST Iter-II = Iter-II ;
+LIST Impv = Impv ;
+
+LIST PluPerf = PluPerf ;
+LIST ConjPerf = ConjPerf ;
+
+LIST PRES = Pres Impf ConjPres ;
+LIST FUT = Fut Cond ConjFut ;
+SET  PRFUT = PRES | FUT ;
+LIST AOR = Aor Opt Conj-II Iter-II Impv ;
+LIST PERF = Perf PluPerf ConjPerf ;
+
+LIST OPT = Opt ConjPres PluPerf ;
+
+# LIST Full = Full ; # Full has been removed
+LIST Att = Att Red Bound ; # Red and Bound to be removed
+LIST Trunc = Trunc ;
+LIST L = L ;
+LIST Temp = Temp ;
+LIST Deg = Deg ;
+LIST DegNum = DegNum ;
+
+LIST S:1Sg = S:1Sg ;
+LIST S:2Sg = S:2Sg ;
+LIST S:1Pl = S:1Pl ;
+LIST S:2Pl = S:2Pl ;
+LIST S:3Sg = S:3Sg ;
+LIST S:3Pl = S:3Pl ;
+
+SET S:3 = S:3Sg | S:3Pl ;
+
+LIST S:12 = S:1Sg S:2Sg S:1Pl S:2Pl ;
+
+LIST DO:1Sg = DO:1Sg ;
+LIST DO:2Sg = DO:2Sg ;
+LIST DO:1Pl = DO:1Pl ;
+LIST DO:2Pl = DO:2Pl ;
+LIST DO:3Sg = DO:3Sg ;
+LIST DO:3Pl = DO:3Pl ;
+
+LIST IO:1Sg = IO:1Sg ;
+LIST IO:2Sg = IO:2Sg ;
+LIST IO:1Pl = IO:1Pl ;
+LIST IO:2Pl = IO:2Pl ;
+LIST IO:2   = IO:2 ;
+LIST IO:3   = IO:3 ;
+
+SET NomSg = (Nom Sg) ;
+SET NomPl = (Nom Pl) ;
+SET ErgSg = (Erg Sg) ;
+SET ErgPl = (Erg Pl) ;
+SET DatSg = (Dat Sg) ;
+SET DatPl = (Dat Pl) ;
+
+SET AUX = (<AuxTrans>) | (<AuxTransHum>) | (<AuxIntr>) ;
+
+LIST FirstName = FirstName ;
+LIST LastName  = LastName ;
+
+# TODO: "და" should only be CLB if it conjoins clauses ;-)
+LIST CLBwords = "," ":" "რომ" "თუ" "რომ[ე]ლ-ი" "როგორც" ;
+LIST CLB1 = ":" "რომ" "თუ" "რომ[ე]ლ-ი" ;
+
+SET CLB = CLBwords | (Cj Sub) ;
+
+LIST COORD = "<და>" "<ან>" "<ანუ>" "<თუ>" "," ;
+
+LIST FUT-ADV = "ხვალ" "ზეგ" "აწ" ;
+
+SET ErgArg3 =   (<S:Erg> S:3Sg) | (<S:Erg> S:3Pl) ;
+
+SET NomArg3 =   (<S:Nom> S:3Sg) | (<S:Nom> S:3Pl) | (<DO:Nom> DO:3) | Aux ;
+
+SET DatArg3 =   (<S:Dat> S:3Sg)
+    	      | (<S:Dat> S:3Pl)
+              | (<DO:Dat> DO:3)
+              | (<IO:Dat> IO:3) ;
+
+SET GenArg  =   (<IO:Gen>) ;
+
+LIST S:Erg = <S:Erg> ;
+LIST S:Nom = <S:Nom> ;
+LIST S:Dat = <S:Dat> ;
+LIST DO:Erg = <DO:Erg> ;
+LIST DO:Nom = <DO:Nom> ;
+LIST DO:Dat = <DO:Dat> ;
+LIST IO:Nom = <IO:Nom> ;
+LIST IO:Dat = <IO:Dat> ;
+
+# Verbs having Advb arguments
+# these and more
+LIST Advb-V = "თვლ\\[.*"r
+     	      "ჩა-თვლ\\[.*"r
+	      <AuxIntr>
+	      Encl:Aux ;
+
+# doesen't work (need newer CG?)
+# LIST PP = /^PP.*$/r ;
+
+LIST PP = PP ;
+
+# Sets
+# ====
+
+# Noun sets
+
+SET QUAL = N + (Qual) + Att ;
+
+
+# ======== #
+  SECTION  #
+# ======== #
+
+SET PlaceQual = ("<ქალაქ>") | ("<ქ.>") | ("<სოფელ>") ;
+
+SET WaterQual = ("<მდინარე>") | ("<ტბა>") ;
+
+SET TitleQual = ("ბატონ-ი") | ("ქალბატონ-ი") | ("ამხანაგ-ი") | ("მინისტრ-ი")
+    	      | ("ცოლ-ი") | ("ქმ[ა]რ-ი") | ("მეუღლ[ე]")
+    	      | ("წმიდ[ა]") | ("<წმ.>") | ("ნეტარ-ი") | ("მამ[ა]") | ("მოწამ[ე]")
+	      | ("მცველ-ი")
+	      | ("<.*ისტ>"r)
+	      | ("<მაესტრო>") ;
+
+SET OrgQual   = ("კლუბ-ი") | ("კომპანი[ა]") ;
+
+SET LastNameQualFN = (FirstName) ;
+
+SET LastNameQualAH = A + Hum ;
+
+SET FirstNameQualLN = (LastName) ;
+
+SET LastNameRus = (".*სკი"r) | (".*იჩ-ი"r) | (".*ოვ-ი"r) | (".*ევ-ი"r) ;
+SET LastNameGeo = (".*(ა|ი)ძ\[ე\]"r) | (".*შვილ-ი"r) ;
+
+SET NounSFX = (".*ება"r) | (".*ობა"r) | (".*იზმ-ი"r) | (".*აცია"r)  | (".*ისტ-ი"r) ;
+
+ADD (@Name:Q:5) (Target)
+    IF (-1 TitleQual) ;
+
+ADD (@Name:A:-1) (Target)
+    IF (-1 A) ;
+
+ADD (@FirstName:QLN:5) (Target)
+    IF (-1 TitleQual)
+       (1 (LastName)) ;
+
+ADD (@FirstName:Hum:3) (Target)
+    IF (-1 (N Hum)) # cannot use Qual, which is removed in front of unknown word; change in grammar!
+       (1 (LastName)) ;
+
+ADD (@LastName:Hum:3) (Target)
+    IF (-2 (N Hum)) # cannot use Qual, which is removed in front of unknown word; change in grammar!
+       (-1 (Unknown)) ;
+
+ADD (@FirstName:QUnknown:3) (Target)
+    IF (-1 TitleQual)
+       (1 (Unknown)) ;
+
+ADD (@FirstName:2Unknown:1) (Target)
+    IF (1 (Unknown)) ;
+
+#ADD (@Name:თან:2) (Target)
+#    IF (0 ("<.*თან>"r))
+#       (1 ("<ერთად>")) ;
+
+ADD (@LastName:FN:3) (Target)
+    IF (-1 LastNameQualFN) ;
+
+ADD (@LastName:AH:1) (Target)
+    IF (-1 LastNameQualAH) ;
+
+ADD (@LastName:Geo:5) (Target)
+    IF (0 LastNameGeo) ;
+
+ADD (@LastName:Rus:5) (Target)
+    IF (0 LastNameRus) ;
+
+ADD (@FirstName:LN:3) (Target)
+    IF (1 FirstNameQualLN) ;
+
+ADD (@A:ელ:4) (Target)
+    IF (0 (".*ელ-ი"r)) ;
+
+ADD (@A:ულ:4) (Target)
+    IF (0 (".*ულ-ი"r)) ;
+
+ADD (@A:ურ:4) (Target)
+    IF (0 (".*ურ-ი"r)) ;
+
+ADD (@TopPlace:Q:5) (Target)
+    IF (-1 PlaceQual) ;
+
+ADD (@TopWater:Q:5) (Target)
+    IF (-1 WaterQual) ;
+
+ADD (@TopPlace:ში:0) (Target)
+    IF (0 ("<.*ში>"r)) ;
+
+ADD (@Org:წერ:2 @Name:წერ:2) (Target)
+    IF (-1 ("<წერს>")) ;
+
+ADD (@Org:Q:4) (Target)
+    IF (-1 OrgQual) ;
+
+ADD (@Misc:Quote:0) (Target)
+    IF (-1 (Quote))
+       (1 (Quote)) ;
+
+ADD (@N:Sfx:5) (Target)
+    IF (0 NounSFX) ;
+
+
+
+# Frequency disambiguation
+
+# SELECT (<lemma=MAX>)
+#      IF (0C N) ;
+
+
+# END
