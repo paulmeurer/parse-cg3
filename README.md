@@ -41,14 +41,14 @@ When you install quicklisp, this directory will be created for you:
 
 In this directory, clone the following git projects:
 
-clone git@git.app.uib.no:clarino-uib/lisp/parse-cg3.git
-clone git@git.app.uib.no:clarino-uib/lisp/foma.git
-clone git@git.app.uib.no:clarino-uib/lisp/utilities.git
-clone git@git.app.uib.no:clarino-uib/lisp/zebu.git
-clone git@git.app.uib.no:clarino-uib/lisp/graph.git
-clone git@git.app.uib.no:clarino-uib/lisp/aserve.git
-clone git@git.app.uib.no:clarino-uib/lisp/vislcg3.git
-clone git@git.app.uib.no:clarino-uib/lisp/xml.git
+* clone git@git.app.uib.no:clarino-uib/lisp/parse-cg3.git
+* clone git@git.app.uib.no:clarino-uib/lisp/foma.git
+* clone git@git.app.uib.no:clarino-uib/lisp/utilities.git
+* clone git@git.app.uib.no:clarino-uib/lisp/zebu.git
+* clone git@git.app.uib.no:clarino-uib/lisp/graph.git
+* clone git@git.app.uib.no:clarino-uib/lisp/aserve.git
+* clone git@git.app.uib.no:clarino-uib/lisp/vislcg3.git
+* clone git@git.app.uib.no:clarino-uib/lisp/xml.git
 
 After that, when you have started Clozure Common Lisp, evaluate
 
