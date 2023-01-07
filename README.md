@@ -37,7 +37,7 @@ Install Quicklisp from quicklisp.org
 
 When you install quicklisp, this directory will be created for you:
 
-~/quicklisp/local-projects/
+     ~/quicklisp/local-projects/
 
 In this directory, clone the following git projects:
 
