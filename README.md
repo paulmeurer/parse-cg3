@@ -49,6 +49,13 @@ In this directory, clone the following git projects:
 * clone git@git.app.uib.no:clarino-uib/lisp/aserve.git
 * clone git@git.app.uib.no:clarino-uib/lisp/vislcg3.git
 * clone git@git.app.uib.no:clarino-uib/lisp/xml.git
+* clone git@git.app.uib.no:clarino-uib/lisp-lib/dat.git
+* clone git@git.app.uib.no:clarino-uib/lisp-lib/encoding.git
+* clone git@git.app.uib.no:clarino-uib/lisp-lib/libxslt.git
+
+If you do use Xerox FST you will instead of foma.git need
+
+* clone git@git.app.uib.no:clarino-uib/lisp-lib/fst.git
 
 After that, when you have started Clozure Common Lisp, evaluate
 
@@ -60,7 +67,11 @@ Then you can start the Georgian parser by evaluating
 
      (ql:quickload :parse-cg3-foma-kat)
 
-Third-party libraries are installed automatically.
+or (in case of FST)
+
+     (ql:quickload :parse-cg3-kat)
+
+Third-party Common Lisp libraries are installed automatically (but you will have to install possibly missing Lunux libraries).
 
 When everything loads fine, try it out by evaluating the code at the bottom of parse-kat.lisp.
 
