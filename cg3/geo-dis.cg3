@@ -514,9 +514,15 @@ o-SELECT ("საქმ[ე]·ჲ" N) ;
 o-SELECT ("ესერა" Adv) ;
 SELECT ("გორ·ი") ;
 
+SELECT ("მარჩენალ·ი") ; # prefer over "მარჩენ[ა]ლ·ი"
+
 SELECT ("მო·კლებულ·ი/კლ") ; # and not მოკლებულ·ი/მოკლ
 
 SELECT ("და·ღლ[ა]/ღალ" Pass) ; # and not და·ღალვ[ა]/ღალ
+
+SELECT ("კიბორჩხალა") ; # not კიბორჩხალი
+
+REMOVE ("ბიჭა") IF (0 ("ბიჭ·ი")) ;
 
 SELECT ("<ხან>" "ხან") ;
 SELECT ("ევროპ[ა]") ;
@@ -552,7 +558,12 @@ SELECT ("კიდევაც") ;
 SELECT ("გაცილებით" Adv) ;
 SELECT ("<მეტიც>" Adv) ;
 
+REMOVE ("კარგ·ი" N) ;
+
 SELECT ("ამასთანავე") ;
+
+# todo: find rules for ხანი / ხ[ა]ნი
+SELECT ("ხან[ა]") IF (-1 ("<ქვის>") | ("<ყინულოვანი>") | ("<ბრინჯაოს>")) ;
 
 SELECT (Pron Pers PP) ; # შვენში etc.
 SELECT ("თბილის·ი" Prop) ;
@@ -1129,6 +1140,11 @@ n-SELECT $$CASE
     IF (-1 COORD)
        (-2C $$CASE + L) ;
 
+# წადი და თხა გადააბი!
+n-SELECT Impv
+    IF (1 ("და"))
+       (1* Impv) ;
+
 # corrdinate equal POS
 n-SELECT N + $$CASE # + L
     IF (1 COORD)
@@ -1611,6 +1627,7 @@ SELECT ("სმენ[ა]/სმ")
 
 SELECT A + $$CASE + Sg
     IF (1 COORD)
+       (NOT 0 V)
        (2C A + $$CASE + Sg) ;
 
 SELECT A + $$CASE + Att
@@ -2900,6 +2917,10 @@ n-REMOVE DNom
       	 (2 ("<იყოს>")) ;
 
 # Adverb
+
+# ზომაზე მეტად
+SELECT PP:ზე
+      IF (1 A + Quant) ;
 
 # MWEs
 
