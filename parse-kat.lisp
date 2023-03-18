@@ -811,13 +811,11 @@
   slash-relations
   atts)
 
-;; Initialize the transducers
-(init-transducers :kat)
-
-;; if you are interested in Modern Georgian only use this instead:
-#+test
-(init-transducers :kat :ng-only t)
-
+(if (eq +fst+ :fst)
+    ;; Initialize the transducers
+    (init-transducers :kat)    
+    ;; if you are interested in Modern Georgian only use this instead:
+    (init-transducers :kat :ng-only t))
 
 ;; Takes a txt file as input and outputs a json array.
 ;; Make sure there are no line breaks in sentences.
