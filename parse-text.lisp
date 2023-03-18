@@ -131,9 +131,9 @@
 
 (defparameter *infix-table* (make-hash-table :test #'equal))
 
-#-(or windows)
-(u:with-file-lines (infix "projects:gnc;morphology;fst;tmesis.txt")
-  (setf (gethash infix *infix-table*) t))
+(when (probe-file "projects:gnc;morphology;fst;tmesis.txt")
+  (u:with-file-lines (infix "projects:gnc;morphology;fst;tmesis.txt")
+    (setf (gethash infix *infix-table*) t)))
 
 #+test
 (print (split-tmesis "გან-ხოლო-თუ-ვითარ-იკურნოს"))
