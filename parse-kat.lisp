@@ -482,7 +482,8 @@
 
 (defvar *tagset*)
 
-(load-suppressed-features)
+(when (probe-file "projects:gnc;text-tool;static;suppressed-features.txt")
+  (load-suppressed-features))
 
 (defun pos2 (features)
   (let* ((flist (u:split features #\Space))
