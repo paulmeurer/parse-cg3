@@ -52,6 +52,30 @@
                     :sentence-end-strings '("." "?" "!" "…")))
     gnc-text))
 
+;; pre-tokenized text, given as list of tokens, where each token is (word . rest). rest is kept unchanged.
+(defmethod parse-text ((tokens list) &key variety load-grammar (disambiguate t) lookup-guessed)
+  (assert variety)
+  (when (eq variety :kat) (setf variety :ng))
+  (let ((gnc-text (make-instance (text-class))))
+    (dolist (tl tokens)
+      (destructuring-bind (token . rest) tl
+        (unless (or (equal token "@@@")
+                    (u:null-or-empty-string-p token))
+          (setf token (normalize-token token))
+          (vector-push-extend (list :word token :rest rest) (text-array gnc-text)))))
+    (process-text gnc-text :analyze
+                  :variety variety
+                  :lookup-guessed lookup-guessed
+                  ;;:correct-spelling-errors (eq variety :ng)
+                  )
+    (when disambiguate
+      (process-text gnc-text :disambiguate
+                    :variety variety
+                    :lookup-guessed lookup-guessed
+                    :load-grammar load-grammar
+                    :sentence-end-strings '("." "?" "!" "…")))
+    gnc-text))
+
 (defun normalize-token (token)
   (setf token (string-trim #(#\Space #\Tab) token))
   (cond ((string= token "-")
@@ -195,7 +219,7 @@
 				(assert (null (cddr norm-list)))
 				(getf (car norm-list) :characters)))
 			(dipl-list (getf (cddr node) :dipl))
-			(dipl (when dipl-list
+			(dipl (when (and (not norm) dipl-list)
 				(assert (null (cddr dipl-list)))
 				(getf (car dipl-list) :characters)))
 			(lex-norm (gethash (or word dipl) norm-table)) ;; from .lex-file
@@ -381,7 +405,8 @@
 				       :count 0))))))))))
 	(when (and lex-file (probe-file lex-file))
 	  (u:with-file-fields ((word norm lemma code pos features
-                                     &optional class present future aorist perfect corr comment
+                                     &optional class present future aorist
+                                     perfect corr comment
                                      approved)
 			       lex-file)
 	    (when t ;; (dat:string-tree-get lexicon token)
@@ -398,44 +423,6 @@
 			       &allow-other-keys)
   (vislcg3::cg3-disambiguate-text text :variety variety :load-grammar load-grammar
 				  :sentence-end-strings sentence-end-strings))
-
-#+obsolete??
-(define-url-function parse-text-json
-    (request ((login-code string nil :global t)
-	      (session-index string nil :global t t)
-	      (session-id integer)
-	      text
-	      (variety keyword)
-	      (show-all-readings boolean)
-	      (show-rules boolean))
-	     :type :json
-	     :path "/parse-api"
-	     :base-url (base-url *framework*))
-  ;;(print (request-query request))
-  (when (eq *project* :abnc) (setf variety :abk))
-  (let* ((session (get-session :gnc-text session-id))
-	 ;;(gnc-text (make-instance 'gnc-text))
-	 (*tagset* :full-tagset))
-    (setf (getf (session-av-list session) :parse-show-word-ids) nil)
-    (handler-case
-	(progn
-	  (if text
-	      (setf (getf (session-av-list session) :parse-text) text)
-	      (setf text (getf (session-av-list session) :parse-text)))
-	  (if variety
-	      (setf (getf (session-av-list session) :variety) variety)
-	      (setf variety (getf (session-av-list session) :variety :ng)))
-	  (let ((gnc-text (parse-text text
-				      :variety (or (getf (session-av-list session) :variety) :ng)
-				      :load-grammar nil)))
-	    ;;(setf *text* gnc-text)
-	    (setf (getf (session-av-list session) :gnc-text) gnc-text)
-	    (write-text-json gnc-text stream)))
-      (error (cond)
-	(format t "~a" cond)
-	))))
-
-;; *text*
 
 (defmethod write-text-json ((text parsed-text) stream
                             &key tracep split-trace

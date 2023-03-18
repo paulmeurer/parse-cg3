@@ -677,6 +677,129 @@
 	       token-table)
       (values token-table (1+ (position node-id ids))))))
 
+(defmethod write-text-tsv ((text parsed-text) stream
+                           &key tracep (suppress-discarded-p t)
+                             write-xml-id
+                             write-rule
+                             write-rest
+                             dependencies
+                             &allow-other-keys)
+  (declare (ignore tracep))
+  (labels ((filter (features)
+	     (cond (dependencies
+		    features)
+		   (t
+		    (let ((end (or (search " @" features) (search " >" features))))
+		      (if end (subseq features 0 end) features))))))
+    (let (#+ignore
+          (stream *standard-output*)
+          (format-string "~a	¦~{~a¦~}	¦~{ ~a ¦~}"))
+      (when dependencies
+        (setf format-string (u:concat format-string "	~{~a~^->~}")))
+      (when write-rule
+        (setf format-string (u:concat format-string "	¦~{~a¦~}")))
+      (when write-xml-id
+        (setf format-string (u:concat "~a	" format-string)))      
+      (when write-rest
+        (setf format-string (u:concat "~a	" format-string)))      
+      (setf format-string (u:concat format-string "~%"))
+      (labels ((write-node (node &optional is-subtoken)
+                 (destructuring-bind (&optional type word &key dipl norm
+                                                morphology tmesis-msa subtoken
+                                                |xml:id| comment rest parent self
+                                                &allow-other-keys) node
+                   (declare (ignore dipl))
+                   (when (eq type :word)
+                     (when comment
+                       (setf comment (substitute #\¶ #\newline
+                                                 (substitute #\¶ #\return (substitute #\space #\tab
+                                                                                      (u:trim comment))))))
+                     (cond (tmesis-msa
+                            (apply #'format stream format-string
+                                   (u:collecting
+                                     (when write-xml-id
+                                       (u:collect (or |xml:id| "")))
+                                     (u:collect word)
+                                     (when write-rest
+                                       (u:collect (format nil "~{~a~^	~}" rest)))
+                                     (u:collect
+                                         (loop for (token . msa) in tmesis-msa
+                                            do (loop for (lemma features flag) in msa
+                                                  unless (or (find flag '(:discarded-cg :discarded))
+                                                             ;; don't record lemmas for clitic tmesis infixes,
+                                                             ;; parallel to treatment of word-final clitics
+                                                             (search "Tm:" features))
+                                                  collect lemma)))
+                                     (u:collect
+                                         (loop for (token . msa) in tmesis-msa
+                                            do (loop for (lemma features flag) in msa
+                                                  ;; unless (find flag '(:discarded-cg :discarded))
+                                                  collect (filter features))))
+                                     (when dependencies
+                                       (u:collect (if parent (list parent self) (list self))))
+                                     (when write-rule
+                                       (u:collect
+                                           (loop for (token . msa) in tmesis-msa
+                                              do (loop for (lemma features flag) in msa
+                                                    ;; unless (find flag '(:discarded-cg :discarded))
+                                                    collect flag))))
+                                     #+ignore
+                                     (or comment "")))
+                            nil)
+                           (t
+                            (apply #'format stream format-string
+                                   (u:collecting
+                                     (when write-xml-id
+                                       (u:collect (or |xml:id| "")))
+                                     (u:collect
+                                         (or (when is-subtoken "")
+                                             (when norm
+                                               (assert (null (cdr norm)))
+                                               (getf (car norm) :characters))
+                                             (let ((dipl (getf (cddr node) :dipl)))
+                                               (when dipl
+                                                 (let ((str ""))
+                                                   (dolist (elt dipl)
+                                                     (when (eq (car elt) :characters)
+                                                       (setf str (u:concat str (cadr elt)))))
+                                                   (let ((norm (delete-if (lambda (c) (find c "{}[]|/\\‹›/")) str)))
+                                                     (if (> (length norm) 0)
+                                                         norm
+                                                         str)))))
+                                             (and (cadr node)
+                                                  (let ((norm (delete-if (lambda (c) (find c "{}[]|/\\‹›/")) (cadr node))))
+                                                    (if (> (length norm) 0)
+                                                        norm
+                                                        (cadr node))))
+                                             ""))
+                                     (when write-rest
+                                       (u:collect (format nil "~{~a~^	~}" rest)))
+                                     ;; (delete-duplicates ;; no!
+                                     (u:collect
+                                         (loop for (lemma features flag) in morphology
+                                            unless (and suppress-discarded-p (find flag '(:discarded-cg :discarded)))
+                                            collect lemma))
+                                     ;; :test #'string=)
+                                     (u:collect
+                                         (loop for (lemma features flag) in morphology
+                                            unless (and suppress-discarded-p (find flag '(:discarded-cg :discarded)))
+                                            collect (filter features)))
+                                     (when dependencies
+                                       (u:collect (if parent (list parent self) (list self))))
+                                     (when write-rule
+                                       (u:collect
+                                           (loop for (lemma features flag) in morphology
+                                              unless (and suppress-discarded-p (find flag '(:discarded-cg :discarded)))
+                                              collect flag)))
+                                     #+ignore
+                                     (or comment "")))
+                            subtoken))))))
+        (loop for node across (token-array text)
+           for id from 0
+           for subtoken = (write-node node)
+           when subtoken
+           do (write-node subtoken t))))))
+
 (defstruct token-list
   terminal-p
   id
@@ -698,20 +821,56 @@
 ;; Takes a txt file as input and outputs a json array.
 ;; Make sure there are no line breaks in sentences.
 ;; Each element in the array is a parsed sentence.
-(defun parse-kat-file (file)
-  (let ((out-file (merge-pathnames ".json" file)))
-    (with-open-file (stream out-file :direction :output :if-exists :supersede)
-      (write-string "[ " stream)
-      (u:with-file-lines (line file)
-        (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil)
-                         stream)
-        (terpri stream))
-      (write-string "]" stream))))
+(defun parse-kat-file (file &key (format :json) (input-format :txt) write-rest dependencies)
+  (let ((out-file (merge-pathnames (format nil ".~(~a~)" format) file)))
+    (ecase input-format
+      (:txt
+       (with-open-file (stream out-file :direction :output :if-exists :supersede)
+         (ecase format
+           (:json
+            (write-string "[ " stream)
+            (u:with-file-lines (line file)
+              (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil)
+                               stream)
+              (terpri stream))
+            (write-string "]" stream))
+           (:tsv
+            (u:with-file-lines (line file)
+              (write-text-tsv (parse-text line :variety :ng :disambiguate t :lookup-guessed nil)
+                              stream :write-xml-id t :dependencies dependencies)
+              (terpri stream))))))
+      (:tsv
+       (with-open-file (stream out-file :direction :output :if-exists :supersede)
+         (ecase format
+           #+not-yet
+           (:json
+            (write-string "[ " stream)
+            (u:with-file-lines (line file)
+              (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil)
+                               stream :dependencies dependencies)
+              (terpri stream))
+            (write-string "]" stream))
+           (:tsv
+            (let ((tokens ()))
+              (u:with-file-fields ((&rest tl) file :end-line :eof)
+                (cond ((eq (car tl) :eof)
+                       (write-text-tsv (parse-text (nreverse tokens) :variety :ng :disambiguate t :lookup-guessed nil)
+                                       stream :write-xml-id t :write-rest write-rest :dependencies dependencies))
+                      ((equal (car tl) ".")
+                       (push tl tokens)
+                       (write-text-tsv (parse-text (nreverse tokens) :variety :ng :disambiguate t :lookup-guessed nil)
+                                       stream :write-xml-id t :write-rest write-rest :dependencies dependencies)
+                       (setf tokens ()))
+                      (t
+                       (push tl tokens))))
+              (terpri stream)))))))))
 
 ;; Example:
 
 #+test
-(parse-kat-file "projects:parse-cg3;example-text-kat.txt")
+(parse-kat-file "projects:parse-cg3;example-text-kat.txt" :format :tsv :dependencies t :write-rest t)
+#+test
+(parse-kat-file "projects:georgian-morph;eval.txt" :format :tsv)
 
 #+test
 (write-text-json (parse-text "აბა" :variety :ng :disambiguate t :lookup-guessed nil)
