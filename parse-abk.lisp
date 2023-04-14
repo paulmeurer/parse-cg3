@@ -43,9 +43,9 @@
 		    do ;; (print name)
 		      (format t "~&loading: ~s~%" name) 
 		      (case name
-			(:abkhaz-morph
+			(:abkhaz-morph ;; not used!
 			 (u:collect (make-instance 'cl-fst:fst-net :file abk-file :name :abk)))
-			(:abkhaz-relax-morph ;; arbitrarily inserted schwas
+			(:abkhaz-relax-morph ;; arbitrarily inserted schwas, not used!
 			 (u:collect (make-instance 'cl-fst:fst-net :file abk-relax-file :name :abk-relax)))
 			#+test
 			(:abkhaz-morph

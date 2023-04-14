@@ -57,8 +57,8 @@
 								    :file hm-file :name :hm)))))
                         (otherwise
 			 (let ((file (u:concat transducer-dir name "." type)))
-			   (format t "~&loading: ~s~%" file) 
-			   (if (debug (probe-file file))
+			   ;;(format t "~&loading: ~s~%" file) 
+			   (if (probe-file file)
 			       (u:collect
 				   (make-instance
 				    'fst-net
@@ -71,13 +71,13 @@
       (setf *tokenizer*
 	    (make-instance 'fst-tokenizer :token-boundary #.(string #\newline)
 			   :file (u:concat transducer-dir "geo-tokenize." type)))
-      (setf *og-analyzer*
-            (load-morph '(:georgian-morph-og
-                          :georgian-morph-ng
-                          :georgian-comp-ng
-                          ;;"georgian-noun-guessed"
-                          )))
-      (unless ng-only
+      (unless (debug ng-only)
+        (setf *og-analyzer*
+              (load-morph '(:georgian-morph-og
+                            :georgian-morph-ng
+                            :georgian-comp-ng
+                            ;;"georgian-noun-guessed"
+                            )))
         (setf *xm-analyzer*
               (load-morph '(:georgian-morph-xanmeti
                             :georgian-morph-haemeti
@@ -109,6 +109,7 @@
                           ;;"georgian-verb-ng-guessed" ; has to be improved
                           :georgian-comp-ng ;; taken out because of many (?) wrong composita
                           :georgian-morph-og
+                          "ng-prefix-noun-adj"
                           #+ignore "georgian-noun-guessed"
                           "anthr-coll"
                           "foreign-morph"))))
@@ -811,9 +812,10 @@
   slash-relations
   atts)
 
+#+disabled
 (if (eq +fst+ :fst)
     ;; Initialize the transducers
-    (init-transducers :kat)    
+    (init-transducers :kat)
     ;; if you are interested in Modern Georgian only use this instead:
     (init-transducers :kat :ng-only t))
 
@@ -872,7 +874,6 @@
 (parse-kat-file "projects:georgian-morph;eval.txt" :format :tsv)
 
 #+test
-(write-text-json (parse-text "აბა" :variety :ng :disambiguate t :lookup-guessed nil)
-                 *standard-output*)
+(parse::write-text-json (parse::parse-text "აბა" :variety :ng :disambiguate t :lookup-guessed nil) *standard-output*)
 
 :eof

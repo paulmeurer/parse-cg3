@@ -25,10 +25,22 @@
 (defun text-class ()
   'parsed-text)
 
-(defmethod parse-text ((text string) &key variety load-grammar (disambiguate t) lookup-guessed)
+(defconstant +wrong-abk-chars+ "ԥԤӷӶӌӋ")
+(defconstant +correct-abk-chars+ "ҧҦҕҔҷҶ")
+
+(defun normalize-characters (text)
+  (loop for c across text for i from 0
+     for pos = (position c +wrong-abk-chars+)
+     when pos
+     do (setf (char text i) (char +correct-abk-chars+ pos))))
+
+(defmethod parse-text ((text string) &key variety load-grammar (disambiguate t)
+                                       lookup-guessed orthography)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
-  (let ((gnc-text (make-instance (text-class))))
+  (when (eq variety :abk)
+    (normalize-characters text))
+  (let ((gnc-text (make-instance (text-class) :orthography orthography)))
     (fst-map-tokens
      (if (eq variety :abk)
 	 *abk-tokenizer*
@@ -53,7 +65,8 @@
     gnc-text))
 
 ;; pre-tokenized text, given as list of tokens, where each token is (word . rest). rest is kept unchanged.
-(defmethod parse-text ((tokens list) &key variety load-grammar (disambiguate t) lookup-guessed)
+(defmethod parse-text ((tokens list) &key variety load-grammar (disambiguate t) lookup-guessed
+                                       &allower-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
   (let ((gnc-text (make-instance (text-class))))
@@ -87,7 +100,8 @@
 	(t
 	 token)))
 
-(defmethod parse-text ((text parsed-text) &key variety load-grammar (disambiguate t) lookup-guessed)
+(defmethod parse-text ((text parsed-text) &key variety load-grammar (disambiguate t) lookup-guessed
+                                            &allower-other-keys)
   (when (eq variety :kat) (setf variety :ng))
   (process-text text :analyze
 		    :variety variety
