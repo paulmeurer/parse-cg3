@@ -8,9 +8,9 @@
 (defparameter *abk-old-to-new-orth* nil)
 
 #+test
-(time (init-transducers :variety :abk))
+(time (init-transducers :abk))
 #+test
-(time (init-transducers :variety :ng))
+(time (init-transducers :ng))
 
 #+test
 (cl-fst:fst-lookup
@@ -336,7 +336,9 @@
 
 (defvar *tagset*)
 
-(init-transducers :abk)
+(process-run-function "init-abk-transducers"
+                      (lambda ()
+                        (init-transducers :abk)))
 
 #+test
 (write-text-json (parse-text "Аӡҕаб бзиоуп." :variety :abk)

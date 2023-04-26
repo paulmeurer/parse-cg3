@@ -444,36 +444,90 @@
                               (features t)
                               (disambiguate t)
                               (dependencies nil)
+                              start
+                              end
                               show-rules
                               rid ;; whether to show rid
                               manual ;; for manual disambiguation
                               &allow-other-keys)
-  (let ((start-cpos nil)
-	(end-cpos nil)
-        (st-json:*output-literal-unicode* t))
+  (let ((st-json:*output-literal-unicode* t)
+        (left-context ())
+        (right-context ())
+        (window 20))
+    (u:collecting-into (left tokens right)
+      (loop for node across (text-array text)
+	 for id from 0
+	 for cpos = (getf node :cpos)
+	 do (cond ((if (and start end)
+                       (<= start id end)
+                       t)
+	           (u:collect-into tokens
+                                   (if (eq (car node) :word)
+                                       (write-word-json node
+				                        :id id
+				                        :tracep tracep
+				                        :split-trace split-trace
+				                        :suppress-discarded-p suppress-discarded-p
+				                        :lemma lemma
+				                        :features features
+				                        :disambiguate disambiguate
+				                        :dependencies dependencies
+				                        :show-rules show-rules
+				                        :rid rid
+				                        :manual manual)
+                                       (json "struct" (getf node :struct))
+                                       )))
+                  ((and start end (< (- start window) id start))
+                   (u:collect-into left (getf node :word)))
+                  ((and start end (< end id (+ end window)))
+                   (u:collect-into right (getf node :word)))))
+      (json
+       "tokens" tokens
+       "leftContext" left
+       "rightContext" right
+       "tokenCount" (length (text-array text))
+       ))))
+
+#+orig
+(defmethod write-text-json ((text parsed-text) stream
+                            &key tracep split-trace
+                              (suppress-discarded-p t)
+                              (lemma t)
+                              (features t)
+                              (disambiguate t)
+                              (dependencies nil)
+                              start
+                              end
+                              show-rules
+                              rid ;; whether to show rid
+                              manual ;; for manual disambiguation
+                              &allow-other-keys)
+  (let ((st-json:*output-literal-unicode* t)
+        (left-context ())
+        (right-context ())
+        (window 20))
     (json
      "tokens"
      (loop for node across (text-array text)
 	for id from 0
 	for cpos = (getf node :cpos)
-	when (eq (car node) :word)
-	collect (progn
-		  (setf end-cpos cpos)
-		  (unless start-cpos (setf start-cpos cpos))
-		  (write-word-json node
-				   :id id
-				   :tracep tracep
-				   :split-trace split-trace
-				   :suppress-discarded-p suppress-discarded-p
-				   :lemma lemma
-				   :features features
-				   :disambiguate disambiguate
-				   :dependencies dependencies
-				   :show-rules show-rules
-				   :rid rid
-				   :manual manual)))
-     "startCpos" start-cpos ;; not needed?
-     "endCpos" end-cpos ;; not needed?
+	when (and (eq (car node) :word)
+                  (if (and start end)
+                      (<= start id end)
+                      t))
+	collect (write-word-json node
+				 :id id
+				 :tracep tracep
+				 :split-trace split-trace
+				 :suppress-discarded-p suppress-discarded-p
+				 :lemma lemma
+				 :features features
+				 :disambiguate disambiguate
+				 :dependencies dependencies
+				 :show-rules show-rules
+				 :rid rid
+				 :manual manual))
+     "tokenCount" (length (text-array text))
      )))
 
 (defun write-word-json (node &key id
@@ -494,10 +548,11 @@
   (declare (ignore tracep split-trace no-newlines error disambiguate))
   (ecase (car node)
     (:word
-     (destructuring-bind (&key word morphology facs dipl norm |id| cpos comment
-			       &allow-other-keys) node
+     (destructuring-bind (&key word morphology facs dipl norm |id| cpos comment wid
+			       &allow-other-keys)
+         node
        (declare (ignore morphology comment |id| norm dipl facs))
-       ;;(debug node)
+       (debug wid)
        (let* ((morphology (unless no-morphology (getf (cddr node) :morphology)))
 	      (tmesis-msa (unless no-morphology (getf (cddr node) :tmesis-msa))))
          (declare (ignore tmesis-msa))
@@ -513,6 +568,7 @@
 	    ,@(when count `("count" ,(length morphology)))
 	    ,@(when cpos `("cpos" ,cpos))
 	    "id" ,id
+            "wid" ,wid
 	    ,@(when (and lemma features)
 		    `("msa"
 		      ,(cond (morphology

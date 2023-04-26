@@ -12,7 +12,7 @@
 	       :acl-compat
                :graph
                :st-json
-               :framework-shib
+               :framework-1-2
                :aserve
                :aserve-custom
 	       :cl-vislcg3)
