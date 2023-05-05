@@ -49,7 +49,8 @@ STRICT-TAGS += Abbrev Abs Adhort
        >SUBJ >DO >IO >LO >PREDLINK >COMP >XCOMP >ATT >NUM >POSS >GEN >OBJ >OBL >ADJUNCT
        >DET >QUAL >MODAL >REL >NAMEMOD >PRED >P >ADV >DISC >MWE >QUOTE
        >COORD
-       >?? ;
+       >??
+       <Dis> ;
 
 # run like:
 # cat test.vrt | vislcg3 --grammar abk-dis.rle --trace > test.dis
@@ -127,6 +128,8 @@ SET S:Hum = S:1Sg | S:2Sg | S:3SgH | S:1Pl | S:2Pl ;
 # ======== #
   SECTION  #
 # ======== #
+
+SELECT <Dis> ; # select manually disambiguated reading
 
 REMOVE Subj-I + S:2Sg ; # prelim. bug fix
 
@@ -1068,7 +1071,8 @@ SELECT Prop + ( "<[Џ-ЯҚҬҼЧҾҶ].+>"r)
 
 # First name if followed by uppercase (unknown last name)
 SELECT Prop + Anthr + ( "<[Џ-ЯҚҬҼЧҾҶ].+>"r)
-       IF (1 ("<[Џ-ЯҚҬҼЧҾҶ].+>"r)) ;
+       IF (1 ("<[Џ-ЯҚҬҼЧҾҶ].+>"r))
+          (NOT 1 Place) ;
 
 SET Hum = H | Anthr ;
 

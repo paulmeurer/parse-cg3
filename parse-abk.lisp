@@ -164,10 +164,26 @@
 
 (defparameter *simple-dictionary* nil)
 
-;; to be overridden
+(defparameter *dictionary-lemma-table* (make-hash-table :test #'equal))
+
 (defun lemma-in-dictionary (lemma)
-  (declare (ignore lemma))
-  nil)
+  (let ((hyph-pos (position #\- lemma :from-end t)))
+    (when (and hyph-pos
+               (or (string= lemma "ра" :start1 (- (length lemma) 2))
+                   (string= lemma "ра́" :start1 (- (length lemma) 3))))
+      (setf lemma (u:concat (subseq lemma 0 hyph-pos) (subseq lemma (1+ hyph-pos)))))
+    (let ((lemma (u:subst-substrings
+                  lemma '("-заара" "заара" "-заара́" "заара́"
+                          ;; "-ра" "ра" "-ра́" "ра́"
+                          "·" "" ":" ""))))
+      ;; (debug lemma)
+      (or (gethash lemma *dictionary-lemma-table*)
+          (and (= (count-if (lambda (c) (find c "аыеоу")) lemma) 1)
+               ;; one-syllable words may have no accent in the dictionary
+               (gethash (delete #\́ lemma) *dictionary-lemma-table*))))))
+
+#+test
+(print (lemma-in-dictionary "а́-рацәа"))
 
 (defun get-simple-translation (lemma features)
   (declare (ignore lemma features))
@@ -181,7 +197,7 @@
   (let ((lemmas+features ())
 	(stripped-word
 	 (remove-if (lambda (c) 
-		      (find c "ՙ‹›{}\\|")) ;; #\Armenian_Modifier_Letter_Left_Half_Ring in numbers
+		      (find c "ՙ‹›{}\\|"))
 		    word))
 	(analyzer *abk-analyzer*))
     (cond (analyzer
