@@ -20,6 +20,8 @@
 
 (defparameter *abk-grammar* nil)
 
+(defparameter *non-grammar* nil)
+
 (defparameter *grammar-path* 
   (translate-logical-pathname "projects:parse-cg3;cg3;"))
 
@@ -95,7 +97,9 @@
 		   ((:ng :jg)
 		    *ng-grammar*)
 		   (:abk
-		    *abk-grammar*))))
+		    *abk-grammar*)
+                   (:non
+		    *non-grammar*))))
     (when (find variety '(:og :xm :hm :mg :ng :jg))
       (split-grammar-file))
     (let ((grammar-file
@@ -107,7 +111,9 @@
 	     ((:ng :jg)
 	      "geo-ng-dis.cg3")
 	     (:abk
-	      "abk-dis.cg3"))))
+	      "abk-dis.cg3")
+             (:non
+	      "non-dis.cg3"))))
       (let ((error-message (grammar-initialization-error-message grammar-file)))
 	(when error-message
 	  (error error-message)))
@@ -127,6 +133,10 @@
 	(:abk
 	 (when *abk-grammar* (cg3-grammar-free *abk-grammar*))
 	 (setf *abk-grammar*
+	       (cg3-grammar-load (u:concat (namestring *grammar-path*) grammar-file))))
+        (:non
+	 (when *non-grammar* (cg3-grammar-free *non-grammar*))
+	 (setf *non-grammar*
 	       (cg3-grammar-load (u:concat (namestring *grammar-path*) grammar-file))))))))
 
 (defun rule-name (ruletype &optional line discarded)
@@ -222,16 +232,18 @@
 
 ;; todo: check if grammar has changed
 (defmethod cg3-disambiguate-text ((text parse::parsed-text)
-				  &key (variety :og) (tracep t) (load-grammar t)
-				    (sentence-end-strings *sentence-end-strings*))
+				  &key (variety :og) (tracep t) (load-grammar t) mode
+				    (sentence-end-strings *sentence-end-strings*)
+                                    sentence-start-is-uppercase ;; if true sentence is not ended if lowercase follows
+                                    )
   (with-process-lock (+disambiguate-lock+)
-    ;;(print :cg3-disambiguate)
     (load-grammar variety :force load-grammar)
     (let* ((grammar (ecase variety
 		      ((:og :xm :hm) *og-grammar*)
 		      (:mg *mg-grammar*)
 		      ((:ng :jg) *ng-grammar*)
-		      (:abk *abk-grammar*)))
+		      (:abk *abk-grammar*)
+                      (:non *non-grammar*)))
            (language (if (eq variety :abk) :abk :kat))
 	   (applicator (cg3-applicator-create grammar))
 	   (sentence nil)
@@ -288,8 +300,8 @@
 						     do (let ((reading (cg3-reading-create cohort))
 							      (tag (cg3-tag-create-u8 applicator (format nil "\"~a\"" (car l.f)))))
 							  (cg3-reading-addtag reading tag)
-							  ;;(debug l.f)
-							  (cg3-reading-addtag reading (cg3-tag-create-u8 applicator (format nil "[~d]" i)))
+							  (cg3-reading-addtag
+                                                           reading (cg3-tag-create-u8 applicator (format nil "[~d]" i)))
 							  (dolist (tag (u:split (cadr l.f) #\space nil nil t))
 							    (let ((tag (cg3-tag-create-u8 applicator tag)))
 							      (cg3-reading-addtag reading tag)))
@@ -302,6 +314,7 @@
 					       (setf morphology
 						     (case variety
 						       (:abk (list (list "??" "Unrecognized" nil nil)))
+						       (:non (list (list "??@" "Unrecognized" nil nil)))
 						       (otherwise
 							(list
 							 (list "??" "Unrecognized" nil nil)
@@ -322,14 +335,12 @@
 							 applicator
 							 (parse::transliterate language (format nil "\"<~a>\"" wordform)))))
 					       (cg3-cohort-setwordform cohort tag)
-					       (loop for l.f in (or morphology
-								    #+orig
-								    (list (list "-" "Unrecognized" nil nil)))
+					       (loop for l.f in morphology
 						  for i from 0
 						  do (let ((reading (cg3-reading-create cohort))
+                                                           ;; lemma
 							   (tag (cg3-tag-create-u8 applicator (format nil "\"~a\"" (car l.f)))))
 						       (cg3-reading-addtag reading tag)
-						       ;;(debug l.f)
 						       (cg3-reading-addtag
 							reading (cg3-tag-create-u8 applicator (format nil "[~d]" i)))
 						       (let ((uf (lemma-unique-frequency (car l.f))))
@@ -337,11 +348,18 @@
                                                            (cg3-reading-addtag
                                                             reading (cg3-tag-create-u8
                                                                      applicator
-                                                                     (format nil "<lemma=~d>"
-                                                                             uf)))))
-						       (dolist (tag (u:split (cadr l.f) #\space nil nil t))
-							 (let ((tag (cg3-tag-create-u8 applicator tag)))
-							   (cg3-reading-addtag reading tag)))
+                                                                     (format nil "<lemma=~d>" uf)))))
+                                                       ;; features
+                                                       (let ((tags (u:split (cadr l.f) #\space nil nil t)))
+                                                         (when (eq mode :redisambiguate)
+                                                           ;; remove syntactic tags if redisambiguating
+                                                           (setf tags (delete-if 
+                                                                       (lambda (tag) (char= (char tag 0) #\>))
+                                                                       tags)
+                                                                 (cadr l.f) (format nil "~{~a~^ ~}" tags)))
+                                                         (dolist (tag tags)
+                                                           (let ((tag (cg3-tag-create-u8 applicator tag)))
+                                                             (cg3-reading-addtag reading tag))))
 						       (cg3-cohort-addreading cohort reading)))
 					       (cg3-sentence-addcohort sentence cohort))))))))))
 			;; sentence end condition
@@ -362,13 +380,23 @@
 						;; look one ahead to see if there is more right punctuation
 						(let ((next-token
 						       (when (< (1+ i) (length token-array))
-							 (aref token-array (1+ i)))))
-						  (setf end-punct-found t)
-						  (or (null next-token)
-						      (not (eq (car next-token) :word))
-						      (not (find (getf next-token :word)
-								 '("”" ")" "]") :test #'string=))))) ;; right punctuation 
-					   ))))
+							 (aref token-array (1+ i))))
+                                                      (next-is-lowercase
+                                                       (and sentence-start-is-uppercase
+                                                            (loop for id from (1+ i) below (length token-array)
+                                                               for (type word) = (aref token-array id)
+                                                               do (print (list type word))
+                                                               when (and (eq type :word)
+                                                                         (not (find word '("”" "–" ")" "]")
+                                                                                    :test #'string=)))
+                                                               return (lower-case-p (char word 0))))))
+                                                  (unless next-is-lowercase
+                                                    (setf end-punct-found t)
+                                                    (or (null next-token)
+                                                        (not (eq (car next-token) :word))
+                                                        (not (find (getf next-token :word)
+                                                                    ;; right punctuation
+                                                                   '("”" ")" "]") :test #'string=))))))))))
 		     #+debug(format t "~{~a ~}~%" (nreverse word-list))
 		     #+debug(setf wordlist ())
 		     (cg3-sentence-runrules applicator sentence)
