@@ -35,12 +35,15 @@
      do (setf (char text i) (char +correct-abk-chars+ pos))))
 
 (defmethod parse-text ((text string) &key variety load-grammar (disambiguate t)
-                                       lookup-guessed orthography)
+                                       lookup-guessed orthography &allow-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
   (when (eq variety :abk)
     (normalize-characters text))
-  (let ((gnc-text (make-instance (text-class) :orthography orthography)))
+  (let* ((parsed-text (make-instance (text-class) :orthography orthography))
+         (word-id-table (word-id-table parsed-text))
+         (id 0))
+    (setf *text* parsed-text)
     (fst-map-tokens
      (if (eq variety :abk)
 	 *abk-tokenizer*
@@ -50,45 +53,50 @@
        (unless (or (equal token "@@@")
 		   (u:null-or-empty-string-p token))
 	 (setf token (normalize-token token))
-	 (vector-push-extend (list :word token) (text-array gnc-text)))))
-    (process-text gnc-text :analyze
+         (let* ((wid (format nil "w~a" (incf id)))
+                (token (list :word token :wid wid)))
+           (vector-push-extend token (text-array parsed-text))
+           (setf (gethash wid word-id-table) token)))))
+    (process-text parsed-text :analyze
                   :variety variety
                   :lookup-guessed lookup-guessed
+                  :orthography (orthography parsed-text)
                   ;;:correct-spelling-errors (eq variety :ng)
                   )
     (when disambiguate
-      (process-text gnc-text :disambiguate
+      (process-text parsed-text :disambiguate
                     :variety variety
                     :lookup-guessed lookup-guessed
                     :load-grammar load-grammar
                     :sentence-end-strings '("." "?" "!" "…")))
-    gnc-text))
+    (debug parsed-text)
+    parsed-text))
 
 ;; pre-tokenized text, given as list of tokens, where each token is (word . rest). rest is kept unchanged.
 (defmethod parse-text ((tokens list) &key variety load-grammar (disambiguate t) lookup-guessed
                                        &allow-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
-  (let* ((gnc-text (make-instance (text-class))))
+  (let* ((parsed-text (make-instance (text-class))))
     (dolist (tl tokens)
       (destructuring-bind (token . rest) tl
         (unless (or (equal token "@@@")
                     (u:null-or-empty-string-p token))
           (setf token (normalize-token token))
-          (vector-push-extend (list :word token :rest rest) (text-array gnc-text))
+          (vector-push-extend (list :word token :rest rest) (text-array parsed-text))
           )))
-    (process-text gnc-text :analyze
+    (process-text parsed-text :analyze
                   :variety variety
                   :lookup-guessed lookup-guessed
                   ;;:correct-spelling-errors (eq variety :ng)
                   )
     (when disambiguate
-      (process-text gnc-text :disambiguate
+      (process-text parsed-text :disambiguate
                     :variety variety
                     :lookup-guessed lookup-guessed
                     :load-grammar load-grammar
                     :sentence-end-strings '("." "?" "!" "…")))
-    gnc-text))
+    parsed-text))
 
 (defun normalize-token (token)
   (setf token (string-trim #(#\Space #\Tab) token))
@@ -101,19 +109,25 @@
 	(t
 	 token)))
 
-(defmethod parse-text ((text parsed-text) &key variety load-grammar (disambiguate t) lookup-guessed
+;; debug
+(defparameter *text* nil)
+
+(defmethod parse-text ((text parsed-text) &key variety mode load-grammar (disambiguate t) lookup-guessed
                                             wid-table &allow-other-keys)
   (when (eq variety :kat) (setf variety :ng))
-  (process-text text :analyze
-                :variety variety
-                :lookup-guessed lookup-guessed
-                :wid-table wid-table
-                ;;:correct-spelling-errors (eq variety :ng)
-                )
+  (setf *text* text)
+  (unless (eq mode :redisambiguate)
+    (process-text text :analyze
+                  :variety variety
+                  :lookup-guessed lookup-guessed
+                  :wid-table wid-table
+                  ;;:correct-spelling-errors (eq variety :ng)
+                  ))
   (when disambiguate
     (process-text text :disambiguate
                   :variety variety
                   :load-grammar load-grammar
+                  :mode mode
                   :sentence-end-strings '("." "?" "!" "…")))
   text)
 
@@ -391,13 +405,15 @@
                                              (reading (gethash id wid-table)))
                                         (when reading
                                           (let ((reading1 (find-if (lambda (r)
+                                                                     ;; compare lemma and features,
                                                                      (and (string= (car r) (cadr reading))
                                                                           (string= (cadr r) (caddr reading))))
-                                                                   (debug readings))))
+                                                                   readings)))
                                             (when reading1
+                                              ;; mark found reading as <Dis>
                                               (setf (cadr reading1)
                                                     (u:concat (cadr reading1) " <Dis>"))))
-                                          (debug readings))))))
+                                          readings)))))
                                 (setf (getf (cddr node) :morphology) readings))
 			       (new-morphology
 				(setf (getf (cddr node) :new-morphology) new-morphology))
@@ -448,13 +464,15 @@
 			     :new-morphology)))))))))
 
 (defmethod process-text ((text parsed-text) (mode (eql :disambiguate))
-                         &key (variety :og) (load-grammar t)
+                         &key (variety :og) (load-grammar t) mode
                            (sentence-end-strings vislcg3::*sentence-end-strings*)
-                           wid-table &allow-other-keys)
+                           &allow-other-keys)
   (vislcg3::cg3-disambiguate-text text
                                   :variety variety
+                                  :mode mode
                                   :load-grammar load-grammar
-				  :sentence-end-strings sentence-end-strings))
+				  :sentence-end-strings sentence-end-strings
+                                  :sentence-start-is-uppercase (eq variety :abk)))
 
 (defmethod write-text-json ((text parsed-text) stream
                             &key tracep split-trace
@@ -485,7 +503,7 @@
                                    (ecase (car node)
                                      (:word
                                       (prog1 (write-word-json node
-                                                              :id id
+                                                              :id id ;; (1+ id)
                                                               :tracep tracep
                                                               :split-trace split-trace
                                                               :suppress-discarded-p suppress-discarded-p
@@ -534,50 +552,7 @@
        "tokens" tokens
        "leftContext" left
        "rightContext" right
-       "tokenCount" (count-if (lambda (node) (eq (car node) :word)) (text-array text))
-       ))))
-
-#+orig
-(defmethod write-text-json ((text parsed-text) stream
-                            &key tracep split-trace
-                              (suppress-discarded-p t)
-                              (lemma t)
-                              (features t)
-                              (disambiguate t)
-                              (dependencies nil)
-                              start
-                              end
-                              show-rules
-                              rid ;; whether to show rid
-                              manual ;; for manual disambiguation
-                              &allow-other-keys)
-  (let ((st-json:*output-literal-unicode* t)
-        (left-context ())
-        (right-context ())
-        (window 20))
-    (json
-     "tokens"
-     (loop for node across (text-array text)
-	for id from 0
-	for cpos = (getf node :cpos)
-	when (and (eq (car node) :word)
-                  (if (and start end)
-                      (<= start id end)
-                      t))
-	collect (write-word-json node
-				 :id id
-				 :tracep tracep
-				 :split-trace split-trace
-				 :suppress-discarded-p suppress-discarded-p
-				 :lemma lemma
-				 :features features
-				 :disambiguate disambiguate
-				 :dependencies dependencies
-				 :show-rules show-rules
-				 :rid rid
-				 :manual manual))
-     "tokenCount" (length (text-array text))
-     )))
+       "tokenCount" (count-if (lambda (node) (eq (car node) :word)) (text-array text))))))
 
 (defun write-word-json (node &key id
 			       tracep ;; traces in view mode?
@@ -598,9 +573,9 @@
   (ecase (car node)
     (:word
      (destructuring-bind (&key word morphology facs dipl norm |id| cpos comment wid
-			       &allow-other-keys)
+			       status &allow-other-keys)
          node
-       (declare (ignore morphology comment |id| norm dipl facs))
+       (declare (ignore morphology |id| norm dipl facs))
        (let* ((morphology (unless no-morphology (getf (cddr node) :morphology)))
 	      (tmesis-msa (unless no-morphology (getf (cddr node) :tmesis-msa))))
          (declare (ignore tmesis-msa))
@@ -610,13 +585,13 @@
 	    ,word
 	    ,@(when dependencies 
 		    `("self"
-		      ,(unless (eql (getf node :self) 0) (getf node :self))
+		      ,(or (unless (eql (getf node :self) 0) (getf node :self)) :null)
 		      "parent"
-		      ,(unless (eql (getf node :parent) -1) (getf node :parent))))
+		      ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)))
 	    ,@(when count `("count" ,(length morphology)))
 	    ,@(when cpos `("cpos" ,cpos))
 	    "id" ,id
-            "wid" ,wid
+            "wid" ,(or wid :null)
 	    ,@(when (and lemma features)
 		    `("msa"
 		      ,(cond (morphology
@@ -640,7 +615,9 @@
 				     :tracep tracep
 				     :split-trace split-trace)
 				 when rest
-				 do #m(gnc:tmesis/)))))))))))))
+				 do #m(gnc:tmesis/))))))
+            "status" ,(or status :null)
+            "comment" ,(or comment :null))))))))
 
 (defparameter *feature-name-table* (make-hash-table :test #'equal))
 
@@ -760,8 +737,8 @@
     (u:collecting
       (loop for reading in morphology
 	 for rid from 0
-	 do (destructuring-bind (l f &optional flag trace ids) reading
-	      (declare (ignore ids)) ;; equivalent readings after filtering; not used here
+	 do (destructuring-bind (l f &optional flag trace ids nix count) reading
+	      (declare (ignore ids nix)) ;; equivalent readings after filtering; not used here
 	      (unless (and suppress-discarded-p (eq flag :discarded-cg))
 		(u:collect (apply #'st-json::jso
 				  `(,@(when lemma `("lemma" ,l))
@@ -770,7 +747,23 @@
 				      ,@(when features `("features" ,(u:split f #\Space)))
 				      ,@(when rid `("rid" ,rid))
 				      ,@(when manual `("manual" :null))
-				      ,@(when show-rules `("rules" ,trace)))))))))))
+				      ,@(when show-rules `("rules" ,trace))
+                                      ,@(when count `("count" ,count))
+                                      ,@(when trace `("trace" ,trace)))))))))))
+
+(defmethod select-reading ((text parsed-text) &key wid rid)
+  (let* ((token (gethash wid (parse::word-id-table text)))
+         (readings (getf token :morphology))
+         (reading (nth rid readings)))
+    (dolist (reading readings)
+      (when (eq (caddr reading) :selected-manually)
+        (setf (caddr reading) :discarded-manually
+              ;; (cadr reading) (remove
+              )))
+    (setf (caddr reading) :selected-manually
+          (cadr reading) (u:concat (cadr reading) " <Dis>"))
+    (debug reading)
+    ))
 
 (defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
   (assert node-id)
@@ -880,7 +873,7 @@
   slash-relations
   atts)
 
-(defmethod build-dep-graph ((text parsed-text) &key node-id &allow-other-keys)
+(defmethod build-dep-graph ((text parsed-text) &key node-id (add-root t) &allow-other-keys)
   (assert (not (null node-id)))
   (multiple-value-bind (token-table node-id) (get-token-table text :node-id node-id)
     (let ((node-table (make-hash-table :test #'equal)) ;; rehashed in display-dep-graph() below; populated where?
@@ -890,7 +883,7 @@
       (maphash (lambda (id tl)
 		 ;; id might be different from token-list-id when there are gaps in original ids; don't use it!
 		 (declare (ignore id))
-		 (let* ((id (token-list-id tl)) ;; this is different from build-dep-graph() for dep-parsed-sentence!
+                 (let* ((id (token-list-id tl)) ;; this is different from build-dep-graph() for dep-parsed-sentence!
 			(children (gethash id children-table))
 			(node (when (listp children) ;; if not, token describes existing node with new slash
 				(make-instance 'dep-linear-node
@@ -908,10 +901,8 @@
 			(parent (when node (gethash (or (token-list-head tl) -1) children-table))))
 		   ;;(debug node)
 		   (when node
-		     ;;(print (list id :-> node))
 		     (setf (gethash id children-table) node
 			   (gethash id node-table) node)
-		     ;;(when (null (token-list-head tl)) (push node roots))
 		     (when (= id node-id) (push node roots))
 		     (cond ((listp parent)
 			    (u:append* (gethash (or (token-list-head tl) -1) children-table) node))
@@ -940,7 +931,7 @@
 		       (push (cons :parent slash-node) (slash-parents (slashee slash-node)))))))
 	       slash-nodes)
       ;; *node-table*
-      (let ((root (if (and roots (null (cdr roots)))
+      (let ((root (if (and (not add-root) roots (null (cdr roots)))
 		      (car roots)
 		      (setf (gethash 0 node-table)
 			    (make-instance 'dep-linear-node
