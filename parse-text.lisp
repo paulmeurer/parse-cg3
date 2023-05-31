@@ -761,9 +761,7 @@
               ;; (cadr reading) (remove
               )))
     (setf (caddr reading) :selected-manually
-          (cadr reading) (u:concat (cadr reading) " <Dis>"))
-    (debug reading)
-    ))
+          (cadr reading) (u:concat (cadr reading) " <Dis>"))))
 
 (defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
   (assert node-id)
