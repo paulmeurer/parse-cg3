@@ -373,7 +373,10 @@
 								  collect (cadr token)))
 						       t))
 					   (and (eq (car token) :end-element)
-						(find (cadr token) '(:|p| :|div| :|head| :|lg| :|li|)))
+						(find (cadr token)
+                                                      '(:|p| :|div| :|head| :|lg| :|li|
+                                                        "p" "div" "head" "lg" "li")
+                                                      :test #'equal))
 					   (and (eq (car token) :word)
 						(find word-seen sentence-end-strings
 						      :test #'equal)
@@ -387,7 +390,7 @@
                                                                for (type word) = (aref token-array id)
                                                                do (print (list type word))
                                                                when (and (eq type :word)
-                                                                         (not (find word '("”" "–" ")" "]")
+                                                                         (not (find word '("”" "–" ")" "]" "!" "?")
                                                                                     :test #'string=)))
                                                                return (lower-case-p (char word 0))))))
                                                   (unless next-is-lowercase
@@ -396,7 +399,8 @@
                                                         (not (eq (car next-token) :word))
                                                         (not (find (getf next-token :word)
                                                                     ;; right punctuation
-                                                                   '("”" ")" "]") :test #'string=))))))))))
+                                                                   '("”" ")" "]" "?" "!")
+                                                                   :test #'string=))))))))))
 		     #+debug(format t "~{~a ~}~%" (nreverse word-list))
 		     #+debug(setf wordlist ())
 		     (cg3-sentence-runrules applicator sentence)
