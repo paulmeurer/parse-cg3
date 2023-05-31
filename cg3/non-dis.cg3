@@ -1,0 +1,38 @@
+# ============================================ #
+# Old Norse disambiguator                         #
+# ============================================ #
+
+# tags taken from abkhaz-noun.fst and abkhaz-verb.fst Sigma lists
+STRICT-TAGS += 
+       <Dis> ;
+
+# run like:
+
+# ========== #
+# Delimiters #
+# ========== #
+
+DELIMITERS = "<.>" "<!>" "<?>" "<…>" "<;>" "<–>" ;
+
+# ============= #
+# Tags and sets #
+# ============= #
+
+
+# ========
+   SETS
+# ========
+
+SET BOS = (>>>) | (<s>) ;
+
+SELECT <Dis> ; # select manually disambiguated reading
+
+
+# ======== #
+  SECTION  #
+# ======== #
+
+
+
+
+END
