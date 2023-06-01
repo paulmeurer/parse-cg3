@@ -1,0 +1,15 @@
+*~
+*.lx64fsl
+*.fasl
+*.pid
+*.bak
+*.fst
+*.tab
+*.cfg
+*-domain.lisp
+*#*
+data
+log
+cg3/geo-mg-dis.cg3
+cg3/geo-ng-dis.cg3
+cg3/geo-og-dis.cg3
