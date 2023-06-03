@@ -152,7 +152,8 @@
 		(32 "setparent")
 		(33 "setchild")
 		(35 "setrelation")
-		(50 "addcohort"))))
+		(50 "addcohort")
+                (64 "with"))))
     (if line
 	(format nil "~:[~;; ~]~a:~d" discarded name line)
 	name)))
