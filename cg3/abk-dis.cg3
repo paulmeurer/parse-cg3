@@ -61,6 +61,7 @@ STRICT-TAGS += Abbrev Abs Adhort
        >ADVCL >ADVCL:CIP >ADVCL:ABS
        >IOBJ >MARK >AMOD >CASE >CCONJ
        >ACL >ACL:REL
+       >APPOS
        <Dis> ;
 
 # run like:
@@ -2217,6 +2218,16 @@ SETPARENT COORD
         IF (NEGATE p (*))
 	TO (-1 COORD) ;
 
+# attach POSTP with >CASE to head noun
+
+WITH NOPARENT POSTP
+     IF (-1 Noun)
+        (NOT p (*)) {
+   MAP >CASE (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+
 # attach Adj to Noun
 
 WITH NOPARENT Adj + <PreAdj> IF (1C Noun) (NEGATE p (*)) {
@@ -2233,6 +2244,7 @@ SETPARENT Num + Ord
         IF (NEGATE p (*))
 	TO (1C Noun) ;
 
+
 WITH NOPARENT Pron + Dem + Pl | Noun + Pl
      IF (1 Poss:3Pl) (NOT p (*)) {
      MAP >NMOD (*) ;
@@ -2240,7 +2252,7 @@ WITH NOPARENT Pron + Dem + Pl | Noun + Pl
 } ;
 
 WITH NOPARENT Pron + Dem + Sg | Noun - Pl - H
-     IF (1 Poss:3SgNH) (NOT p (*)) {
+     IF (1 Poss:3SgNH - >CASE) (NOT p (*)) {
      MAP >NMOD (*) ;
      SETPARENT (*) TO (jC1 (*)) ;
 } ;
@@ -2262,46 +2274,16 @@ MAP >CONJ TARGET COORD
     IF (p COORD)
        (NEGATE 0 RELS) ;
 
-# attach POSTP with >CASE to head noun
 
-WITH NOPARENT POSTP IF (-1 Noun) (NEGATE p (*)) {
-   MAP >CASE (*) ;
+WITH Hum | Noun IF (-1 ("а́-хаара") + Poss:1Sg) (NOT p (*)) {
+   MAP >APPOS (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
-
-#SETPARENT Noun
-#	TO (1 ("а́-кә-заа-ра")) ;
-
-#MAP >NSUBJ TARGET Noun - EPOSTP
-#    IF (p ("а́-кә-заа-ра")) ;
 
 WITH NOPARENT Noun - EPOSTP IF (1 ("а́-кә-заа-ра")) (NEGATE p (*)) {
    MAP >NSUBJ (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
-
-
-SETPARENT Noun + NH
-         IF (NEGATE p (*))
-            (NEGATE c >CASE)
-         TO (1* Poss:3SgNH) ;
-
-# сара сихәарҭоуп ҳаҧшәма (??)
-#SETPARENT Noun + H
-#         IF (NEGATE p (*))
-#            (NEGATE c >CASE)
-#         TO (1* Poss:3SgM) ;
-
-SETPARENT Noun + H
-         IF (NEGATE p (*))
-            (NEGATE c >CASE)
-         TO (1* Poss:3SgF) ;
-
-
-#SETPARENT Pron + 3SgM
-#         IF (NEGATE p (*))
-#            (NEGATE c >CASE)
-#         TO (1 Poss:3SgM) ;
 
 WITH NOPARENT Pron + 3SgM
     IF (1 Poss:3SgM)
@@ -2338,9 +2320,11 @@ SETPARENT V + When
 # attach postpositional phrase to verb
 # generalise!
 
-WITH NOPARENT Noun IF (c PP + >CASE) (NEGATE p (*)) {
+WITH Noun
+  IF (1* V BARRIER Comma)
+     (c PP + >CASE) {
    MAP >ADVMOD (*) ;
-   SETPARENT (*) TO (jC1 (*)) ;
+   SETPARENT SAFE (*) TO (jC1 (*)) ;
 } ;
 
 WITH NOPARENT Noun + EPOSTP IF (1* V) (NEGATE p (*)) {
@@ -2403,7 +2387,7 @@ WITH NOPARENT Pron + Pers + 3Sg IF (1 S:Ad) (NEGATE p (*)) {
 } ;
 
 
-# adjacent DO Noun
+# adjacent DO and S Noun
 
 WITH NOPARENT Pron + Pers + 3Sg | SgNoun - Pred
   IF (1 DO:Ad) (NEGATE p (*)) {
@@ -2417,7 +2401,6 @@ WITH NOPARENT Pron + Pers + 3Sg | SgNoun - Pred
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-
 WITH NOPARENT Rel IF (1 S:Ad + S:3SgNH) (NEGATE p (*)) {
    MAP >CCOMP:REL:SUBJ (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -2427,6 +2410,15 @@ WITH NOPARENT Rel IF (1 DO:Ad + DO:3) (NEGATE p (*)) {
    MAP >CCOMP:REL:OBJ (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
+
+WITH NOPARENT Pron + Pers + 3Sg | SgNoun - Pred
+  IF (1w LO:NonHum3Sg LINK NONE c >OBL:LO)
+     (NOT p (*)) {
+   MAP >OBL:LO (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+
 
 # attach noun to verb
 
@@ -2472,6 +2464,17 @@ SETPARENT V + Rel
 SETPARENT VN
         IF (NEGATE p (*))
         TO (1* ("а-ҟәы́·ҵ-ра") BARRIER CLBc) ;
+
+
+SETPARENT Noun + NH
+         IF (NEGATE p (*))
+            (NEGATE c >CASE)
+         TO (1* Poss:3SgNH) ;
+
+SETPARENT Noun + H
+         IF (NEGATE p (*))
+            (NEGATE c >CASE)
+         TO (1* Poss:3SgF) ;
 
 MAP >IOBJ TARGET VN
     IF (NEGATE 0 RELS)
@@ -2535,21 +2538,27 @@ WITH NOPARENT N - Hum - Pl
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
+WITH NOPARENT N - Hum - Pl
+     IF (1w LO:3SgNH LINK NONE c >OBL:LO)
+        (NOT p (*)) {
+   MAP >OBL:LO (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
 
 WITH N - Hum - Pl
-     IF (1**A S:NonHum3Sg - S:Ad BARRIER Comma LINK NONE c >NSUBJ)
-        (1* _ATTACHTO_)
+     IF (1**w S:NonHum3Sg - S:Ad - Abs BARRIER Comma LINK NONE c >NSUBJ)
         (NOT p (*)) {
    MAP >NSUBJ (*) ;
-   SETPARENT (*) TO (jC2 (*)) ;
+   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
 WITH NOPARENT N - Hum - Pl
-     IF (1**A DO:3 - DO:Ad BARRIER Comma LINK NONE c >OBJ OR >CCOMP:REL:OBJ)
-        (1* _ATTACHTO_)
+     IF (1**w DO:3 - DO:Ad BARRIER Comma LINK NONE c >OBJ OR >CCOMP:REL:OBJ)
+        #(1* _ATTACHTO_)
         (NOT p (*)) {
    MAP >OBJ (*) ;
-   SETPARENT (*) TO (jC2 (*)) ;
+   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
 
@@ -2606,19 +2615,17 @@ WITH NOPARENT Rel - QUEST
 # arg following V
 
 WITH NOPARENT N - Hum - Pl
-   IF (-1*A S:NonHum3Sg - S:Ad BARRIER Comma LINK NONE c >NSUBJ)
-      (-1* _ATTACHTO_)
+   IF (-1*w S:NonHum3Sg - S:Ad BARRIER Comma LINK NONE c >NSUBJ)
       (NOT p (*)) {
    MAP >NSUBJ (*) ;
-   SETPARENT (*) TO (jC2 (*)) ;
+   SETPARENT (*) TO (jC1 (*)) ;
 };
 
 WITH NOPARENT N - Hum - Pl
-   IF (-1*A DO:3 - DO:Ad BARRIER Comma LINK NONE c >OBJ)
-      (-1* _ATTACHTO_)
+   IF (-1*w DO:3 - DO:Ad BARRIER Comma LINK NONE c >OBJ)
       (NOT p (*)) {
    MAP >OBJ (*) ;
-   SETPARENT (*) TO (jC2 (*)) ;
+   SETPARENT (*) TO (jC1 (*)) ;
 };
 
 WITH NOPARENT N - Hum - Pl
@@ -2629,11 +2636,11 @@ WITH NOPARENT N - Hum - Pl
 };
 
 WITH NOPARENT N - Hum - Pl
-   IF (-1* RO:3SgNH BARRIER Comma LINK NONE c >OBL:RO)
-      (-1* _ATTACHTO_)
+   IF (-1*w RO:3SgNH BARRIER Comma LINK NONE c >OBL:RO)
+      #(-1* _ATTACHTO_)
       (NOT p (*)) {
    MAP >OBL:RO (*) ;
-   SETPARENT (*) TO (jC2 (*)) ;
+   SETPARENT (*) TO (jC1 (*)) ;
 };
 
 
@@ -2796,14 +2803,24 @@ MAP >COMP TARGET V + How
 LIST LQuote = "<“>" "<«>" ;
 LIST RQuote = "<”>" "<»>" ;
 
-SETPARENT LQuote IF (NEGATE p (*)) TO (1 (*)) ;
-SETPARENT RQuote IF (NEGATE p (*)) TO (-1 (*)) ;
-SETPARENT Quote  IF (NEGATE p (*)) TO (-1 (*)) ;
-SETPARENT Dash   IF (NEGATE p (*)) TO (1 (*)) ;
+WITH Prt + Quote
+     IF (-1 (*)) (NOT p (*)) {
+     MAP >MARK (*) ;
+     SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-MAP >MARK TARGET Prt + Quote ;
-MAP >QUOTE TARGET Quote ;
-MAP >QUOTE TARGET Dash ;
+WITH LQuote | Dash
+     IF (1 (*)) (NOT p (*)) {
+     MAP >QUOTE (*) ;
+     SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH RQuote | Quote
+     IF (-1 (*)) (NOT p (*)) {
+     MAP >QUOTE (*) ;
+     SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
 
 
 SECTION
@@ -2844,12 +2861,12 @@ WITH NOPARENT V + Rel IF (1* VERB + IO:3SgNH BARRIER CLB) (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-#SETPARENT Cj + Coord
-#       TO (1* VMain) ;
+WITH NOPARENT Interj IF (0* VERB) (NEGATE p (*)) {
+   MAP >ADVMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-#MAP >CCONJ
-#    TARGET Cj + Coord
-#    IF (p VMain) ;
+
 
 WITH NOPARENT Cj + Coord IF (1* VMain) (NEGATE p (*)) {
    MAP >CCONJ (*) ;
@@ -2863,16 +2880,29 @@ SETPARENT Punct - Comma IF (NEGATE p (*)) TO (-1* VMain) ;
 SETPARENT IntMark IF (NEGATE p (*)) TO (-1 Pron + Int) ;
 
 # the rest, except verb of saying, since these take (conjoined) sentence(s) as complement
-SETPARENT (*) - ("а-ҳәа-ра́")
-	IF (NEGATE p (*))
-	TO (-1* VMain) ;
+WITH (*) - ("а-ҳәа-ра́") - ("а-хәы́ц-ра")
+  IF (-1* VMain)
+     (NOT p (*)) {
+  MAP >CONJ (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-# except they have a nominal DO
-SETPARENT ("а-ҳәа-ра́")
-	IF (NEGATE p (*))
-           (c >OBJ)
-	TO (-1* VMain) ;
+# but conjoin if verb of saying has nominal >OBJ
+WITH ("а-ҳәа-ра́") - ("а-хәы́ц-ра")
+  IF (-1* VMain)
+     (c >OBJ)
+     (NOT p (*)) {
+  MAP >CONJ (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
+
+WITH VMain
+  IF (1**w ("а-хәы́ц-ра") LINK -1 Prt + Quote)
+     (NOT p (*)) {
+  MAP >CCOMP (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
 # complement of verb of saying
 SETPARENT VMain
@@ -2886,14 +2916,21 @@ MAP >CCOMP
        # (NEGATE (p V LINK c >CCOMP)) # is wrong
     ;
 
-SETPARENT (*) # the rest
-	IF (NEGATE p (*))
-	TO (1* VMain) ;
 
-MAP >CONJ
-    TARGET VMain
-    IF (p VMain) ;
+WITH VMain
+  IF (1* VMain)
+     (NOT p (*)) {
+  MAP >CONJ (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
+#SETPARENT (*) # the rest
+#	IF (NEGATE p (*))
+#	TO (1* VMain) ;
+
+#MAP >CONJ
+#    TARGET VMain
+#    IF (p VMain) ;
 
 
 # MAP >ROOT TARGET (*)
