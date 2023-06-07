@@ -51,11 +51,17 @@ STRICT-TAGS += Abbrev Abs Adhort
        Why 1Pl 1Sg 2Pl 2SgF 2SgM 3Pl 3Sg 3SgF 3SgM 3SgNH  [S:3SgNH]
        <Manner>
        <Relax> <NoLex> <HuntingLang> <NumPfxNoHyphen> <PreAdj> <Deriv>
-       >NSUBJ >IO >LO >PREDLINK >COMP >XCOMP >ATR >NUM >POSS >GEN >OBJ >OBL
+       >NSUBJ >IO >LO >PREDLINK >COMP >XCOMP >ATR >NUM >POSS >GEN >OBJ
        >DET >QUAL >MODAL >REL >NAMEMOD >PRED >P >ADVMOD >DISC >MWE >QUOTE
        >COORD
        >??
-       >CONJ >NMOD >ROOT >CCOMP >ADVCL >IOBJ >MARK >AMOD >CASE >CCONJ >ACL
+       >CONJ >NMOD >ROOT
+       >CCOMP >CCOMP:REL >CCOMP:REL:OBJ >CCOMP:REL:SUBJ
+       >OBL >OBL:LO >OBL:RO
+       >ADVCL >ADVCL:CIP >ADVCL:ABS
+       >IOBJ >MARK >AMOD >CASE >CCONJ
+       >ACL >ACL:REL
+       >APPOS
        <Dis> ;
 
 # run like:
@@ -135,6 +141,7 @@ LIST Ad = S:Ad DO:Ad Q:Ad ;
 
 SET S:3Sg = S:3SgH | S:3SgNH | S:3SgM | S:3SgF ;
 
+SET MF = M | F ;
 
 SET S:Hum = S:1Sg | S:2Sg | S:3SgH | S:1Pl | S:2Pl ;
 
@@ -1692,7 +1699,7 @@ SELECT Impv
     IF (0C* Impv BARRIER CLB) ;
 
 # + other Cond forms?
-SELECT ("а-ҭах-ра́" DO:Ad) IF (-1 Cond-I BARRIER CLB) ;
+SELECT ("а-ҭах-ра́" DO:Ad) IF (-1 Cond-I) ;
 SELECT ("а-ҭах-ра́") - DO:Ad IF (1* Cond-I BARRIER CLB) ;
 
 REMOVE ("уи́" Dem) IF (1 Poss:3Pl) ;
@@ -1812,7 +1819,7 @@ SELECT ("а́-ҵаҟа" PP) IF (-1 Noun) ;
 
 # should make this unconditional, since ‘freeze’ reading is very rare?
 SELECT ("а-ҵаа-ра́") IF (-1* ("ҳәа́") BARRIER CLB) ; # not "а-ҵа́а-ра"
-SELECT ("а-ҵаа-ра́") IF (-1 ("<–>") BARRIER CLB) ;
+SELECT ("а-ҵаа-ра́") IF (-1 ("<–>")) ;
 
 SELECT ("а́·ҳәа-ра" DO:Ad) IF (-1 ("ҳәа́")) ;
 
@@ -2202,40 +2209,53 @@ LIST RELATION = >NSUBJ >IO >LO >PREDLINK >COMP >XCOMP >ATR >NUM >POSS >GEN >OBJ 
 
 LIST RELS = /^>/r ;
 
-SETPARENT LastName
-	TO (-1 Anthr + M) ;
-
-SETPARENT LastName
-	TO (-1 Anthr + F) ;
-
-SETPARENT Noun - Pred
-        IF (NEGATE p (*))
-	TO (1 Ad - Adv) ;
+WITH NOPARENT LastName IF (-1 Anthr + MF) (NEGATE p (*)) {
+   MAP >NAMEMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
 
 SETPARENT COORD
         IF (NEGATE p (*))
 	TO (-1 COORD) ;
 
-SETPARENT Adj + <PreAdj>
-        IF (NEGATE p (*))
-	TO (1C Noun) ;
+# attach POSTP with >CASE to head noun
 
-SETPARENT Adj
-        IF (NEGATE p (*))
-           (NOT 0 Advb)
-	TO (-1C Noun) ;
+WITH NOPARENT POSTP
+     IF (-1 Noun)
+        (NOT p (*)) {
+   MAP >CASE (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+
+# attach Adj to Noun
+
+WITH NOPARENT Adj + <PreAdj> IF (1C Noun) (NEGATE p (*)) {
+   MAP >ATR (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT Adj - Emph IF (-1C Noun) (NOT 0 Advb) (NEGATE p (*)) {
+   MAP >ATR (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
 SETPARENT Num + Ord
         IF (NEGATE p (*))
 	TO (1C Noun) ;
 
-SETPARENT Noun + Pl
-        IF (NEGATE p (*))
-	TO (1 Poss:3Pl) ;
 
-SETPARENT Pron + Dem + Pl
-        IF (NEGATE p (*))
-	TO (1 Poss:3Pl) ;
+WITH NOPARENT Pron + Dem + Pl | Noun + Pl
+     IF (1 Poss:3Pl) (NOT p (*)) {
+     MAP >NMOD (*) ;
+     SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT Pron + Dem + Sg | Noun - Pl - H
+     IF (1 Poss:3SgNH - >CASE) (NOT p (*)) {
+     MAP >NMOD (*) ;
+     SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
 SETPARENT Noun + COORD
         IF (NEGATE p (*))
@@ -2254,41 +2274,25 @@ MAP >CONJ TARGET COORD
     IF (p COORD)
        (NEGATE 0 RELS) ;
 
-SETPARENT POSTP
-        IF (NEGATE p (*))
-	TO (-1 Noun) ;
 
-MAP >CASE TARGET POSTP
-    IF (p Noun) ;
+WITH Hum | Noun IF (-1 ("а́-хаара") + Poss:1Sg) (NOT p (*)) {
+   MAP >APPOS (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-SETPARENT Noun
-	TO (1 ("а́-кә-заа-ра")) ;
+WITH NOPARENT Noun - EPOSTP IF (1 ("а́-кә-заа-ра")) (NEGATE p (*)) {
+   MAP >NSUBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-SETPARENT Noun + NH
-         IF (NEGATE p (*))
-            (NEGATE c >CASE)
-         TO (1* Poss:3SgNH) ;
+WITH NOPARENT Pron + 3SgM
+    IF (1 Poss:3SgM)
+       (NOT c >CASE)
+       (NOT p (*)) {
+   MAP >DET (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-# сара сихәарҭоуп ҳаҧшәма
-SETPARENT Noun + H
-         IF (NEGATE p (*))
-            (NEGATE c >CASE)
-         TO (1* Poss:3SgM) ;
-
-SETPARENT Noun + H
-         IF (NEGATE p (*))
-            (NEGATE c >CASE)
-         TO (1* Poss:3SgF) ;
-
-SETPARENT Noun + H
-         IF (NEGATE p (*))
-            (NEGATE c >CASE)
-         TO (1* Poss:3SgM) ;
-
-SETPARENT Pron + 3SgM
-         IF (NEGATE p (*))
-            (NEGATE c >CASE)
-         TO (1 Poss:3SgM) ;
 
 SETPARENT Pron + 3SgF
          IF (NEGATE p (*))
@@ -2315,33 +2319,110 @@ SETPARENT V + When
 
 # attach postpositional phrase to verb
 # generalise!
-SETPARENT Noun
-        IF (c PP + >CASE)
-	   (NEGATE p (*))
-	TO (0* V) ;
 
-SETPARENT Noun + EPOSTP
-	IF (NEGATE p (*))
-	TO (0* V) ;
+WITH Noun
+  IF (1* V BARRIER Comma)
+     (c PP + >CASE) {
+   MAP >ADVMOD (*) ;
+   SETPARENT SAFE (*) TO (jC1 (*)) ;
+} ;
 
-MAP >ADVMOD TARGET Noun
-    IF (p V)
-       (c PP + >CASE) ;
+WITH NOPARENT Noun + EPOSTP IF (1* V) (NEGATE p (*)) {
+   MAP >ADVMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-MAP >ADVMOD TARGET Noun + EPOSTP
-    IF (p V) ;
+WITH NOPARENT Noun + EPOSTP IF (-1* V) (NEGATE p (*)) {
+   MAP >ADVMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
 
 # verbs that take Purp as LO
-SET VPurpLO = ("а-ҿы́-заа-ра") OR ("а́-ла·га-ра") OR ("а́-қә·к-ра") OR ("а́-л·ша-ра") ;
+SET VPurpLO = ("а-ҿы́-заа-ра") OR ("а́-ла·га-ра") OR ("а́-қә·к-ра") OR ("а́-л·ша-ра") OR ("а́-шьҭа-заа-ра") ;
 
-SETPARENT Purp
-       IF (NEGATE p (*))
-       TO (1 VPurpLO) ;
+# verbs that take VN as LO
+SET VVNLO =  ("а́-шьҭа-заа-ра") OR ("а́-ла·га-ра") ;
 
-MAP >CCOMP TARGET Purp
-    IF (p VPurpLO) ;
+# verbs that take NonFin Pres as LO
+SET VNonFinPresLO =  ("а́-ла·га-ра") ;
+
+
+WITH NOPARENT Purp IF (1 VPurpLO) (NEGATE p (*)) {
+   MAP >CCOMP (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT VN IF (1 VVNLO) (NEGATE p (*)) {
+   MAP >CCOMP (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT NonFin + Pres - Rel
+     IF (1 VNonFinPresLO) (NEGATE p (*)) {
+   MAP >CCOMP (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+
 
 # Verb arguments
+
+SET SgNoun = Noun - Pl - POSTP | Noun - Hum - POSTP ;
+
+# adjacent S Noun
+
+#SETPARENT Noun - Pred
+#        IF (NEGATE p (*))
+#	TO (1 Ad - Adv) ;
+
+WITH NOPARENT SgNoun IF (1 S:Ad) (NEGATE p (*)) {
+   MAP >NSUBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT Pron + Pers + 3Sg IF (1 S:Ad) (NEGATE p (*)) {
+   MAP >NSUBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+
+# adjacent DO and S Noun
+
+WITH NOPARENT Pron + Pers + 3Sg | SgNoun - Pred
+  IF (1 DO:Ad) (NEGATE p (*)) {
+   MAP >OBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT Pron + Pers + 3Sg | SgNoun - Pred
+  IF (1 VN + Tr) (NEGATE p (*)) {
+   MAP >OBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT Rel IF (1 S:Ad + S:3SgNH) (NEGATE p (*)) {
+   MAP >CCOMP:REL:SUBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT Rel IF (1 DO:Ad + DO:3) (NEGATE p (*)) {
+   MAP >CCOMP:REL:OBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT Pron + Pers + 3Sg | SgNoun - Pred
+  IF (1w LO:NonHum3Sg LINK NONE c >OBL:LO)
+     (NOT p (*)) {
+   MAP >OBL:LO (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+
+
+# attach noun to verb
+
+SET N = Noun - EPOSTP - Pred ;
 
 SETPARENT Pron + Pers + 1Sg
         IF (NEGATE p (*))
@@ -2384,137 +2465,225 @@ SETPARENT VN
         IF (NEGATE p (*))
         TO (1* ("а-ҟәы́·ҵ-ра") BARRIER CLBc) ;
 
+
+SETPARENT Noun + NH
+         IF (NEGATE p (*))
+            (NEGATE c >CASE)
+         TO (1* Poss:3SgNH) ;
+
+SETPARENT Noun + H
+         IF (NEGATE p (*))
+            (NEGATE c >CASE)
+         TO (1* Poss:3SgF) ;
+
 MAP >IOBJ TARGET VN
     IF (NEGATE 0 RELS)
        (p ("а-ҟәы́·ҵ-ра")) ;
 
-SETPARENT Adv
-        IF (NEGATE p (*))
-	TO (1* VERB BARRIER CLBc) ;
+# Adj + Emph is prelim.
+WITH NOPARENT Adv OR Adj + Emph IF (1* VERB OR VN BARRIER CLBc) (NEGATE p (*)) {
+   MAP >ADVMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-SETPARENT Advb + Sg - Det
-        IF (NEGATE p (*))
-	TO (1* VERB BARRIER CLBc) ;
+WITH NOPARENT Adv IF (-1* VERB OR VN BARRIER CLBc) (NEGATE p (*)) {
+   MAP >ADVMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-SETPARENT Adv
-        IF (NEGATE p (*))
-	TO (-1* V BARRIER CLBc) ;
+WITH NOPARENT Advb + Sg - Det IF (1* VERB OR VN BARRIER CLBc) (NEGATE p (*)) {
+   MAP >ADVMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-MAP >ADVMOD TARGET Adv
-    IF (p V) ;
-
-MAP >ADVMOD TARGET Advb + Sg - Det
-    IF (p V) ;
-
-MAP >NAMEMOD TARGET LastName
-    IF (p Anthr) ;
-
-SET SgNoun = Noun - Pl - POSTP | Noun - Hum - POSTP | V + Rel ;
-
-# adjacent S Noun
-SETPARENT SgNoun
-    IF (NEGATE p (*))
-    TO (1 S:Ad) ;
-
-SETPARENT Pron + Pers + 3Sg
-    TO (1 S:Ad) ;
-
-MAP >NSUBJ TARGET SgNoun
-    IF (p S:Ad)
-       (1 S:Ad) ;
-
-MAP >NSUBJ TARGET Pron + Pers + 3Sg
-    IF (p S:Ad)
-       (1 S:Ad) ;
-
-# adjacent DO Noun
-SETPARENT SgNoun - Pred
-    IF (NEGATE p (*))
-    TO (1 DO:Ad) ;
-
-SETPARENT Pron + Pers + 3Sg
-    IF (NEGATE p (*))
-    TO (1 DO:Ad) ;
-
-SETPARENT Rel
-    IF (NEGATE p (*))
-    TO (1 DO:Ad) ;
-
-MAP >OBJ TARGET SgNoun - Pred
-    IF (p DO:Ad)
-       (1 DO:Ad + DO:3) ;
-
-MAP >OBJ TARGET Pron + Pers + 3Sg
-    IF (p DO:Ad)
-       (1 DO:Ad + DO:3) ;
-
-MAP >CCOMP TARGET Rel
-    IF (p DO:Ad)
-       (1 DO:Ad + DO:3) ;
-
-MAP >NSUBJ TARGET Noun - EPOSTP
-    IF (p ("а́-кә-заа-ра")) ;
+WITH NOPARENT Advb + Sg - Det IF (-1* VERB OR VN BARRIER CLBc) (NEGATE p (*)) {
+   MAP >ADVMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
 
-SETPARENT PlNonHum - EPOSTP
+# nonhum argument
+
+SETPARENT PlNonHum - EPOSTP - Pred
 	IF (NEGATE p (*))
 	TO (1* AM:NonHum3Pl ) ;
 
-SETPARENT PlNonHum - EPOSTP
+SETPARENT PlNonHum - EPOSTP - Pred
 	IF (NEGATE p (*))
 	TO (-1* AM:NonHum3Pl ) ;
 
-# possible hum argument
-SETPARENT Noun + Hum - Pl - (/^PP:/r)
-	IF (NEGATE p (*))
-	TO (1* AM:Hum3Sg ) ;
+# first try to attach to right adjacent
 
-SETPARENT Noun + Hum - Pl - (/^PP:/r)
-	IF (NEGATE p (*))
-	TO (-1* AM:Hum3Sg) ;
+WITH NOPARENT N - Hum - Pl
+     IF (1 S:NonHum3Sg)
+        (NOT c >NSUBJ)
+        (NOT p (*)) {
+   MAP >NSUBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-SETPARENT Noun - Hum - Pl - POSTP - Pred
-	IF (NEGATE p (*))
-	TO (1* AM:NonHum3Sg BARRIER Comma) ;
+WITH NOPARENT N - Hum - Pl
+     IF (1 DO:3)
+        (NOT c >OBJ)
+        (NOT p (*)) {
+   MAP >OBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT N - Hum - Pl
+     IF (1 RO:3SgNH)
+        (1 (*) LINK NONE c >OBL:RO)
+        (NOT p (*)) {
+   MAP >OBL:RO (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT N - Hum - Pl
+     IF (1w LO:3SgNH LINK NONE c >OBL:LO)
+        (NOT p (*)) {
+   MAP >OBL:LO (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+
+WITH N - Hum - Pl
+     IF (1**w S:NonHum3Sg - S:Ad - Abs BARRIER Comma LINK NONE c >NSUBJ)
+        (NOT p (*)) {
+   MAP >NSUBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT N - Hum - Pl
+     IF (1**w DO:3 - DO:Ad BARRIER Comma LINK NONE c >OBJ OR >CCOMP:REL:OBJ)
+        #(1* _ATTACHTO_)
+        (NOT p (*)) {
+   MAP >OBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+
 
 SETPARENT VN - POSTP
 	IF (NEGATE p (*))
 	TO (1* AM:NonHum3Sg BARRIER Comma) ;
 
-SETPARENT Rel - QUEST
-       IF (NEGATE p (*))
-       TO (1 Noun) ;
 
-SETPARENT Rel - QUEST
+
+# hum argument
+
+SETPARENT N + Hum - Pl
 	IF (NEGATE p (*))
-	TO (1* AM:NonHum3Sg BARRIER CLBc) ;
+	TO (1* AM:Hum3Sg ) ;
 
-SETPARENT Rel - QUEST
+SETPARENT N + Hum - Pl
 	IF (NEGATE p (*))
-	TO (-1 AM:NonHum3Sg) ;
+	TO (-1* AM:Hum3Sg) ;
 
-MAP >ACL TARGET Rel
-    IF (p Noun) ;
+MAP >NSUBJ TARGET N + Hum - Pl
+    IF (NEGATE p S:Ad)
+       (p V + S:Hum3Sg - Abs) ;
 
-SETPARENT Noun - Hum - Pl - (/^PP:/r)
-	IF (NEGATE p (*))
-	TO (-1* AM:NonHum3Sg) ;
+MAP >OBJ TARGET N + Hum - Pl
+    IF (NEGATE p DO:Ad)
+       (NEGATE p (*) LINK c >OBJ)
+       (p V - Abs + DO:3SgH) ;
+
+MAP >OBJ TARGET N + Hum + Pl
+    IF (NEGATE p DO:Ad)
+       (NEGATE p (*) LINK c >OBJ)
+       (p V - Abs + DO:3) ;
+
+WITH NOPARENT Rel - QUEST
+     IF (1 Noun) (NEGATE p (*)) {
+   MAP >ACL:REL (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
+# use >ACL:REL:S etc?
+WITH NOPARENT Rel - QUEST
+     IF (1* AM:NonHum3Sg BARRIER CLBc) (NEGATE p (*)) {
+   MAP >ACL:REL (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
+WITH NOPARENT Rel - QUEST
+   IF (-1 AM:NonHum3Sg) (NEGATE p (*)) {
+   MAP >ACL:REL (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
+# arg following V
+
+WITH NOPARENT N - Hum - Pl
+   IF (-1*w S:NonHum3Sg - S:Ad BARRIER Comma LINK NONE c >NSUBJ)
+      (NOT p (*)) {
+   MAP >NSUBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
+WITH NOPARENT N - Hum - Pl
+   IF (-1*w DO:3 - DO:Ad BARRIER Comma LINK NONE c >OBJ)
+      (NOT p (*)) {
+   MAP >OBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
+WITH NOPARENT N - Hum - Pl
+   IF (-1* IO:3SgNH)
+      (NOT p (*)) {
+   MAP >IOBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
+WITH NOPARENT N - Hum - Pl
+   IF (-1*w RO:3SgNH BARRIER Comma LINK NONE c >OBL:RO)
+      #(-1* _ATTACHTO_)
+      (NOT p (*)) {
+   MAP >OBL:RO (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
 
 SETPARENT Pron + Pers + 1Sg
 	IF (NEGATE p (*))
         TO (1 Poss:1Sg) ;
 
-SETPARENT Pron + Pers + 2SgF
-	IF (NEGATE p (*))
-        TO (1 Poss:2SgF) ;
+# >DET?
+WITH NOPARENT Pron + Pers + 1Sg
+   IF (1 Poss:1Sg)
+      (NOT p (*)) {
+   MAP >DET (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
 
-SETPARENT Pron + Pers + 2SgM
-	IF (NEGATE p (*))
-        TO (1 Poss:2SgM) ;
+WITH NOPARENT Pron + Pers + 2SgM
+   IF (1 Poss:2SgM)
+      (NOT p (*)) {
+   MAP >DET (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
 
-SETPARENT Pron + Pers + 2Pl
-	IF (NEGATE p (*))
-        TO (1 Poss:2Pl) ;
+WITH NOPARENT Pron + Pers + 2SgF
+   IF (1 Poss:2SgF)
+      (NOT p (*)) {
+   MAP >DET (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
+WITH NOPARENT Pron + Pers + 1Pl
+   IF (1 Poss:1Pl)
+      (NOT p (*)) {
+   MAP >DET (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
+WITH NOPARENT Pron + Pers + 2Pl
+   IF (1 Poss:2Pl)
+      (NOT p (*)) {
+   MAP >DET (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
 
 # more of those
 MAP >DET TARGET Pron + Pers + 2SgM
@@ -2527,47 +2696,35 @@ MAP >OBJ TARGET Noun
     IF (p DO:Ad)
        (1 DO:Ad) ;
 
-MAP >NSUBJ TARGET Noun + Hum - Pl - (/^PP:/r)
-    IF (NEGATE p S:Ad)
-       (p V + S:Hum3Sg - Abs) ;
 
 MAP >NSUBJ TARGET Pron + Pers + 1Sg
     IF (p VERB + S:1Sg) ;
 
 MAP >NSUBJ TARGET Pron + Pers + 2SgF
-    IF (p V + S:2SgF) ;
+    IF (p VERB + S:2SgF) ;
 
 MAP >NSUBJ TARGET Pron + Pers + 2SgM
-    IF (p V + S:2SgM) ;
+    IF (p VERB + S:2SgM) ;
 
 MAP >NSUBJ TARGET Pron + Pers + 3Sg
     IF (NEGATE p (*) LINK c >NSUBJ)
-       (p V + S:3SgNH) ;
+       (p VERB + S:3SgNH) ;
 
 MAP >NSUBJ TARGET Pron + Pers + 1Pl
     IF (p VERB + S:1Pl) ;
 
 MAP >NSUBJ TARGET Pron + Pers + 2Pl
-    IF (p V + S:2Pl) ;
+    IF (p VERB + S:2Pl) ;
 
 MAP >NSUBJ TARGET Pron + Pers + 3Pl
-    IF (p V + S:3Pl) ;
+    IF (p VERB + S:3Pl) ;
 
 MAP >NSUBJ TARGET Card + Poss:2Pl
-    IF (p V + S:2Pl) ;
+    IF (p VERB + S:2Pl) ;
 
 MAP >OBJ TARGET Pron + Pers + 1Sg
     IF (p VERB + DO:1Sg) ;
 
-MAP >OBJ TARGET Noun - Hum - Pl - EPOSTP
-    IF (NEGATE p DO:Ad)
-       (NEGATE p (*) LINK c >OBJ)
-       (p V - Abs + DO:3) ;
-
-MAP >NSUBJ TARGET Noun - Hum - Pl - EPOSTP
-    IF (NEGATE p S:Ad)
-       (NEGATE p (*) LINK c >NSUBJ)
-       (p V - Abs + S:NonHum3Sg) ;
 
 MAP >IOBJ TARGET Pron + Pers + 1Sg
     IF (p VERB + IO:1Sg) ;
@@ -2591,29 +2748,24 @@ MAP >IOBJ TARGET Pron + Pers + 2Pl
 MAP >IOBJ TARGET Pron + Pers + 3Pl
     IF (p V + IO:3Pl) ;
 
+MAP >OBL:LO TARGET SgNonHum - POSTP
+    IF (p V + LO:NonHum3Sg)
+       (NEGATE p VPurpLO OR VVNLO LINK c >CCOMP)
+       ;
 
-MAP >OBL TARGET SgNonHum - POSTP
-    IF (p V + LO:NonHum3Sg) ;
-
-MAP >OBL TARGET PlNonHum - POSTP
+MAP >OBL:LO TARGET PlNonHum - POSTP
     IF (p V + LO:NonHum3Pl) ;
 
-MAP >OBL TARGET SgNonHum - POSTP
+MAP >OBL:RO TARGET SgNonHum - POSTP
     IF (p V + RO:3SgNH) ;
 
-MAP >OBL TARGET PlNonHum - POSTP
+MAP >OBL:RO TARGET PlNonHum - POSTP
     IF (p V + RO:3Pl) ;
 
 MAP >ATR TARGET Adj + <PreAdj>
     IF (p Noun) ;
 
 MAP >NUM TARGET Num + Ord
-    IF (p Noun) ;
-
-MAP >NMOD TARGET Noun + COORD
-    IF (p Poss:3Pl) ;
-
-MAP >ATR TARGET Adj
     IF (p Noun) ;
 
 MAP >OBJ TARGET Noun
@@ -2651,48 +2803,75 @@ MAP >COMP TARGET V + How
 LIST LQuote = "<“>" "<«>" ;
 LIST RQuote = "<”>" "<»>" ;
 
-SETPARENT LQuote IF (NEGATE p (*)) TO (1 (*)) ;
-SETPARENT RQuote IF (NEGATE p (*)) TO (-1 (*)) ;
-SETPARENT Quote  IF (NEGATE p (*)) TO (-1 (*)) ;
-SETPARENT Dash   IF (NEGATE p (*)) TO (1 (*)) ;
+WITH Prt + Quote
+     IF (-1 (*)) (NOT p (*)) {
+     MAP >MARK (*) ;
+     SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-MAP >MARK TARGET Prt + Quote ;
-MAP >QUOTE TARGET Quote ;
-MAP >QUOTE TARGET Dash ;
+WITH LQuote | Dash
+     IF (1 (*)) (NOT p (*)) {
+     MAP >QUOTE (*) ;
+     SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH RQuote | Quote
+     IF (-1 (*)) (NOT p (*)) {
+     MAP >QUOTE (*) ;
+     SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
 
 
 SECTION
 
 
 # attach conjunctional verb to next main verb if comma in between
-SETPARENT CONJIPF
-       IF (NEGATE p (*))
-       TO (1* Comma LINK 1* VMain) ;
+
+#SETPARENT CONJIPF
+#       IF (NEGATE p (*))
+#       TO (1* Comma LINK 1* VMain) ;
+
+WITH NOPARENT CONJIPF IF (1* Comma LINK 1* VMain) (NEGATE p (*)) {
+   MAP >ADVCL:CIP (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
 
 # otherwise, might also attach to Abs
-SETPARENT CONJIPF
-       IF (NEGATE p (*))
-       TO (1* VMain | Abs) ;
 
-SETPARENT Abs
-       IF (NEGATE p (*))
-       TO (1* V - Abs) ;
+WITH NOPARENT CONJIPF IF (1* V - Abs) (NEGATE p (*)) {
+   MAP >ADVCL:CIP (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-MAP >ADVCL
-    TARGET CONJIPF OR Abs
-    IF (p V - Abs) ;
+WITH NOPARENT CONJIPF IF (-1* V - Abs) (NEGATE p (*)) {
+   MAP >ADVCL:CIP (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-#WITH NOPARENT V + Rel IF (1* VERB + IO:3SgNH BARRIER CLB) {
-#   MAP >IOBJ (*) ;
-#   SETPARENT (*) TO (jC1 (*)) ;
-#};
 
-SETPARENT Cj + Coord
-       TO (1* VMain) ;
+WITH NOPARENT Abs IF (1* V - Abs) (NEGATE p (*)) {
+   MAP >ADVCL:ABS (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-MAP >CCONJ
-    TARGET Cj + Coord
-    IF (p VMain) ;
+
+WITH NOPARENT V + Rel IF (1* VERB + IO:3SgNH BARRIER CLB) (NEGATE p (*)) {
+   MAP >IOBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT Interj IF (0* VERB) (NEGATE p (*)) {
+   MAP >ADVMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+
+
+WITH NOPARENT Cj + Coord IF (1* VMain) (NEGATE p (*)) {
+   MAP >CCONJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
 SETPARENT Comma IF (NEGATE p (*)) TO (-1 (*)) ;
 
@@ -2701,16 +2880,29 @@ SETPARENT Punct - Comma IF (NEGATE p (*)) TO (-1* VMain) ;
 SETPARENT IntMark IF (NEGATE p (*)) TO (-1 Pron + Int) ;
 
 # the rest, except verb of saying, since these take (conjoined) sentence(s) as complement
-SETPARENT (*) - ("а-ҳәа-ра́")
-	IF (NEGATE p (*))
-	TO (-1* VMain) ;
+WITH (*) - ("а-ҳәа-ра́") - ("а-хәы́ц-ра")
+  IF (-1* VMain)
+     (NOT p (*)) {
+  MAP >CONJ (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
-# except they have a nominal DO
-SETPARENT ("а-ҳәа-ра́")
-	IF (NEGATE p (*))
-           (c >OBJ)
-	TO (-1* VMain) ;
+# but conjoin if verb of saying has nominal >OBJ
+WITH ("а-ҳәа-ра́") - ("а-хәы́ц-ра")
+  IF (-1* VMain)
+     (c >OBJ)
+     (NOT p (*)) {
+  MAP >CONJ (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
+
+WITH VMain
+  IF (1**w ("а-хәы́ц-ра") LINK -1 Prt + Quote)
+     (NOT p (*)) {
+  MAP >CCOMP (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
 # complement of verb of saying
 SETPARENT VMain
@@ -2724,14 +2916,21 @@ MAP >CCOMP
        # (NEGATE (p V LINK c >CCOMP)) # is wrong
     ;
 
-SETPARENT (*) # the rest
-	IF (NEGATE p (*))
-	TO (1* VMain) ;
 
-MAP >CONJ
-    TARGET VMain
-    IF (p VMain) ;
+WITH VMain
+  IF (1* VMain)
+     (NOT p (*)) {
+  MAP >CONJ (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
+#SETPARENT (*) # the rest
+#	IF (NEGATE p (*))
+#	TO (1* VMain) ;
+
+#MAP >CONJ
+#    TARGET VMain
+#    IF (p VMain) ;
 
 
 # MAP >ROOT TARGET (*)
