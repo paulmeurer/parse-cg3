@@ -13,6 +13,10 @@
    (lexicon :initform (dat:make-string-tree) :accessor text-lexicon)
    (disambiguation-table :initform (make-hash-table :test #'equal) :reader disambiguation-table) 
    (depid-array :initform nil :accessor depid-array) ;; dependency node ids
+   (start-wid :initform nil :initarg :start-wid :accessor start-wid)
+   (end-wid :initform nil :initarg :end-wid :accessor end-wid)
+   ;; stored reading by wid, where xml:id = "w<wid>"
+   (wid-table :initform (make-hash-table) :reader wid-table)
    ))
 
 (defmethod token-array ((text parsed-text))
@@ -120,7 +124,7 @@
     (process-text text :analyze
                   :variety variety
                   :lookup-guessed lookup-guessed
-                  :wid-table wid-table
+                  ;;:wid-table wid-table
                   ;;:correct-spelling-errors (eq variety :ng)
                   ))
   (when disambiguate
