@@ -7,6 +7,7 @@
    (variety :initform :ng :initarg :variety :accessor variety)
    (orthography :initform :standard :initarg :orthography :reader orthography)
    (location :initform nil :initarg :location :reader location)
+   (corpus :initform nil :initarg :corpus :reader corpus)
    (text-array :initform (make-array 0 :adjustable t :fill-pointer t) :accessor text-array)
    ;; word-id -> index in text-array
    (word-id-table :initform (make-hash-table :test #'equal) :reader word-id-table) 
@@ -124,7 +125,6 @@
     (process-text text :analyze
                   :variety variety
                   :lookup-guessed lookup-guessed
-                  ;;:wid-table wid-table
                   ;;:correct-spelling-errors (eq variety :ng)
                   ))
   (when disambiguate
@@ -200,6 +200,9 @@
   (declare (ignore source token))
   nil)
 
+(defmethod load-wid-table ((text parsed-text))
+  nil)
+
 ;; lexicon is stored in .lex file in save-all-new-words()
 ;; it stores the values of :new-morphology
 (defmethod process-text ((text parsed-text) (mode (eql :analyze))
@@ -210,8 +213,8 @@
                            ;; Therefore, some rules will have to be adapted
                            keep-non-mwe-readings
                            ;; lexicon
-                           unknown-only-p wid-table &allow-other-keys)
-  ;;(print (list :process-text :mode :analyze :variety variety))
+                           unknown-only-p &allow-other-keys)
+  (print (list :process-text :mode :analyze :variety variety))
   (setf (text-lexicon text) (dat:make-string-tree))
   (let ((language (if (eq variety :abk) :abk :kat))
         (token-array (text-array text))
@@ -219,9 +222,11 @@
 	;;(lexicon (or lexicon (text-lexicon text)))
 	(lang-stack (list variety))
 	(lexicon (text-lexicon text))
-	(extracted-table (make-hash-table :test #'equal))) ;; table of all words that have been treated
+        (wid-table (wid-table text))
+        (extracted-table (make-hash-table :test #'equal))) ;; table of all words that have been treated
     ;;#+test ;; *text*
     ;; (describe lexicon)
+    (load-wid-table text)
     (let ((lex-file (when (location text) (merge-pathnames ".lex" (location text)))))
       ;;(debug lex-file)
       (when (and lex-file (probe-file lex-file))
@@ -408,16 +413,22 @@
                                       (let* ((id (parse-integer wid :start 1))
                                              (reading (gethash id wid-table)))
                                         (when reading
-                                          (let ((reading1 (find-if (lambda (r)
-                                                                     ;; compare lemma and features,
-                                                                     (and (string= (car r) (cadr reading))
-                                                                          (string= (cadr r) (caddr reading))))
-                                                                   readings)))
-                                            (when reading1
-                                              ;; mark found reading as <Dis>
-                                              (setf (cadr reading1)
-                                                    (u:concat (cadr reading1) " <Dis>"))))
-                                          readings)))))
+                                          (destructuring-bind (&optional w l f status comment) reading
+                                            (declare (ignore w))
+                                            (let ((reading1 (find-if (lambda (r)
+                                                                       ;; compare lemma and features,
+                                                                       (and (string= (car r) l)
+                                                                            (string= (cadr r) f)))
+                                                                     readings)))
+                                              (when (debug reading1)
+                                                ;; mark found reading as <Dis>
+                                                (setf (cadr reading1)
+                                                      (u:concat (cadr reading1) " <Dis>")))
+                                              (when status
+                                                (setf (getf (cddr node) :status) status))
+                                              (when comment
+                                                (setf (getf (cddr node) :comment) comment)))
+                                            readings))))))
                                 (setf (getf (cddr node) :morphology) readings))
 			       (new-morphology
 				(setf (getf (cddr node) :new-morphology) new-morphology))
