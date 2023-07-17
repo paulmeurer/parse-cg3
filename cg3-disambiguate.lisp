@@ -316,7 +316,7 @@
 					       (setf morphology
 						     (case variety
 						       (:abk (list (list "??" "Unrecognized" nil nil)))
-						       (:non (list (list "??@" "Unrecognized" nil nil)))
+						       (:non (list (list "??" "unrecognized" nil nil)))
 						       (otherwise
 							(list
 							 (list "??" "Unrecognized" nil nil)
