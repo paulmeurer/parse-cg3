@@ -40,7 +40,7 @@
      do (setf (char text i) (char +correct-abk-chars+ pos))))
 
 (defmethod parse-text ((text string) &key variety load-grammar (disambiguate t)
-                                       lookup-guessed orthography &allow-other-keys)
+                                       lookup-guessed orthography unknown-tree count &allow-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
   (when (eq variety :abk)
@@ -57,6 +57,7 @@
      (lambda (token)
        (unless (or (equal token "@@@")
 		   (u:null-or-empty-string-p token))
+         (when count (incf (car count)))
 	 (setf token (normalize-token token))
          (let* ((wid (format nil "w~a" (incf id)))
                 (token (list :word token :wid wid)))
@@ -66,6 +67,7 @@
                   :variety variety
                   :lookup-guessed lookup-guessed
                   :orthography (orthography parsed-text)
+                  :unknown-tree unknown-tree
                   ;;:correct-spelling-errors (eq variety :ng)
                   )
     (when disambiguate
@@ -74,11 +76,11 @@
                     :lookup-guessed lookup-guessed
                     :load-grammar load-grammar
                     :sentence-end-strings '("." "?" "!" "…")))
-    (debug parsed-text)
+    ;;(debug parsed-text)
     parsed-text))
 
 ;; pre-tokenized text, given as list of tokens, where each token is (word . rest). rest is kept unchanged.
-(defmethod parse-text ((tokens list) &key variety load-grammar (disambiguate t) lookup-guessed
+(defmethod parse-text ((tokens list) &key variety load-grammar (disambiguate t) lookup-guessed unknown-tree
                                        &allow-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
@@ -93,6 +95,7 @@
     (process-text parsed-text :analyze
                   :variety variety
                   :lookup-guessed lookup-guessed
+                  :unknown-tree unknown-tree
                   ;;:correct-spelling-errors (eq variety :ng)
                   )
     (when disambiguate
@@ -118,13 +121,14 @@
 (defparameter *text* nil)
 
 (defmethod parse-text ((text parsed-text) &key variety mode load-grammar (disambiguate t) lookup-guessed
-                                            wid-table &allow-other-keys)
+                                            wid-table unknown-tree &allow-other-keys)
   (when (eq variety :kat) (setf variety :ng))
   (setf *text* text)
   (unless (eq mode :redisambiguate)
     (process-text text :analyze
                   :variety variety
                   :lookup-guessed lookup-guessed
+                  :unknown-tree unknown-tree
                   ;;:correct-spelling-errors (eq variety :ng)
                   ))
   (when disambiguate
@@ -207,14 +211,14 @@
 ;; it stores the values of :new-morphology
 (defmethod process-text ((text parsed-text) (mode (eql :analyze))
                          &key (variety :og) correct-spelling-errors
-                           (normalize t) (lookup-guessed t)
+                           (normalize t) (lookup-guessed t) unknown-tree
                            ;; experimental; keeps MWE and non-MWE readings;
                            ;; MWE second (third) word are accessible in CG
                            ;; Therefore, some rules will have to be adapted
                            keep-non-mwe-readings
                            ;; lexicon
                            unknown-only-p &allow-other-keys)
-  (print (list :process-text :mode :analyze :variety variety))
+  ;;(print (list :process-text :mode :analyze :variety variety))
   (setf (text-lexicon text) (dat:make-string-tree))
   (let ((language (if (eq variety :abk) :abk :kat))
         (token-array (text-array text))
@@ -347,6 +351,8 @@
 								(char<= #\0 c #\9)))
 						(cadr node))))
 			  (segments (unless readings (split-tmesis token))))
+                     (when (and (null readings) unknown-tree)
+                       (incf (dat:string-tree-get unknown-tree normalized-token 0))) 
 		     (multiple-value-bind (guess eq)
 			 (when (and correct-spelling-errors
 				    (> (length token) 6)
@@ -413,14 +419,20 @@
                                       (let* ((id (parse-integer wid :start 1))
                                              (reading (gethash id wid-table)))
                                         (when reading
-                                          (destructuring-bind (&optional w l f status comment) reading
+                                          (destructuring-bind (&optional w l fl status comment) reading
                                             (declare (ignore w))
                                             (let ((reading1 (find-if (lambda (r)
                                                                        ;; compare lemma and features,
                                                                        (and (string= (car r) l)
-                                                                            (string= (cadr r) f)))
+                                                                            (or (string= (cadr r) fl)
+                                                                                (let ((s-f (u:split fl #\space))
+                                                                                      (d-f (u:split (cadr r) #\space)))
+                                                                                  (loop for f in s-f
+                                                                                        always (or (find f '("<Relax>" "<NoLex>")
+                                                                                                         :test #'string=)
+                                                                                                   (find f d-f :test #'string=)))))))
                                                                      readings)))
-                                              (when (debug reading1)
+                                              (when reading1
                                                 ;; mark found reading as <Dis>
                                                 (setf (cadr reading1)
                                                       (u:concat (cadr reading1) " <Dis>")))
@@ -590,7 +602,7 @@
      (destructuring-bind (&key word morphology facs dipl norm |id| cpos comment wid
 			       status &allow-other-keys)
          node
-       (declare (ignore morphology |id| norm dipl facs))
+       (declare (ignore morphology |id| dipl facs))
        (let* ((morphology (unless no-morphology (getf (cddr node) :morphology)))
 	      (tmesis-msa (unless no-morphology (getf (cddr node) :tmesis-msa))))
          (declare (ignore tmesis-msa))
@@ -605,6 +617,7 @@
 		      ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)))
 	    ,@(when count `("count" ,(length morphology)))
 	    ,@(when cpos `("cpos" ,cpos))
+            "norm" ,(or norm :null)
 	    "id" ,id
             "wid" ,(or wid :null)
 	    ,@(when (and lemma features)
@@ -803,14 +816,16 @@
 	 unless (or (null (getf token :parent)) (= (getf token :parent) -1))
 	 do (pushnew (getf token :self)
 		     (getf (aref (depid-array text)
-				 (getf token :parent)) :children))
+				 (getf token :parent))
+                           :children))
 	 when (getf token :subtoken)
 	 do (let ((subtoken (getf token :subtoken)))
 	      (setf (getf (aref (depid-array text) (getf subtoken :self)) :token) (- -1 i))
 	      (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
 		(pushnew (getf subtoken :self)
 			 (getf (aref (depid-array text)
-				     (getf subtoken :parent)) :children))))))
+				     (getf subtoken :parent))
+                               :children))))))
     (labels ((walk (node-id)
 	       (let* ((t-ch-list (aref (depid-array text) node-id))
 		      (token-id (getf t-ch-list :token))
@@ -893,14 +908,14 @@
 	  (children-table (make-hash-table :test #'equal))
 	  (slash-nodes (make-hash-table :test #'equal))
 	  (roots ()))
-      (maphash (lambda (id tl)
+      (maphash (lambda (token-id tl)
 		 ;; id might be different from token-list-id when there are gaps in original ids; don't use it!
-		 (declare (ignore id))
                  (let* ((id (token-list-id tl)) ;; this is different from build-dep-graph() for dep-parsed-sentence!
 			(children (gethash id children-table))
 			(node (when (listp children) ;; if not, token describes existing node with new slash
 				(make-instance 'dep-linear-node
 					       :id id
+                                               :token-id token-id
 					       :node-table node-table
 					       ;;  all nodes are in text order (= id)
 					       :node-id (or (token-list-id tl) id)
