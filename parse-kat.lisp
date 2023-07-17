@@ -71,7 +71,7 @@
       (setf *tokenizer*
 	    (make-instance 'fst-tokenizer :token-boundary #.(string #\newline)
 			   :file (u:concat transducer-dir "geo-tokenize." type)))
-      (unless (debug ng-only)
+      (unless ng-only
         (setf *og-analyzer*
               (load-morph '(:georgian-morph-og
                             :georgian-morph-ng
@@ -193,6 +193,9 @@
       (if (string= (seg 1) (seg 3))
 	  (format nil "~a=~a/~a+~a" (seg 0) (seg 2) (seg 1) (seg 4))
 	  (format nil "~a=~a/~a=~a+~a" (seg 0) (seg 2) (seg 1) (seg 3) (seg 4))))))
+
+#+test
+(print (lookup-morphology :kat "ნიდერლანდიური" :lookup-guessed nil))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) tmesis-segment guess mwe
@@ -372,30 +375,30 @@
   ;;(debug (list :disambiguate disambiguate :dependencies dependencies :rid rid))
   (let ((start-cpos nil)
 	(end-cpos nil))
-    (debug (json
-            `("tokens"
-              ,(loop for node across (text-array text)
-                  for id from 0
-                  for cpos = (getf node :cpos)
-                  when (eq (car node) :word)
-                  collect (progn
-                            (setf end-cpos cpos)
-                            (unless start-cpos (setf start-cpos cpos))
-                            (write-word-json node
-                                             :id id
-                                             :tracep tracep
-                                             :split-trace split-trace
-                                             :suppress-discarded-p suppress-discarded-p
-                                             :lemma lemma
-                                             :features features
-                                             :disambiguate disambiguate
-                                             :dependencies dependencies
-                                             :show-rules show-rules
-                                             :rid rid
-                                             :manual manual)))
-              ,@(when start-cpos `("startCpos" start-cpos)) ;; not needed?
-              ,@(when start-cpos `("endCpos" end-cpos)) ;; not needed?
-              )))))
+    (json
+     `("tokens"
+       ,(loop for node across (text-array text)
+              for id from 0
+              for cpos = (getf node :cpos)
+              when (eq (car node) :word)
+              collect (progn
+                        (setf end-cpos cpos)
+                        (unless start-cpos (setf start-cpos cpos))
+                        (write-word-json node
+                                         :id id
+                                         :tracep tracep
+                                         :split-trace split-trace
+                                         :suppress-discarded-p suppress-discarded-p
+                                         :lemma lemma
+                                         :features features
+                                         :disambiguate disambiguate
+                                         :dependencies dependencies
+                                         :show-rules show-rules
+                                         :rid rid
+                                         :manual manual)))
+       ,@(when start-cpos `("startCpos" start-cpos)) ;; not needed?
+       ,@(when start-cpos `("endCpos" end-cpos)) ;; not needed?
+       ))))
 
 (defun write-word-json (node &key id
 			       tracep ;; traces in view mode?
@@ -822,8 +825,12 @@
 ;; Takes a txt file as input and outputs a json array.
 ;; Make sure there are no line breaks in sentences.
 ;; Each element in the array is a parsed sentence.
-(defun parse-kat-file (file &key (format :json) (input-format :txt) write-rest dependencies)
-  (let ((out-file (merge-pathnames (format nil ".~(~a~)" format) file)))
+(defun parse-kat-file (file &key (format :json) (input-format :txt) (write-xml-id t)
+                              write-rest dependencies write-unknown)
+  (let ((out-file (merge-pathnames (format nil ".~(~a~)" format) file))
+        (unknown-file (merge-pathnames ".unk" file))
+        (unknown-tree (dat:make-string-tree))
+        (count (list 0)))
     (ecase input-format
       (:txt
        (with-open-file (stream out-file :direction :output :if-exists :supersede)
@@ -831,14 +838,16 @@
            (:json
             (write-string "[ " stream)
             (u:with-file-lines (line file)
-              (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil)
+              (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil
+                                           :unknown-tree unknown-tree :count count)
                                stream)
               (terpri stream))
             (write-string "]" stream))
            (:tsv
             (u:with-file-lines (line file)
-              (write-text-tsv (parse-text line :variety :ng :disambiguate t :lookup-guessed nil)
-                              stream :write-xml-id t :dependencies dependencies)
+              (write-text-tsv (parse-text line :variety :ng :disambiguate t :lookup-guessed nil
+                                          :unknown-tree unknown-tree :count count)
+                              stream :write-xml-id write-xml-id :dependencies dependencies)
               (terpri stream))))))
       (:tsv
        (with-open-file (stream out-file :direction :output :if-exists :supersede)
@@ -847,7 +856,8 @@
            (:json
             (write-string "[ " stream)
             (u:with-file-lines (line file)
-              (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil)
+              (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil
+                                           :unknown-tree unknown-tree :count count)
                                stream :dependencies dependencies)
               (terpri stream))
             (write-string "]" stream))
@@ -855,16 +865,27 @@
             (let ((tokens ()))
               (u:with-file-fields ((&rest tl) file :end-line :eof)
                 (cond ((eq (car tl) :eof)
-                       (write-text-tsv (parse-text (nreverse tokens) :variety :ng :disambiguate t :lookup-guessed nil)
-                                       stream :write-xml-id t :write-rest write-rest :dependencies dependencies))
+                       (write-text-tsv (parse-text (nreverse tokens) :variety :ng :disambiguate t :lookup-guessed nil
+                                                   :unknown-tree unknown-tree :count count)
+                                       stream :write-xml-id write-xml-id :write-rest write-rest :dependencies dependencies))
                       ((equal (car tl) ".")
                        (push tl tokens)
-                       (write-text-tsv (parse-text (nreverse tokens) :variety :ng :disambiguate t :lookup-guessed nil)
-                                       stream :write-xml-id t :write-rest write-rest :dependencies dependencies)
+                       (write-text-tsv (parse-text (nreverse tokens) :variety :ng :disambiguate t :lookup-guessed nil
+                                                   :unknown-tree unknown-tree)
+                                       stream :write-xml-id write-xml-id :write-rest write-rest :dependencies dependencies)
                        (setf tokens ()))
                       (t
                        (push tl tokens))))
-              (terpri stream)))))))))
+              (terpri stream)))))))
+    (when write-unknown
+      (let ((unknown-count 0))
+        (with-open-file (stream unknown-file :direction :output :if-exists :supersede)
+          (dat:do-string-tree (word count unknown-tree)
+            (incf unknown-count count)
+            (format stream "~a	~a~%" count word)))
+        (debug unknown-count)))
+    (print (car count))
+    (print :done)))
 
 ;; Example:
 
@@ -872,6 +893,10 @@
 (parse-kat-file "projects:parse-cg3;example-text-kat.txt" :format :tsv :dependencies t :write-rest t)
 #+test
 (parse-kat-file "projects:georgian-morph;eval.txt" :format :tsv)
+
+#+test
+(parse-kat-file "projects:parse-cg3;data;ka-10000-clean.txt" :format :tsv :dependencies nil :write-unknown t
+                :write-xml-id nil)
 
 #+test
 (parse::write-text-json (parse::parse-text "აბა" :variety :ng :disambiguate t :lookup-guessed nil) *standard-output*)
