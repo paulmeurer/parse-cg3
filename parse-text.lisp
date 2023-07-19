@@ -75,8 +75,9 @@
                     :variety variety
                     :lookup-guessed lookup-guessed
                     :load-grammar load-grammar
-                    :sentence-end-strings '("." "?" "!" "…")))
-    ;;(debug parsed-text)
+                    :sentence-end-strings (if (eq variety :abk)
+                                              '("." "?" "!" "…" ";")
+                                              '("." "?" "!" "…"))))
     parsed-text))
 
 ;; pre-tokenized text, given as list of tokens, where each token is (word . rest). rest is kept unchanged.
@@ -103,7 +104,9 @@
                     :variety variety
                     :lookup-guessed lookup-guessed
                     :load-grammar load-grammar
-                    :sentence-end-strings '("." "?" "!" "…")))
+                    :sentence-end-strings  (if (eq variety :abk)
+                                              '("." "?" "!" "…" ";")
+                                              '("." "?" "!" "…"))))
     parsed-text))
 
 (defun normalize-token (token)
@@ -136,7 +139,9 @@
                   :variety variety
                   :load-grammar load-grammar
                   :mode mode
-                  :sentence-end-strings '("." "?" "!" "…")))
+                  :sentence-end-strings (if (eq variety :abk) ;; put this in to text object!
+                                            '("." "?" "!" "…" ";")
+                                            '("." "?" "!" "…"))))
   text)
 
 ;; remove subsumption:
@@ -433,9 +438,9 @@
                                                                                                    (find f d-f :test #'string=)))))))
                                                                      readings)))
                                               (when reading1
-                                                ;; mark found reading as <Dis>
+                                                ;; mark found reading as <Sel>
                                                 (setf (cadr reading1)
-                                                      (u:concat (cadr reading1) " <Dis>")))
+                                                      (u:concat (cadr reading1) " <Sel>")))
                                               (when status
                                                 (setf (getf (cddr node) :status) status))
                                               (when comment
@@ -599,11 +604,12 @@
   (declare (ignore tracep split-trace no-newlines error disambiguate))
   (ecase (car node)
     (:word
-     (destructuring-bind (&key word morphology facs dipl norm |id| cpos comment wid
+     (destructuring-bind (&key word morphology facs dipl norm dipl-xml norm-xml |id| cpos comment wid
 			       status &allow-other-keys)
          node
        (declare (ignore morphology |id| dipl facs))
-       (let* ((morphology (unless no-morphology (getf (cddr node) :morphology)))
+       (print (list :word word :morphology morphology))
+       (let* ((morphology (unless no-morphology morphology)) ;; (getf (cddr node) :morphology)))
 	      (tmesis-msa (unless no-morphology (getf (cddr node) :tmesis-msa))))
          (declare (ignore tmesis-msa))
 	 (apply
@@ -618,6 +624,8 @@
 	    ,@(when count `("count" ,(length morphology)))
 	    ,@(when cpos `("cpos" ,cpos))
             "norm" ,(or norm :null)
+            "dipl_xml" ,(or dipl-xml :null)
+            "norm_xml" ,(or norm-xml :null)
 	    "id" ,id
             "wid" ,(or wid :null)
 	    ,@(when (and lemma features)
@@ -785,11 +793,11 @@
          (reading (nth rid readings)))
     (dolist (reading readings)
       (when (eq (caddr reading) :selected-manually)
-        (setf (caddr reading) :discarded-manually
-              ;; (cadr reading) (remove
-              )))
+        (setf (caddr reading) :discarded-manually)))
     (setf (caddr reading) :selected-manually
-          (cadr reading) (u:concat (cadr reading) " <Dis>"))))
+          (cadr reading) (u:concat (cadr reading) " <Sel>"))))
+
+;; *text*
 
 (defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
   (assert node-id)
@@ -850,13 +858,14 @@
 		      (word (getf token :word))
 		      (mwe (when (>= token-id 0)
 			     (loop for id from (1+ token-id) below (length token-array)
-				for token = (aref token-array id)
-				while (equal "<MWE>" (cadar (getf token :morphology)))
-				collect (getf token :word)))))
+				   for token = (aref token-array id)
+				   while (equal "<MWE>" (cadar (getf token :morphology)))
+				   collect (getf token :word)))))
 		 (setf (gethash node-id token-table)
 		       (make-token-list :terminal-p t
 					:id node-id
-					:word (cond (mwe
+                                        :wid (getf token :wid)
+                                        :word (cond (mwe
 						     (format nil "~a~{ ~a~}" word mwe))
 						    ((getf token :subtoken)
 						     (subseq word 0 (1- (length word))))
@@ -899,7 +908,11 @@
   relation
   slashee-ids
   slash-relations
-  atts)
+  atts
+  wid)
+
+;; *text*
+;; kp::*session*
 
 (defmethod build-dep-graph ((text parsed-text) &key node-id (add-root t) &allow-other-keys)
   (assert (not (null node-id)))
@@ -916,7 +929,8 @@
 				(make-instance 'dep-linear-node
 					       :id id
                                                :token-id token-id
-					       :node-table node-table
+                                               :wid (token-list-wid tl)
+                                               :node-table node-table
 					       ;;  all nodes are in text order (= id)
 					       :node-id (or (token-list-id tl) id)
 					       :type (if (token-list-terminal-p tl)

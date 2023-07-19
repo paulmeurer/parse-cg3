@@ -4,7 +4,7 @@
 
 # tags taken from abkhaz-noun.fst and abkhaz-verb.fst Sigma lists
 STRICT-TAGS += xCU xNC xAJ cN cG cA cD
-       <Dis> <Del>;
+       <Sel> <Del>;
 
 # run like:
 
@@ -25,7 +25,7 @@ DELIMITERS = "<.>" "<!>" "<?>" "<…>" "<;>" "<–>" ;
 
 SET BOS = (>>>) | (<s>) ;
 
-SELECT <Dis> ; # select manually disambiguated reading
+SELECT <Sel> ; # select manually disambiguated reading
 REMOVE <Del> ; # remove manually removed reading
 
 # ======== #
