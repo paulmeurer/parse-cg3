@@ -3,8 +3,11 @@
 # ============================================ #
 
 # tags taken from abkhaz-noun.fst and abkhaz-verb.fst Sigma lists
-STRICT-TAGS += xCU xNC xAJ cN cG cA cD
-       <Sel> <Del>;
+STRICT-TAGS += xCU xNC xAJ
+               cN cG cA cD
+               nS nP nD
+               gM gF gN
+               <Sel> <Del>;
 
 # run like:
 
@@ -35,9 +38,28 @@ REMOVE <Del> ; # remove manually removed reading
 SELECT ("ok") + xCU ;
 
 LIST CASE = cN cG cA cD ;
+LIST NUMBER = nS nP nD ;
+LIST GENDER = gM gF gN ;
 
+# Adj + Noun agreement in case, number, gender
 SELECT xAJ + $$CASE
     IF (1C xNC + $$CASE) ;
+
+SELECT xAJ + $$NUMBER
+    IF (1C xNC + $$NUMBER) ;
+
+SELECT xAJ + $$GENDER
+    IF (1C xNC + $$GENDER) ;
+
+SELECT xNC + $$CASE
+    IF (-1C xAJ + $$CASE) ;
+
+SELECT xNC + $$NUMBER
+    IF (-1C xAJ + $$NUMBER) ;
+
+SELECT xNC + $$GENDER
+    IF (-1C xAJ + $$GENDER) ;
+
 
 
 END
