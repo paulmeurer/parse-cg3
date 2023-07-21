@@ -212,7 +212,9 @@
 (defmethod load-wid-table ((text parsed-text))
   nil)
 
-;; lexicon is stored in .lex file in save-all-new-words()
+;; *text*
+
+;; lexicon is stored in .lex file in save-all-new-words() (obsolete!)
 ;; it stores the values of :new-morphology
 (defmethod process-text ((text parsed-text) (mode (eql :analyze))
                          &key (variety :og) correct-spelling-errors
@@ -424,7 +426,7 @@
                                       (let* ((id (parse-integer wid :start 1))
                                              (reading (gethash id wid-table)))
                                         (when reading
-                                          (destructuring-bind (&optional w l fl status comment) reading
+                                          (destructuring-bind (&optional w l fl label parent status comment) reading
                                             (declare (ignore w))
                                             (let ((reading1 (find-if (lambda (r)
                                                                        ;; compare lemma and features,
@@ -444,7 +446,12 @@
                                               (when status
                                                 (setf (getf (cddr node) :status) status))
                                               (when comment
-                                                (setf (getf (cddr node) :comment) comment)))
+                                                (setf (getf (cddr node) :comment) comment))
+                                              (when parent ;; preliminarily store wid here; has to be changed to node id
+                                                ;; after disambiguation
+                                                (setf (getf (cddr node) :stored-parent) parent))
+                                              (when label
+                                                (setf (getf (cddr node) :stored-label) label)))
                                             readings))))))
                                 (setf (getf (cddr node) :morphology) readings))
 			       (new-morphology
@@ -504,7 +511,17 @@
                                   :mode mode
                                   :load-grammar load-grammar
 				  :sentence-end-strings sentence-end-strings
-                                  :sentence-start-is-uppercase (eq variety :abk)))
+                                  :sentence-start-is-uppercase (eq variety :abk))
+
+  (let ((token-array (text-array text))
+        (wid-table (word-id-table text)))
+    (loop for node across token-array
+          for p = (getf node :stored-parent)
+          when p
+          do (setf (getf node :stored-parent)
+                   (getf (gethash (format nil "w~a" p) wid-table) :self)))))
+
+;; *text*
 
 (defmethod write-text-json ((text parsed-text) stream
                             &key tracep split-trace
@@ -604,11 +621,11 @@
   (declare (ignore tracep split-trace no-newlines error disambiguate))
   (ecase (car node)
     (:word
-     (destructuring-bind (&key word morphology facs dipl norm dipl-xml norm-xml |id| cpos comment wid
+     (destructuring-bind (&key word morphology facs dipl norm dipl-xml norm-xml stored-norm |id| cpos comment wid
 			       status &allow-other-keys)
          node
        (declare (ignore morphology |id| dipl facs))
-       (print (list :word word :morphology morphology))
+       ;;(print (list :word word :morphology morphology))
        (let* ((morphology (unless no-morphology morphology)) ;; (getf (cddr node) :morphology)))
 	      (tmesis-msa (unless no-morphology (getf (cddr node) :tmesis-msa))))
          (declare (ignore tmesis-msa))
@@ -620,12 +637,15 @@
 		    `("self"
 		      ,(or (unless (eql (getf node :self) 0) (getf node :self)) :null)
 		      "parent"
-		      ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)))
+		      ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)
+                      "stored_parent" ,(or (getf node :stored-parent) :null)
+                      "stored_label" ,(or (getf node :stored-label) :null)))
 	    ,@(when count `("count" ,(length morphology)))
 	    ,@(when cpos `("cpos" ,cpos))
             "norm" ,(or norm :null)
             "dipl_xml" ,(or dipl-xml :null)
             "norm_xml" ,(or norm-xml :null)
+            "stored_norm" ,(if stored-norm :true :false)
 	    "id" ,id
             "wid" ,(or wid :null)
 	    ,@(when (and lemma features)
