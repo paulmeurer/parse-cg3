@@ -1043,8 +1043,61 @@ Field number:	Field name:	Description:
 6	FEATS	Unordered set of syntactic and/or morphological features (depending on the particular language), separated by a vertical bar (|), or an underscore if not available.
 7	HEAD	Head of the current token, which is either a value of ID or zero ('0'). Note that depending on the original treebank annotation, there may be multiple tokens with an ID of zero.
 8	DEPREL	Dependency relation to the HEAD. The set of dependency relations depends on the particular language. Note that depending on the original treebank annotation, the dependency relation may be meaningful or simply 'ROOT'.
-9	PHEAD	Projective head of current token, which is either a value of ID or zero ('0'), or an underscore if not available. Note that depending on the original treebank annotation, there may be multiple tokens an with ID of zero. The dependency structure resulting from the PHEAD column is guaranteed to be projective (but is not available for all languages), whereas the structures resulting from the HEAD column will be non-projective for some sentences of some languages (but is always available).
+9	PHEAD	Projective head of current token, which is either a value of ID or zero ('0'), or an underscore if not available. Note that depending on the original treebank annotation, there may be multiple tokens with an ID of zero. The dependency structure resulting from the PHEAD column is guaranteed to be projective (but is not available for all languages), whereas the structures resulting from the HEAD column will be non-projective for some sentences of some languages (but is always available).
 10	PDEPREL	Dependency relation to the PHEAD, or an underscore if not available. The set of dependency relations depends on the particular language. Note that depending on the original treebank annotation, the dependency relation may be meaningful or simply 'ROOT'.
 |#
+
+;; *text*
+
+#+test
+(write-dependencies-conll *text* *standard-output*)
+
+(defparameter *graph* nil)
+
+(defmethod write-dependencies-conll ((text parsed-text) stream &key (start 1) &allow-other-keys)
+  (let ((token-array (text-array text)))
+    (decf start)
+    (loop for node across token-array
+          when (and (getf node :stored-label)
+                    (not (getf node :stored-parent)))
+          do (let ((graph (build-dep-graph text :node-id (getf node :self))))
+               (setf *graph* graph)
+               (write-dependency-conll graph stream :sentence-id (incf start))))))
+
+#+test
+(write-dependency-conll *graph* *standard-output*)
+
+(defun morph-to-ud (morph &key drop-pos)
+  (let ((features (u:split morph #\space)))
+    (setf features (delete-if (lambda (f) (find #\> f)) features))
+    (when drop-pos (pop features))
+    (format nil "~{~a~^ ~}" features)))
+
+(defmethod write-dependency-conll ((graph dep-node) stream &key text sentence-id &allow-other-keys)
+  (let ((nodes ()))
+    (labels ((walk (node)
+               (let ((atts (node-atts node))
+                     (parent (if (node-parents node)
+                                 (node-id (car (node-parents node)))
+                                 0)))
+                 (unless (zerop (node-id node))
+                   (push (list (node-id node)
+                               parent
+                               (node-label node)
+                               (relation node) 
+                               (getf atts :|lemma|)
+                               (getf atts :|pos|)
+                               (morph-to-ud (getf atts :|morph|) :drop-pos t))
+                         nodes)))
+               (mapc #'walk (node-children node))))
+      (walk graph)
+      (setf nodes (sort nodes #'< :key #'car))
+      (format stream "# sent_id: ~a~%# sentence: ~{~a~^ ~}~%"
+              sentence-id (mapcar #'caddr nodes))
+      (loop for (id parent word label lemma pos morph) in nodes
+            do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	_~%"
+                       id word lemma pos pos morph parent (string-downcase label)))
+      (terpri stream))))
+
 
 :eof
