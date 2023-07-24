@@ -621,8 +621,8 @@
   (declare (ignore tracep split-trace no-newlines error disambiguate))
   (ecase (car node)
     (:word
-     (destructuring-bind (&key word morphology facs dipl norm dipl-xml norm-xml stored-norm |id| cpos comment wid
-			       status &allow-other-keys)
+     (destructuring-bind (&key word morphology facs dipl norm dipl-xml norm-xml stored-norm computed-norm
+                               |id| cpos comment wid status &allow-other-keys)
          node
        (declare (ignore morphology |id| dipl facs))
        ;;(print (list :word word :morphology morphology))
@@ -646,6 +646,7 @@
             "dipl_xml" ,(or dipl-xml :null)
             "norm_xml" ,(or norm-xml :null)
             "stored_norm" ,(if stored-norm :true :false)
+            "computed_norm" ,(if computed-norm :true :false)
 	    "id" ,id
             "wid" ,(or wid :null)
 	    ,@(when (and lemma features)
