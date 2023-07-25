@@ -449,7 +449,7 @@
                                                 (setf (getf (cddr node) :comment) comment))
                                               (when parent ;; preliminarily store wid here; has to be changed to node id
                                                 ;; after disambiguation
-                                                (setf (getf (cddr node) :stored-parent) parent))
+                                                (setf (getf (cddr node) :stored-parent) (list parent)))
                                               (when label
                                                 (setf (getf (cddr node) :stored-label) label)))
                                             readings))))))
@@ -516,10 +516,25 @@
   (let ((token-array (text-array text))
         (wid-table (word-id-table text)))
     (loop for node across token-array
+          do (let* ((msa (getf node :morphology))
+                    (reading (or (find-if (lambda (reading)
+					    (and (not (find :discarded-cg reading))
+						 (search " >" (cadr reading) :from-end t)))
+					  msa)
+				 (find-if-not (lambda (r) (find :discarded-cg r)) msa)))
+		    (features (cadr reading))
+		    (pos (subseq features 0 (position #\space features)))
+		    (rel-start (search " >" features :from-end t))
+		    (rel-end (when rel-start (position #\space features :start (+ 2 rel-start))))
+	            (relation (when rel-start (subseq features (+ 2 rel-start) rel-end)))
+                    )
+               (setf (getf (cddr node) :label) relation)))
+    ;; fix stored-parent
+    (loop for node across token-array
           for p = (getf node :stored-parent)
-          when p
+          when (listp p) ;; list ensures that this is done only once, but not on redisambiguation
           do (setf (getf node :stored-parent)
-                   (getf (gethash (format nil "w~a" p) wid-table) :self)))))
+                   (getf (gethash (format nil "w~a" (car p)) wid-table) :self)))))
 
 ;; *text*
 
@@ -634,10 +649,9 @@
 	  `("word"
 	    ,word
 	    ,@(when dependencies 
-		    `("self"
-		      ,(or (unless (eql (getf node :self) 0) (getf node :self)) :null)
-		      "parent"
-		      ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)
+		    `("self" ,(or (unless (eql (getf node :self) 0) (getf node :self)) :null)
+		      "parent" ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)
+                      "label" ,(or (getf node :label) :null)
                       "stored_parent" ,(or (getf node :stored-parent) :null)
                       "stored_label" ,(or (getf node :stored-label) :null)))
 	    ,@(when count `("count" ,(length morphology)))
@@ -873,9 +887,10 @@
 		      (lemma (car reading)) ;; only first reading is considered!
 		      (features (cadr reading))
 		      (pos (subseq features 0 (position #\space features)))
-		      (rel-start (search " >" features :from-end t))
+		      #|(rel-start (search " >" features :from-end t))
 		      (rel-end (when rel-start (position #\space features :start (+ 2 rel-start))))
-		      (relation (when rel-start (subseq features (+ 2 rel-start) rel-end)))
+		      (relation (when rel-start (subseq features (+ 2 rel-start) rel-end)))|#
+                      (relation (getf token :label))
 		      (word (getf token :word))
 		      (mwe (when (>= token-id 0)
 			     (loop for id from (1+ token-id) below (length token-array)
