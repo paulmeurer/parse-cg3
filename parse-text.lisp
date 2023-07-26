@@ -834,7 +834,7 @@
 
 ;; *text*
 
-(defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
+(defmethod get-token-table ((text parsed-text) &key node-id stored &allow-other-keys)
   (assert node-id)
   (let* ((id-table (make-hash-table :test #'equal))
 	 (secedge-table (make-hash-table :test #'equal))
@@ -843,75 +843,89 @@
 	 (word nil)
 	 (token-array (token-array text))
 	 (parents ())
+         (diff nil)
 	 (subtoken-count (count-if (lambda (token) (getf token :subtoken)) token-array))
 	 (pre-subtoken-ids (loop for token across token-array
 			      when (getf token :subtoken)
 			      collect (cons (getf token :self)
 					    (getf (getf token :subtoken) :self)))))
     (declare (ignore id-table))
-    (unless nil	;(depid-table text) ;; maps dep node-ids to token-table ids
-      (setf (depid-array text)
-	    (make-array (+ 1 (length token-array) subtoken-count) :initial-element ()))
-      (loop for i from 0
-	 for token across token-array
-	 when (and (eq (car token) :word) (getf token :self))
-	 do (setf (getf (aref (depid-array text) (getf token :self)) :token) i)
-	 unless (or (null (getf token :parent)) (= (getf token :parent) -1))
-	 do (pushnew (getf token :self)
-		     (getf (aref (depid-array text)
-				 (getf token :parent))
-                           :children))
-	 when (getf token :subtoken)
-	 do (let ((subtoken (getf token :subtoken)))
-	      (setf (getf (aref (depid-array text) (getf subtoken :self)) :token) (- -1 i))
-	      (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
-		(pushnew (getf subtoken :self)
-			 (getf (aref (depid-array text)
-				     (getf subtoken :parent))
-                               :children))))))
-    (labels ((walk (node-id)
-	       (let* ((t-ch-list (aref (depid-array text) node-id))
-		      (token-id (getf t-ch-list :token))
-		      (token (if (< token-id 0)
-				 (getf (aref token-array (- -1 token-id)) :subtoken)
-				 (aref token-array token-id)))
-		      (children (getf t-ch-list :children))
-		      (parent (getf token :parent))
-		      (msa (getf token :morphology))
-		      ;;(reading (find-if-not (lambda (r) (find :discarded-cg r)) msa))
-		      (reading (or (find-if (lambda (reading)
-					      (and (not (find :discarded-cg reading))
-						   (search " >" (cadr reading) :from-end t)))
-					    msa)
-				   (find-if-not (lambda (r) (find :discarded-cg r)) msa)))
-		      (lemma (car reading)) ;; only first reading is considered!
-		      (features (cadr reading))
-		      (pos (subseq features 0 (position #\space features)))
-		      #|(rel-start (search " >" features :from-end t))
-		      (rel-end (when rel-start (position #\space features :start (+ 2 rel-start))))
-		      (relation (when rel-start (subseq features (+ 2 rel-start) rel-end)))|#
-                      (relation (getf token :label))
-		      (word (getf token :word))
-		      (mwe (when (>= token-id 0)
-			     (loop for id from (1+ token-id) below (length token-array)
-				   for token = (aref token-array id)
-				   while (equal "<MWE>" (cadar (getf token :morphology)))
-				   collect (getf token :word)))))
-		 (setf (gethash node-id token-table)
-		       (make-token-list :terminal-p t
-					:id node-id
-                                        :wid (getf token :wid)
-                                        :word (cond (mwe
-						     (format nil "~a~{ ~a~}" word mwe))
-						    ((getf token :subtoken)
-						     (subseq word 0 (1- (length word))))
-						    (t
-						     word))
-					:atts (list :|lemma| lemma :|pos| pos :|morph| features)
-					:relation relation
-					:head parent))
-		 (mapc #'walk children))))
-      (walk node-id))
+    (labels ((get-val (token att stored-att &optional reg)
+               (cond ((or (not (getf token stored-att))
+                          (equal (getf token stored-att) (getf token att)))
+                      (getf token att))
+                     (t
+                      (when reg
+                        (print (list :word (getf token :word)
+                                   :att (getf token stored-att)
+                                   :stored-att (getf token att)))
+                        (setf diff t))
+                      (getf token stored-att)))))
+      (unless nil	;(depid-table text) ;; maps dep node-ids to token-table ids
+        (setf (depid-array text)
+	      (make-array (+ 1 (length token-array) subtoken-count) :initial-element ()))
+        (loop for i from 0
+	      for token across token-array
+              for parent = (if stored
+                               (get-val token :parent :stored-parent)
+                               (getf token :parent))
+              when (and (eq (car token) :word) (getf token :self))
+	      do (setf (getf (aref (depid-array text) (getf token :self)) :token) i)
+	      unless (or (null parent) (= parent -1))
+	      do (pushnew (getf token :self)
+		          (getf (aref (depid-array text) parent)
+                                :children))
+	      when (getf token :subtoken)
+	      do (let ((subtoken (getf token :subtoken)))
+	           (setf (getf (aref (depid-array text) (getf subtoken :self)) :token) (- -1 i))
+	           (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
+		     (pushnew (getf subtoken :self)
+			      (getf (aref (depid-array text)
+				          (getf subtoken :parent))
+                                    :children))))))
+      (labels ((walk (node-id)
+	         (let* ((t-ch-list (aref (depid-array text) node-id))
+		        (token-id (getf t-ch-list :token))
+		        (token (if (< token-id 0)
+				   (getf (aref token-array (- -1 token-id)) :subtoken)
+				   (aref token-array token-id)))
+		        (children (getf t-ch-list :children))
+		        (parent (if stored
+                                    (get-val token :parent :stored-parent t)
+                                    (getf token :parent)))
+		        (msa (getf token :morphology))
+		        (reading (or (find-if (lambda (reading)
+					        (and (not (find :discarded-cg reading))
+						     (search " >" (cadr reading) :from-end t)))
+					      msa)
+				     (find-if-not (lambda (r) (find :discarded-cg r)) msa)))
+		        (lemma (car reading)) ;; only first reading is considered!
+		        (features (cadr reading))
+		        (pos (subseq features 0 (position #\space features)))
+                        (relation (if stored
+                                      (get-val token :label :stored-label t)
+                                      (getf token :label)))
+		        (word (getf token :word))
+		        (mwe (when (>= token-id 0)
+			       (loop for id from (1+ token-id) below (length token-array)
+				     for token = (aref token-array id)
+				     while (equal "<MWE>" (cadar (getf token :morphology)))
+				     collect (getf token :word)))))
+		   (setf (gethash node-id token-table)
+		         (make-token-list :terminal-p t
+					  :id node-id
+                                          :wid (getf token :wid)
+                                          :word (cond (mwe
+						       (format nil "~a~{ ~a~}" word mwe))
+						      ((getf token :subtoken)
+						       (subseq word 0 (1- (length word))))
+						      (t
+						       word))
+					  :atts (list :|lemma| lemma :|pos| pos :|morph| features)
+					  :relation relation
+					  :head parent))
+		   (mapc #'walk children))))
+        (walk node-id)))
     (let ((ids (sort (u:collecting
 		       (maphash (lambda (id tl)
 				  (declare (ignore id))
@@ -930,7 +944,7 @@
 			   (setf (token-list-head tl)
 				 (1+ (position (token-list-head tl) ids)))))))))
 	       token-table)
-      (values token-table (1+ (position node-id ids))))))
+      (values token-table (1+ (position node-id ids)) diff))))
 
 ;;  *text*
 
@@ -950,9 +964,10 @@
 ;; *text*
 ;; kp::*session*
 
-(defmethod build-dep-graph ((text parsed-text) &key node-id (add-root t) &allow-other-keys)
+(defmethod build-dep-graph ((text parsed-text) &key node-id (add-root t) stored &allow-other-keys)
   (assert (not (null node-id)))
-  (multiple-value-bind (token-table node-id) (get-token-table text :node-id node-id)
+  (multiple-value-bind (token-table node-id diff)
+      (get-token-table text :node-id node-id :stored stored)
     (let ((node-table (make-hash-table :test #'equal)) ;; rehashed in display-dep-graph() below; populated where?
 	  (children-table (make-hash-table :test #'equal))
 	  (slash-nodes (make-hash-table :test #'equal))
@@ -1046,7 +1061,7 @@
 	  (set-slash-nodes root)
 	  #+debug(print :done))
 	(setf *root* root)
-	root))))
+	(values root diff)))))
 
 #| CONLL-X (http://ilk.uvt.nl/conll/#dataformat)
 
@@ -1076,7 +1091,7 @@ Field number:	Field name:	Description:
     (loop for node across token-array
           when (and (getf node :stored-label)
                     (not (getf node :stored-parent)))
-          do (let ((graph (build-dep-graph text :node-id (getf node :self))))
+          do (let ((graph (build-dep-graph text :node-id (getf node :self) :stored t)))
                (setf *graph* graph)
                (write-dependency-conll graph stream :sentence-id (incf start))))))
 
