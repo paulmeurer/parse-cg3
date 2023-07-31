@@ -55,16 +55,19 @@ STRICT-TAGS += Abbrev Abs Adhort
        <Relax> <NoLex> <HuntingLang> <NumPfxNoHyphen> <PreAdj> <Deriv>
        >ROOT ROOT
        >NSUBJ >IO >LO >PREDLINK
-       >COMP >COMP:TOPIC
-       >XCOMP >NUM >POSS >GEN >OBJ
+       >NUM >POSS >GEN >OBJ
        >DET >QUAL >MODAL >REL >NAMEMOD >PRED >PUNCT
        >ADVMOD >ADVMOD:Q
        >DISC >MWE >QUOTE
        >??
        >CONJ
        >NMOD >NMOD:POSS
-       >CCOMP >CCOMP:REL >CCOMP:REL:OBJ >CCOMP:REL:SUBJ
-       >CCOMP:OBJ >CCOMP:SUBJ
+       >COMP # ?
+       >XCOMP # open clausal complement (predicative/clausal complement without own subject)
+       >CCOMP # core argument clause
+       >CCOMP:REL >CCOMP:REL:OBJ >CCOMP:REL:SUBJ
+       >CCOMP:OBJ
+       >CSUBJ
        >CCOMP:CIP:OBJ # CIP is conjunctional-interrogative prefix
        >CCOMP:CIP:SUBJ
        >CCOMP:QUOTE >CCOMP:PURP >CCOMP:PURP:LO >CCOMP:LO >CCOMP:COND
@@ -77,6 +80,7 @@ STRICT-TAGS += Abbrev Abs Adhort
        >DISCOURSE
        >COMPOUND:PRT
        >COMPOUND:PRED
+       >COMPOUND
        >COP
        CopNounFin
        <Dis>
@@ -1265,6 +1269,14 @@ SELECT ("а-га-ра́" Tr DO:Ad) # not Caus: агәра ргеит
 SELECT ("а-га-ра́" Tr S:Ad Reln:Pot)
     IF (-1 ("а-гәра́")) ;
 
+# LIST Hunger = "а́-мла" "а́-ӡба" ;
+
+# дагоит, даганы
+SELECT ("а-га-ра́") + Intr + IO:3SgNH - S:Ad ;
+
+REMOVE ("а-га-ра́") + Intr
+    IF (NOT 0 IO:3SgNH) ;
+
 LIST Sound = "а-бжьы́" "а́-шьҭыбжь" ;
 
 SELECT ("а-га-ра́" Intr) IF (-1 Sound) ;
@@ -2263,7 +2275,7 @@ SELECT Fin IF (NEGATE 1* V OR Pred BARRIER Period) ;
 
 # These are Universal Dependency relations
 
-LIST RELATION = >NSUBJ >IO >LO >PREDLINK >COMP >XCOMP >AMOD >NUM >POSS >GEN >OBJ >OBL
+LIST RELATION = >NSUBJ >IO >LO >PREDLINK >COMP >AMOD >NUM >POSS >GEN >OBJ >OBL
      	        >DET >QUAL >MODAL >REL >NAMEMOD >PRED >PUNCT >ADVMOD >DISC >MWE >QUOTE
                 >CONJ >NMOD >ROOT >CCOMP >ADVCL >IOBJ >MARK >CASE >CC >ACL
 		;
@@ -2513,11 +2525,21 @@ WITH NOPARENT N + Coord
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
+# apposition
+
 WITH Hum | Noun
   IF (-1 ("а́-хаара") + Poss:1Sg)
      (NOT p (*)) {
    MAP >APPOS (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH Hum | Noun
+  IF (-2 Pron + Pers + 2Pl)
+     (-1 Comma)
+     (NOT p (*)) {
+   MAP >APPOS (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;   
 } ;
 
 WITH NOPARENT Noun - EPOSTP IF (1 ("а́-кә-заа-ра")) (NEGATE p (*)) {
@@ -2566,6 +2588,14 @@ WITH ("а́уп")
 } ;
 # attach postpositional phrase to verb
 # generalise!
+
+# compounds
+WITH ("а-та́ура")
+  IF (-1 ("а́-бна"))
+     (NOT p (*)) {
+  MAP >COMPOUND (*)
+  SETPARENT SAFE (*) TO (jC1 (*)) ;
+} ;
 
 # Италиа жәҩуан
 WITH Prop + Place
@@ -2677,7 +2707,7 @@ WITH NOPARENT VN
 WITH NOPARENT NonFin + Pres - Rel
      IF (1 VNonFinPresLO)
         (NOT p (*)) {
-   MAP >CCOMP (*) ;
+   MAP >CCOMP:LO (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
@@ -2691,7 +2721,7 @@ WITH NOPARENT NonFin | How
 WITH NOPARENT NonFin | How
      IF (1 ("а-ды́р-ра") + S:Ad + Pot)
         (NOT p (*)) {
-   MAP >CCOMP:SUBJ (*) ;
+   MAP >CSUBJ (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
@@ -2803,6 +2833,23 @@ WITH Comma
 # make other rules ignore vocative
 REMCOHORT IGNORED WITHCHILD (*) >VOCATIVE ;
 
+# attach both commas to appos
+WITH Comma
+  IF (1 >APPOS)
+     (NOT p (*)) {
+  MAP >PUNCT (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH Comma
+  IF (-1 >APPOS)
+     (NOT p (*)) {
+  MAP >PUNCT (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+REMCOHORT IGNORED WITHCHILD (*) >APPOS ;
+
 # relativized postp
 
 # зда ҳхәарҭам ача
@@ -2817,9 +2864,11 @@ WITH NOPARENT PP + Poss:Rel
 # adjacent DO and S Noun
 
 WITH NOPARENT Pron + Pers + 3Sg | SgNoun - Pred |
+              Adj |
               Num + Card | # акгьы
               Pron + Quant # зегьы
   IF (1 DO:Ad)
+     (NEGATE c >CASE)
      (NOT p (*)) {
    MAP >OBJ (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -2934,6 +2983,14 @@ WITH NOPARENT ("иаҳа́") | ("еиҳа́")
    IF (1 VERB | Adj | Adv)
       (NOT p (*)) {
    MAP >ADVMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+# is this correct?
+WITH NOPARENT ("нас") # Cj + Coord | Cj + Sub
+  IF (1* VMain - Opt)
+     (NOT p (*)) {
+   MAP >CC (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
@@ -3093,7 +3150,7 @@ WITH NOPARENT N + Hum - Pl + F | Pron + Pers + 3SgF
 } ;
 
 WITH NOPARENT N - Hum - Pl | Rel - QUEST
-     IF (1w LO:3SgNH LINK NONE c >OBL:LO)
+     IF (1w LO:NonHum3Sg LINK NONE c >OBL:LO)
         (NOT p (*)) {
    MAP >OBL:LO (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -3422,6 +3479,12 @@ WITH NOPARENT Noun + H - Pl
   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
+WITH NOPARENT N - H - Pl
+  IF (1**w LO:NonHum3Sg BARRIER BOP LINK NONE c >OBL:LO)
+     (NOT p (*)) {
+  MAP >OBL:LO (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
 
 WITH NOPARENT N + Pl | N + Coord
   IF (1**w LO:3Pl BARRIER BOP LINK NONE c >OBL:LO)
@@ -3787,7 +3850,7 @@ WITH NOPARENT N + Hum - Pl | Pron + Pers + 3SgM
 };
 
 WITH NOPARENT N - Hum - Pl | Pron + Pers + 3SgNH
-   IF (-1*w LO:3SgNH BARRIER Comma LINK NONE c >OBL:LO)
+   IF (-1*w LO:NonHum3Sg BARRIER Comma LINK NONE c >OBL:LO)
       (NOT p (*)) {
    MAP >OBL:LO (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -3903,6 +3966,7 @@ SETPARENT V + How
 	IF (NEGATE p (*))
 	TO (-1* SubjCompV + S:3) ;
 
+# ??
 MAP >COMP TARGET V + How
     IF (p SubjCompV + S:3) ;
 
@@ -3943,6 +4007,14 @@ WITH NOPARENT Where
   IF (1 Noun)
      (NOT p (*)) {
    MAP >ADVCL:CIP (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
+# сҿамҳандаз ҳәа икылҧш-кылӡырҩуа
+WITH NOPARENT Opt
+  IF (1 ("ҳәа́") LINK 1* VMain)
+     (NOT p (*)) {
+   MAP >ADVCL (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 };
 
@@ -4089,22 +4161,24 @@ WITH Conj
 } ;
 
 # cleft sentence
+# Cop (Focus) + Rel
 
+# Афароуп сара сзызку
 WITH Rel - Q
   IF (-1* Cop BARRIER CLBc | V)
      (NOT p (*)) {
-  MAP >COMP:TOPIC (*) ;
+  MAP >CCOMP:REL (*) ;
   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
 # pseudo cleft sentence
+# Rel + Cop (Focus)
 
 # Изтәу сара соуп
-
 WITH Rel - Q
   IF (1* Cop BARRIER CLBc | V)
      (NOT p (*)) {
-  MAP >COMP:TOPIC (*) ;
+  MAP >CCOMP:REL (*) ;
   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
@@ -4138,12 +4212,10 @@ WITH (*) - VSaying - ("а́зҵаа-ра") - ("а-ҵаа-ра́") - ("а́ила
   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-
-
 WITH NonFin - Rel - QUEST
   IF (1 ("аҳа-ра́") + S:Ad)
      (NOT p (*)) {
-  MAP >CCOMP:SUBJ (*) ;
+  MAP >CSUBJ (*) ;
   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
@@ -4219,7 +4291,8 @@ MAP >ROOT TARGET (*)
     IF (NONE p (*)) # has no parent
     ;
 
-# attach unattached nodes to >ROOT
+# Attach unattached nodes to >ROOT. They will get >ROOT label, difficult to change.
+# But these will have to be edited anyway.
 SETPARENT (*)
   IF (NONE p (*))
   TO (1* >ROOT) ; # LINK NONE (p (*))) ;
