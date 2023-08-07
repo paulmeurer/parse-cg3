@@ -124,7 +124,9 @@
 (defparameter *text* nil)
 
 (defmethod parse-text ((text parsed-text) &key variety mode load-grammar (disambiguate t) lookup-guessed
-                                            wid-table unknown-tree &allow-other-keys)
+                                            wid-table unknown-tree
+                                            pos-only ;; menota: use only lemma and POS tag in :analyze
+                                            &allow-other-keys)
   (when (eq variety :kat) (setf variety :ng))
   (setf *text* text)
   (unless (eq mode :redisambiguate)
@@ -132,6 +134,7 @@
                   :variety variety
                   :lookup-guessed lookup-guessed
                   :unknown-tree unknown-tree
+                  :pos-only pos-only
                   ;;:correct-spelling-errors (eq variety :ng)
                   ))
   (when disambiguate
