@@ -854,14 +854,17 @@
 					    (getf (getf token :subtoken) :self)))))
     (declare (ignore id-table))
     (labels ((get-val (token att stored-att &optional reg)
-               (cond ((or (not (getf token stored-att))
+               (cond ((not stored)
+                      #+orig
+                      (or (not (getf token stored-att))
                           (equal (getf token stored-att) (getf token att)))
                       (getf token att))
                      (t
                       (when reg
+                        #+debug
                         (print (list :word (getf token :word)
-                                   :att (getf token stored-att)
-                                   :stored-att (getf token att)))
+                                     :att (getf token stored-att)
+                                     :stored-att (getf token att)))
                         (setf diff t))
                       (getf token stored-att)))))
       (unless nil	;(depid-table text) ;; maps dep node-ids to token-table ids
@@ -941,7 +944,7 @@
 		 (let ((pos (position (token-list-id tl) ids)))
 		   (when pos
 		     (setf (token-list-id tl) (1+ pos))
-		     (unless (= (token-list-head tl) -1)
+		     (unless (eq (token-list-head tl) -1)
 		       (let ((pos (position (token-list-head tl) ids)))
 			 (when pos
 			   (setf (token-list-head tl)
@@ -1088,15 +1091,20 @@ Field number:	Field name:	Description:
 
 (defparameter *graph* nil)
 
+(defmethod write-dependencies-conll ((corpus corpus) stream &key (start 1) &allow-other-keys)
+
 (defmethod write-dependencies-conll ((text parsed-text) stream &key (start 1) &allow-other-keys)
   (let ((token-array (text-array text)))
     (decf start)
     (loop for node across token-array
           when (and (getf node :stored-label)
                     (not (getf node :stored-parent)))
-          do (let ((graph (build-dep-graph text :node-id (getf node :self) :stored t)))
+          do ;; (debug node)
+          (let ((graph (build-dep-graph text :node-id (getf node :self) :stored t)))
                (setf *graph* graph)
-               (write-dependency-conll graph stream :sentence-id (incf start))))))
+               (write-dependency-conll graph stream
+                                       :sentence-id (getf node :wid)
+                                       )))))
 
 #+test
 (write-dependency-conll *graph* *standard-output*)
