@@ -249,7 +249,7 @@
            (language (if (eq variety :abk) :abk :kat))
 	   (applicator (cg3-applicator-create grammar))
 	   (sentence nil)
-	   #+debug(word-list ()) ;; for debugging
+	   #-debug(word-list ()) ;; for debugging
 	   (prev-pos 0)
 	   (pos 0)
 	   (token-array (parse::text-array text))
@@ -263,6 +263,7 @@
 	      (unwind-protect
 		   (progn
 		     (setf sentence (cg3-sentence-new applicator))
+                     (setf word-list ())
 		     (loop with word-seen = nil ;; and w = nil
 			and end-punct-found = nil
 			for i from prev-pos below (length token-array)
@@ -280,8 +281,10 @@
 				  (decf mwe-length))
 				 (t
 				  (destructuring-bind (&key word dipl facs norm morphology tmesis-msa mwe
-							    &allow-other-keys) token
-				    #+debug(push word word-list)
+							    &allow-other-keys)
+                                      token
+                                    ;;(debug word)
+				    #-debug(push word word-list)
 				    (when mwe (setf mwe-length mwe))
 				    (let ((wordform
 					   (or word
@@ -336,6 +339,7 @@
 						   (tag (cg3-tag-create-u8
 							 applicator
 							 (parse::transliterate language (format nil "\"<~a>\"" wordform)))))
+                                               ;;(debug wordform)
 					       (cg3-cohort-setwordform cohort tag)
 					       (loop for l.f in morphology
 						  for i from 0
@@ -380,8 +384,7 @@
                                                         "p" "div" "head" "lg" "li")
                                                       :test #'equal))
 					   (and (eq (car token) :word)
-						(find word-seen sentence-end-strings
-						      :test #'equal)
+						(find word-seen sentence-end-strings :test #'equal)
 						;; look one ahead to see if there is more right punctuation
 						(let ((next-token
 						       (when (< (1+ i) (length token-array))
@@ -390,9 +393,9 @@
                                                        (and sentence-start-is-uppercase
                                                             (loop for id from (1+ i) below (length token-array)
                                                                for (type word) = (aref token-array id)
-                                                               do (print (list type word))
+                                                               ;; do (print (list type word))
                                                                when (and (eq type :word)
-                                                                         (not (find word '("”" "–" ")" "]" "!" "?")
+                                                                         (not (find word '("”" "»" "–" ")" "]" "!" "?")
                                                                                     :test #'string=)))
                                                                return (lower-case-p (char word 0))))))
                                                   (unless next-is-lowercase
@@ -401,10 +404,9 @@
                                                         (not (eq (car next-token) :word))
                                                         (not (find (getf next-token :word)
                                                                     ;; right punctuation
-                                                                   '("”" ")" "]" "?" "!")
+                                                                   '("”" "»" ")" "]" "?" "!")
                                                                    :test #'string=))))))))))
-		     #+debug(format t "~{~a ~}~%" (nreverse word-list))
-		     #+debug(setf wordlist ())
+		     #-debug(format t "~{~a ~}~%" (nreverse word-list))
 		     (cg3-sentence-runrules applicator sentence)
 		     (loop with coh = 0 and mwe-count = 0 and added = nil
 			for i from prev-pos to pos ;; the sentence range
