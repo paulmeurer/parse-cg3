@@ -860,12 +860,17 @@
                           (equal (getf token stored-att) (getf token att)))
                       (getf token att))
                      (t
-                      (when reg
-                        #+debug
-                        (print (list :word (getf token :word)
-                                     :att (getf token stored-att)
-                                     :stored-att (getf token att)))
-                        (setf diff t))
+                      (let ((stored-val (getf token stored-att))
+                            (val (getf token att)))
+                        (when (and reg
+                                   (not (equal val stored-val))
+                                   (not (and (null stored-val)
+                                             (or (eq val -1) (equal val "ROOT")))))
+                          #+debug
+                          (print (list :word (getf token :word)
+                                       :val val
+                                       :stored-val stored-val))
+                          (setf diff t)))
                       (getf token stored-att)))))
       (unless nil	;(depid-table text) ;; maps dep node-ids to token-table ids
         (setf (depid-array text)
@@ -1109,11 +1114,53 @@ Field number:	Field name:	Description:
 #+test
 (write-dependency-conll *graph* *standard-output*)
 
-(defun morph-to-ud (morph &key drop-pos)
+;; abk only
+
+(defparameter *abnc-to-ud-features* (make-hash-table :test #'equal))
+
+(progn
+  (clrhash *abnc-to-ud-features*)
+  (u:with-file-fields ((&optional abnc-feature ud-features pos &rest rest)
+                       "projects:abnc;feature-names.tsv" :empty-to-nil t :comment #\#)
+    (declare (ignore rest))
+    (when (or ud-features pos)
+      (setf (gethash abnc-feature *abnc-to-ud-features*)
+            (list ud-features (if (equal pos "x") t pos))))))
+
+;; fine-grained postag, which is simply the bag of features, except auxiliary features
+(defun morph-to-postag (morph &key drop-pos)
   (let ((features (u:split morph #\space)))
     (setf features (delete-if (lambda (f) (find #\> f)) features))
     (when drop-pos (pop features))
     (format nil "~{~a~^ ~}" features)))
+
+(defun morph-to-ud (morph &key drop-pos)
+  (let ((features (u:split morph #\space))
+        (ud-features ()))
+    (setf features (delete-if (lambda (f) (find #\> f)) features))
+    (when drop-pos (pop features))
+    (dolist (f features)
+      (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
+        (when (and ud (not is-pos))
+          (push ud ud-features))))
+    (format nil "~{~a~^|~}" (nreverse ud-features))))
+
+#+test
+(print (morph-to-ud-pos "PP Poss:3SgNH"))
+
+(defun morph-to-ud-pos (morph)
+  (let ((features (u:split morph #\space))
+        (pos nil))
+    (dolist (f features)
+      (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
+        (cond ((null is-pos)
+               nil)
+              ((not (eq is-pos t))
+               (unless (or (equal pos "NOUN") (equal pos "PROPN")) ;; b/o coord
+                 (setf pos is-pos)))
+              (ud
+               (setf pos ud)))))
+    pos))
 
 (defmethod write-dependency-conll ((graph dep-node) stream &key text sentence-id &allow-other-keys)
   (let ((nodes ()))
@@ -1123,22 +1170,31 @@ Field number:	Field name:	Description:
                                  (node-id (car (node-parents node)))
                                  0)))
                  (unless (zerop (node-id node))
-                   (push (list (node-id node)
-                               parent
-                               (node-label node)
-                               (relation node) 
-                               (getf atts :|lemma|)
-                               (getf atts :|pos|)
-                               (morph-to-ud (getf atts :|morph|) :drop-pos t))
-                         nodes)))
+                   (let ((morph (getf atts :|morph|)))
+                     (push (list (node-id node)
+                                 (node-label node)
+                                 (getf atts :|lemma|)
+                                 (morph-to-ud-pos morph) ;; (getf atts :|pos|) 
+                                 (morph-to-postag morph :drop-pos nil)
+                                 (morph-to-ud morph)
+                                 parent
+                                 (relation node))
+                           nodes))))
                (mapc #'walk (node-children node))))
       (walk graph)
       (setf nodes (sort nodes #'< :key #'car))
       (format stream "# sent_id: ~a~%# sentence: ~{~a~^ ~}~%"
-              sentence-id (mapcar #'caddr nodes))
-      (loop for (id parent word label lemma pos morph) in nodes
+              sentence-id (mapcar #'cadr nodes))
+      (loop for (id form lemma cpostag postag feats head deprel) in nodes
             do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	_~%"
-                       id word lemma pos pos morph parent (string-downcase label)))
+                       id
+                       form
+                       lemma
+                       cpostag
+                       postag
+                       feats
+                       head
+                       (string-downcase deprel)))
       (terpri stream))))
 
 
