@@ -39,13 +39,15 @@
      when pos
      do (setf (char text i) (char +correct-abk-chars+ pos))))
 
-(defmethod parse-text ((text string) &key variety load-grammar (disambiguate t)
+(defmethod parse-text ((text string) &key variety load-grammar (disambiguate t) corpus
                                        lookup-guessed orthography unknown-tree count &allow-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
   (when (eq variety :abk)
     (normalize-characters text))
-  (let* ((parsed-text (make-instance (text-class) :orthography orthography))
+  (let* ((parsed-text (make-instance (text-class)
+                                     :orthography orthography
+                                     :corpus corpus))
          (word-id-table (word-id-table parsed-text))
          (id 0))
     (setf *text* parsed-text)
@@ -129,14 +131,19 @@
                                             &allow-other-keys)
   (when (eq variety :kat) (setf variety :ng))
   (setf *text* text)
-  (unless (eq mode :redisambiguate)
-    (process-text text :analyze
-                  :variety variety
-                  :lookup-guessed lookup-guessed
-                  :unknown-tree unknown-tree
-                  :pos-only pos-only
-                  ;;:correct-spelling-errors (eq variety :ng)
-                  ))
+  (case (debug mode)
+    (:redisambiguate
+     nil)
+    (:renormalize
+     (process-text text :normalize :variety variety))
+    (otherwise
+     (process-text text :analyze
+                   :variety variety
+                   :lookup-guessed lookup-guessed
+                   :unknown-tree unknown-tree
+                   :pos-only pos-only
+                   ;;:correct-spelling-errors (eq variety :ng)
+                   )))
   (when disambiguate
     (process-text text :disambiguate
                   :variety variety
@@ -825,15 +832,18 @@
                                       ,@(when count `("count" ,count))
                                       ,@(when trace `("trace" ,trace)))))))))))
 
-(defmethod select-reading ((text parsed-text) &key wid rid)
+(defmethod select-reading ((text parsed-text) stream &key wid rid)
   (let* ((token (gethash wid (parse::word-id-table text)))
          (readings (getf token :morphology))
          (reading (nth rid readings)))
     (dolist (reading readings)
       (when (eq (caddr reading) :selected-manually)
-        (setf (caddr reading) :discarded-manually)))
+        (setf (caddr reading) :discarded-manually))
+      (setf (cadr reading)
+            (format nil "~{~a~^ ~}" (delete "<Sel>" (u:split (cadr reading) #\space) :test #'string=))))
     (setf (caddr reading) :selected-manually
-          (cadr reading) (u:concat (cadr reading) " <Sel>"))))
+          (cadr reading) (u:concat (cadr reading) " <Sel>"))
+    (json "token" (parse::write-word-json token))))
 
 ;; *text*
 
@@ -1095,8 +1105,6 @@ Field number:	Field name:	Description:
 (write-dependencies-conll *text* *standard-output*)
 
 (defparameter *graph* nil)
-
-(defmethod write-dependencies-conll ((corpus corpus) stream &key (start 1) &allow-other-keys)
 
 (defmethod write-dependencies-conll ((text parsed-text) stream &key (start 1) &allow-other-keys)
   (let ((token-array (text-array text)))
