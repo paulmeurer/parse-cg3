@@ -249,7 +249,7 @@
            (language (if (eq variety :abk) :abk :kat))
 	   (applicator (cg3-applicator-create grammar))
 	   (sentence nil)
-	   #-debug(word-list ()) ;; for debugging
+	   #+debug(word-list ()) ;; for debugging
 	   (prev-pos 0)
 	   (pos 0)
 	   (token-array (parse::text-array text))
@@ -263,7 +263,7 @@
 	      (unwind-protect
 		   (progn
 		     (setf sentence (cg3-sentence-new applicator))
-                     (setf word-list ())
+                     ;; (setf word-list ())
 		     (loop with word-seen = nil ;; and w = nil
 			and end-punct-found = nil
 			for i from prev-pos below (length token-array)
@@ -284,7 +284,7 @@
 							    &allow-other-keys)
                                       token
                                     ;;(debug word)
-				    #-debug(push word word-list)
+				    #+debug(push word word-list)
 				    (when mwe (setf mwe-length mwe))
 				    (let ((wordform
 					   (or word
@@ -406,7 +406,7 @@
                                                                     ;; right punctuation
                                                                    '("”" "»" ")" "]" "?" "!")
                                                                    :test #'string=))))))))))
-		     #-debug(format t "~{~a ~}~%" (nreverse word-list))
+		     #+debug(format t "~{~a ~}~%" (nreverse word-list))
 		     (cg3-sentence-runrules applicator sentence)
 		     (loop with coh = 0 and mwe-count = 0 and added = nil
 			for i from prev-pos to pos ;; the sentence range
@@ -740,7 +740,7 @@
 			     tag (cg3-cohort-getwordform cohort)
 			     word (cg3-tag-gettext-u8 tag)))
 		     ;; lemma + features
-		     (write-line word)
+		     ;;(write-line word)
 		     (dotimes (re (cg3-cohort-numreadings cohort))
 		       (let* ((reading (cg3-cohort-getreading cohort re))
 			      (numtags (cg3-reading-numtags reading)))
