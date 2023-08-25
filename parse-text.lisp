@@ -512,6 +512,10 @@
 			     ;; was: (cddr (print (dat:string-tree-get lexicon token)))
 			     :new-morphology)))))))))
 
+#+test
+(process-text *text* :disambiguate :variety :non :mode :redisambiguate)
+
+;; ups: two times mode!
 (defmethod process-text ((text parsed-text) (mode (eql :disambiguate))
                          &key (variety :og) (load-grammar t) mode
                            (sentence-end-strings vislcg3::*sentence-end-strings*)
@@ -522,7 +526,6 @@
                                   :load-grammar load-grammar
 				  :sentence-end-strings sentence-end-strings
                                   :sentence-start-is-uppercase (eq variety :abk))
-
   (let ((token-array (text-array text))
         (wid-table (word-id-table text)))
     (loop for node across token-array
@@ -591,13 +594,16 @@
                                         (incf id)))
                                      (:start-element
                                       (st-json:jso "struct" (getf node :start-element)
-                                                   "type" "start-element"))
+                                                   "type" "start-element"
+                                                   "atts" (or (getf node :atts) :null)))
                                      (:end-element
                                       (st-json:jso "struct" (getf node :end-element)
-                                                   "type" "end-element"))
+                                                   "type" "end-element"
+                                                   "atts" (or (getf node :atts) :null)))
                                      (:empty-element
                                       (st-json:jso "struct" (getf node :empty-element)
-                                                   "type" "empty-element")))))
+                                                   "type" "empty-element"
+                                                   "atts" (or (getf node :atts) :null))))))
                   ((and start end (< (- start window) id start))
                    (ecase (car node)
                      (:word

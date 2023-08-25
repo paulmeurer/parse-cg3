@@ -506,11 +506,11 @@
 	   for parent = (getf token :parent)
 	   for subtoken = (getf token :subtoken)
 	   when self
-	   do (setf (getf token :self) (1+ (position self ids)))
+	   do (setf (getf token :self) (1+ (or (position self ids) -1))) ;; or … -1 can only happen if token has been deleted
 	   when parent
 	   do (setf (getf token :parent) (1+ (or (position parent ids) -2)))
 	   when (getf subtoken :self)
-	   do (setf (getf subtoken :self) (1+ (position (getf subtoken :self) ids)))
+	   do (setf (getf subtoken :self) (1+ (or (position (getf subtoken :self) ids) -1)))
 	   when (getf subtoken :parent)
 	   do (setf (getf subtoken :parent) (1+ (or (position (getf subtoken :parent) ids) -2)))))
       text)))
