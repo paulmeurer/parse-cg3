@@ -652,11 +652,11 @@
   (declare (ignore tracep split-trace no-newlines error disambiguate))
   (ecase (car node)
     (:word
-     (destructuring-bind (&key word morphology facs dipl norm dipl-xml norm-xml stored-norm computed-norm
-                               |id| cpos comment wid status &allow-other-keys)
+     (destructuring-bind (&key word morphology facs dipl norm dipl-xml facs-xml norm-xml
+                               stored-norm computed-norm
+                               |id| cpos comment wid status token-status &allow-other-keys)
          node
        (declare (ignore morphology |id| dipl facs))
-       ;;(print (list :word word :morphology morphology))
        (let* ((morphology (unless no-morphology morphology)) ;; (getf (cddr node) :morphology)))
 	      (tmesis-msa (unless no-morphology (getf (cddr node) :tmesis-msa))))
          (declare (ignore tmesis-msa))
@@ -674,6 +674,7 @@
 	    ,@(when cpos `("cpos" ,cpos))
             "norm" ,(or norm :null)
             "dipl_xml" ,(or dipl-xml :null)
+            "facs_xml" ,(or facs-xml :null)
             "norm_xml" ,(or norm-xml :null)
             "stored_norm" ,(if stored-norm :true :false)
             "computed_norm" ,(if computed-norm :true :false)
@@ -704,6 +705,7 @@
 				 when rest
 				 do #m(gnc:tmesis/))))))
             "status" ,(or status :null)
+            "token_status" ,(or token-status :null)
             "comment" ,(or comment :null))))))))
 
 (defparameter *feature-name-table* (make-hash-table :test #'equal))
