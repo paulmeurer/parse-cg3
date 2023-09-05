@@ -705,7 +705,7 @@
 				 when rest
 				 do #m(gnc:tmesis/))))))
             "status" ,(or status :null)
-            "token_status" ,(or token-status :null)
+            "token_status" ,(if token-status (string-downcase token-status) :null)
             "comment" ,(or comment :null))))))))
 
 (defparameter *feature-name-table* (make-hash-table :test #'equal))
