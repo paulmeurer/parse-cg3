@@ -654,16 +654,16 @@
     (:word
      (destructuring-bind (&key word morphology facs dipl norm dipl-xml facs-xml norm-xml
                                stored-norm computed-norm
+                               stored-facs computed-facs
                                |id| cpos comment wid status token-status &allow-other-keys)
          node
-       (declare (ignore morphology |id| dipl facs))
-       (let* ((morphology (unless no-morphology morphology)) ;; (getf (cddr node) :morphology)))
+       (declare (ignore |id| dipl))
+       (let* ((morphology (unless no-morphology morphology))
 	      (tmesis-msa (unless no-morphology (getf (cddr node) :tmesis-msa))))
          (declare (ignore tmesis-msa))
 	 (apply
 	  #'st-json::jso
-	  `("word"
-	    ,word
+	  `("word" ,(or dipl word)
 	    ,@(when dependencies 
 		    `("self" ,(or (unless (eql (getf node :self) 0) (getf node :self)) :null)
 		      "parent" ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)
@@ -673,11 +673,14 @@
 	    ,@(when count `("count" ,(length morphology)))
 	    ,@(when cpos `("cpos" ,cpos))
             "norm" ,(or norm :null)
+            "facs" ,(or facs :null)
             "dipl_xml" ,(or dipl-xml :null)
             "facs_xml" ,(or facs-xml :null)
             "norm_xml" ,(or norm-xml :null)
             "stored_norm" ,(if stored-norm :true :false)
             "computed_norm" ,(if computed-norm :true :false)
+            "stored_facs" ,(if stored-facs :true :false)
+            "computed_facs" ,(if computed-facs :true :false)
 	    "id" ,id
             "wid" ,(or wid :null)
 	    ,@(when (and lemma features)
