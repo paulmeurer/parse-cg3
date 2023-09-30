@@ -96,6 +96,11 @@
 	  (< (gethash f1 *abkhaz-sorted-features* 1000)
 	     (gethash f2 *abkhaz-sorted-features* 1000)))))
 
+#+test
+(print (lookup-abk-coord-compound "ишнеи-шнеиуа"))
+#+test
+(print (lookup-abk-coord-compound "ишааи-шааиуа"))
+
 ;; two types of coordination compounds:
 ;; 1. two complete words with comparable features
 ;;    e.g., …гьы-…гьы coordinations, ихы-игәы, иҟаз-ианиз
@@ -112,25 +117,30 @@
 			      (lookup-morphology :abk (subseq word 0 hyphen-pos)
 						 :orthography orthography :coord t))))
 	     (morph2 (lookup-morphology :abk w2 :orthography orthography :coord t)))
+        (print (list morph1 morph2))
 	(u:collecting
 	  (loop for (lemma1 features1) in morph1
-	     do (loop for (lemma2 features2) in morph2
-		   ;; do (print (list features1 features2))
-		   when
-		     (labels ((find-feature (f &rest features)
-				(find f
-				      (cond ((null features)
-					     features2)
-					    ((listp (car features))
-					     (car features))
-					    (t
-					     features))
+	        do (loop for (lemma2 features2) in morph2
+	                  do (print (list lemma1 lemma2))
+		         when
+		         (labels ((find-feature (f &rest features) ;; find f in features (if given) or in features2
+				(find f (cond ((null features)
+					       features2)
+					      ((listp (car features))
+					       (car features))
+					      (t
+					       features))
 				      :test #'string=)))
 		       (cond ((find "VCoord" features1 :test #'string=)
-			      (and (loop for f in features1
-				      always (or (find-feature f)
-						 (and (equal f "FPv:аа")
-						      (find-feature "FPv:на"))))
+			      (and
+                               (find "V" features2 :test #'string=)
+                               ;; equal stems
+                               (equal lemma1 (subseq lemma2 0 (1+ (position #\- lemma2 :from-end t)))) ;; ??
+                               (loop for f in features1
+				     always (or (equal f "VCoord")
+                                                (find-feature f)
+						(and (equal f "FPv:аа")
+						     (find-feature "FPv:на"))))
 				   ;; check for equal prefixes
 				   
 				   ))
@@ -140,15 +150,16 @@
 						 (find-feature f)))
 				   (loop for f in features2
 				      always (or (not (find-feature f "Poss:Rel" "Why"))
-						 (find-feature f features1)))
-				   ))))
-		   do ;; (print (list features1 features2))
+						        (find-feature f features1)))))))
+		   do (print (list features1 features2))
 		     (let ((reading (list (u:concat (if hyphen
 							lemma1
 							(subseq lemma1 0 (1- (length lemma1))))
 						    "="
-						    (if (and (find "<PreAdj>" features2 :test #'string=)
-							     (find #\- lemma2))
+						    (if (and (find #\- lemma2 :end 3)
+                                                             #+ignore
+							     (find "<PreAdj>" features2 :test #'string=)
+                                                             )
 							(subseq lemma2 (1+ (position #\- lemma2)))
 							lemma2))
 					  ;; features1
