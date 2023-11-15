@@ -3,7 +3,7 @@
 # ============================================ #
 
 # tags taken from abkhaz-noun.fst and abkhaz-verb.fst Sigma lists
-STRICT-TAGS += xCU xNC xAJ
+STRICT-TAGS += xCU xNC xAJ xCC
                cN cG cA cD
                nS nP nD
                gM gF gN
@@ -35,7 +35,7 @@ REMOVE <Del> ; # remove manually removed reading
   SECTION  #
 # ======== #
 
-SELECT ("ok") + xCU ;
+SELECT ("ok") + xCC ;
 
 LIST CASE = cN cG cA cD ;
 LIST NUMBER = nS nP nD ;
