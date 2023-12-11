@@ -1107,6 +1107,10 @@ n-SELECT ("თუ" Cj Sub)
 #    IF (-2 V)
 #       (-1 ("თუ")) ;
 
+n-SELECT ("ჩან·ი") + N IF (-1 ("<იუნ-იან>")) ;
+
+SELECT ("*·ჩენ[ა]/ჩან") ; # IF (-1 ("როგორც")) ;
+
 # only works with keep-non-mwe-readings = T
 SELECT ("თუ") + Cj + Sub
     IF (-1 BOP)
