@@ -26,6 +26,12 @@
 (defmethod transliterate ((language t) str)
   str)
 
+;; change this
+(defmethod transliterate ((language (eql :abk)) str)
+  str
+  (kp::transliterate str :standard :abkhaz))
+
+
 ;; to be overridden
 (defun text-class ()
   'parsed-text)
@@ -342,12 +348,11 @@
 					      do (return (list (node-token node) (cadr next-token+j2) j)))))
 			  (variety (find-if-not #'null lang-stack))
 			  (normalized-token (when token
-					      (transliterate
-                                               language
-					       (cond ((and normalize (> (length token) 1))
-                                                      (remove-if (lambda (c) (find c "()[]/\\")) token))
-						     (t
-						      token)))))
+					      ;; (transliterate language ;; ??
+					      (cond ((and normalize (> (length token) 1))
+                                                     (remove-if (lambda (c) (find c "()[]/\\")) token))
+						    (t
+						     token))));; )
 			  (readings (when token ;; TODO: use second value (norm)
 				      (lookup-morphology language normalized-token
 							 :lookup-guessed lookup-guessed 
@@ -1125,10 +1130,11 @@ Field number:	Field name:	Description:
                     (not (getf node :stored-parent)))
           do ;; (debug node)
           (let ((graph (build-dep-graph text :node-id (getf node :self) :stored t)))
-               (setf *graph* graph)
-               (write-dependency-conll graph stream
-                                       :sentence-id (getf node :wid)
-                                       )))))
+            (setf *graph* graph)
+            (debug graph)
+            (debug (getf node :wid))
+            (write-dependency-conll graph stream
+                                    :sentence-id (getf node :wid))))))
 
 #+test
 (write-dependency-conll *graph* *standard-output*)
@@ -1151,7 +1157,7 @@ Field number:	Field name:	Description:
   (let ((features (u:split morph #\space)))
     (setf features (delete-if (lambda (f) (find #\> f)) features))
     (when drop-pos (pop features))
-    (format nil "~{~a~^ ~}" features)))
+    (format nil "~{~a~^_~}" features)))
 
 (defun morph-to-ud (morph &key drop-pos)
   (let ((features (u:split morph #\space))
@@ -1161,8 +1167,11 @@ Field number:	Field name:	Description:
     (dolist (f features)
       (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
         (when (and ud (not is-pos))
-          (push ud ud-features))))
-    (format nil "~{~a~^|~}" (nreverse ud-features))))
+          (dolist (f (u:split ud #\|))
+            (pushnew f ud-features :test #'string= :key (lambda (fv) (subseq fv 0 (position #\= fv))))))))
+        (if ud-features
+        (format nil "~{~a~^|~}" (sort ud-features #'string<))
+        "_")))
 
 #+test
 (print (morph-to-ud-pos "PP Poss:3SgNH"))
@@ -1193,7 +1202,7 @@ Field number:	Field name:	Description:
                      (push (list (node-id node)
                                  (node-label node)
                                  (getf atts :|lemma|)
-                                 (morph-to-ud-pos morph) ;; (getf atts :|pos|) 
+                                 (morph-to-ud-pos morph)
                                  (morph-to-postag morph :drop-pos nil)
                                  (morph-to-ud morph)
                                  parent
@@ -1202,18 +1211,21 @@ Field number:	Field name:	Description:
                (mapc #'walk (node-children node))))
       (walk graph)
       (setf nodes (sort nodes #'< :key #'car))
-      (format stream "# sent_id: ~a~%# sentence: ~{~a~^ ~}~%"
-              sentence-id (mapcar #'cadr nodes))
-      (loop for (id form lemma cpostag postag feats head deprel) in nodes
-            do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	_~%"
-                       id
-                       form
-                       lemma
-                       cpostag
-                       postag
-                       feats
-                       head
-                       (string-downcase deprel)))
+      (let* ((text (format nil "~{~a~^ ~}" (mapcar #'cadr nodes)))
+             (trans-text (transliterate :abk text)))
+        (format stream "# sent_id = ~a~%# text = ~a~%# text-transcription = ~a~%"
+                sentence-id text trans-text)
+        (loop for (id form lemma cpostag postag feats head deprel) in nodes
+              do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	_~%"
+                         id
+                         form
+                         lemma
+                         cpostag
+                         postag
+                         feats
+                         head
+                         #-orig(string-downcase deprel)
+                         #+prelim(string-downcase (subseq deprel 0 (position #\: deprel))))))
       (terpri stream))))
 
 
