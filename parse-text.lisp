@@ -231,6 +231,11 @@
 
 ;; *text*
 
+(defparameter *break* nil)
+
+#+test
+(setf *break* t)
+
 ;; lexicon is stored in .lex file in save-all-new-words() (obsolete!)
 ;; it stores the values of :new-morphology
 (defmethod process-text ((text parsed-text) (mode (eql :analyze))
@@ -259,6 +264,7 @@
     (print :wid-table-loaded)
     (let ((lex-file (when (location text) (merge-pathnames ".lex" (location text)))))
       ;;(debug lex-file)
+      #+ignore
       (when (and lex-file (probe-file lex-file))
 	(Print :lex-file-found)
 	;; corr is treated like norm if not used as base for text correction
@@ -339,7 +345,7 @@
 		(:word
 		 (multiple-value-bind (token word lex-norm) (node-token node)
 		   (declare (ignore lex-norm))
-		   (let* ((next-token+j2 (loop for j from (1+ i) below (length token-array)
+                   (let* ((next-token+j2 (loop for j from (1+ i) below (length token-array)
 					    for node = (aref token-array j)
 					    when (eq (car node) :word)
 					    do (return (list (node-token node) j))))
@@ -427,7 +433,7 @@
 			   (unless keep-non-mwe-readings
 			     (setf (getf (cddr node) :mwe) mwe-length))
 			   (dolist (i (cdr next-token+j)) (push i mwe-positions)))
-			 ;;(debug readings)
+			 (when *break* (setf *break* nil) (break))
 			 (cond ((find i mwe-positions)
 				(setf (getf (cddr node) :morphology)
 				      (if keep-non-mwe-readings
@@ -439,7 +445,8 @@
 				      (getf (cddr node) :morphology) guess-readings))
 			       (readings
                                 (when wid-table
-                                  (let ((wid (getf node :wid)))
+                                  (let ((wid (or (getf node :wid) ;; from corpus att
+                                                 (getf node :|xml:id|)))) ;; from xml text
                                     (when wid
                                       (let* ((id (parse-integer wid :start 1))
                                              (reading (gethash id wid-table)))
