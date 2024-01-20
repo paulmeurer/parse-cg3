@@ -187,7 +187,7 @@
 
 (defun lemma-in-dictionary (lemma)
   (let ((hyph-pos (position #\- lemma :from-end t)))
-    (when (and hyph-pos (> hyph-pos 3)
+    (when (and hyph-pos (>= hyph-pos 3)
                (or (string= lemma "ра" :start1 (- (length lemma) 2))
                    (string= lemma "ра́" :start1 (- (length lemma) 3))))
       (setf lemma (u:concat (subseq lemma 0 hyph-pos) (subseq lemma (1+ hyph-pos)))))
@@ -202,7 +202,7 @@
                (gethash (delete #\́ lemma) *dictionary-lemma-table*))))))
 
 #+test
-(print (lemma-in-dictionary "-3"))
+(print (lemma-in-dictionary "а-к-ра́"))
 
 (defun get-simple-translation (lemma features)
   (declare (ignore lemma features))
