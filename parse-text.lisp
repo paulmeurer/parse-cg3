@@ -6,7 +6,8 @@
   ((name :initform nil :initarg :name :reader name)
    (variety :initform :ng :initarg :variety :accessor variety)
    (orthography :initform :standard :initarg :orthography :reader orthography)
-   (location :initform nil :initarg :location :reader location)
+   (location :initform nil :initarg :location :reader location) ;; path to doc location
+   (document :initform nil :initarg :document :reader document) ;; document name in corpus
    (corpus :initform nil :initarg :corpus :reader corpus)
    (text-array :initform (make-array 0 :adjustable t :fill-pointer t) :accessor text-array)
    ;; word-id -> index in text-array
@@ -253,7 +254,9 @@
         (extracted-table (make-hash-table :test #'equal))) ;; table of all words that have been treated
     ;;#+test ;; *text*
     ;; (describe lexicon)
+    (print :load-wid-table)
     (load-wid-table text)
+    (print :wid-table-loaded)
     (let ((lex-file (when (location text) (merge-pathnames ".lex" (location text)))))
       ;;(debug lex-file)
       (when (and lex-file (probe-file lex-file))
@@ -1029,13 +1032,18 @@
 					       :atts (token-list-atts tl)
 					       :children children)))
 			(parent (when node (gethash (or (token-list-head tl) -1) children-table))))
-		   ;;(debug node)
 		   (when node
 		     (setf (gethash id children-table) node
 			   (gethash id node-table) node)
 		     (when (= id node-id) (push node roots))
 		     (cond ((listp parent)
-			    (u:append* (gethash (or (token-list-head tl) -1) children-table) node))
+                            (let ((head (gethash (or (token-list-head tl) -1) children-table)))
+                              (if (listp head)
+                                  ;; the normal case
+			          (u:append* (gethash (or (token-list-head tl) -1) children-table) node)
+                                  ;; only happens when head is not the head of the structure
+                                  (setf (gethash (or (token-list-head tl) -1) children-table)
+                                        (list head node)))))
 			   (t
 			    (u:append* (node-children parent) node))))
 		   (mapc (lambda (slashee-id slash-relation)
@@ -1122,19 +1130,23 @@ Field number:	Field name:	Description:
 
 (defparameter *graph* nil)
 
-(defmethod write-dependencies-conll ((text parsed-text) stream &key (start 1) &allow-other-keys)
+(defmethod write-dependencies-conll ((text parsed-text) stream &key (start 1) all &allow-other-keys)
   (let ((token-array (text-array text)))
-    (decf start)
+    ;;(decf start)
     (loop for node across token-array
-          when (and (getf node :stored-label)
-                    (not (getf node :stored-parent)))
+          when (or (and all (= -1 (getf node :parent)))
+                   (and (getf node :stored-label)
+                        (not (getf node :stored-parent))))
           do ;; (debug node)
-          (let ((graph (build-dep-graph text :node-id (getf node :self) :stored t)))
+          (let ((graph (build-dep-graph text
+                                        :node-id (getf node :self)
+                                        :stored (not all))))
             (setf *graph* graph)
-            (debug graph)
-            (debug (getf node :wid))
+            ;;(debug graph)
+            ;;(debug (getf node :wid))
             (write-dependency-conll graph stream
-                                    :sentence-id (getf node :wid))))))
+                                    :sentence-id (getf node :wid)
+                                    :include-postag (not all))))))
 
 #+test
 (write-dependency-conll *graph* *standard-output*)
@@ -1170,7 +1182,7 @@ Field number:	Field name:	Description:
           (dolist (f (u:split ud #\|))
             (pushnew f ud-features :test #'string= :key (lambda (fv) (subseq fv 0 (position #\= fv))))))))
         (if ud-features
-        (format nil "~{~a~^|~}" (sort ud-features #'string<))
+        (format nil "~{~a~^|~}" (sort ud-features #'string-lessp))
         "_")))
 
 #+test
@@ -1190,7 +1202,8 @@ Field number:	Field name:	Description:
                (setf pos ud)))))
     pos))
 
-(defmethod write-dependency-conll ((graph dep-node) stream &key text sentence-id &allow-other-keys)
+(defmethod write-dependency-conll ((graph dep-node) stream
+                                   &key text sentence-id (include-postag t) &allow-other-keys)
   (let ((nodes ()))
     (labels ((walk (node)
                (let ((atts (node-atts node))
@@ -1203,7 +1216,7 @@ Field number:	Field name:	Description:
                                  (node-label node)
                                  (getf atts :|lemma|)
                                  (morph-to-ud-pos morph)
-                                 (morph-to-postag morph :drop-pos nil)
+                                 (if include-postag (morph-to-postag morph :drop-pos nil) "_")
                                  (morph-to-ud morph)
                                  parent
                                  (relation node))
