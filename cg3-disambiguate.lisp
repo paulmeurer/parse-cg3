@@ -338,7 +338,11 @@
 					     (let ((cohort (cg3-cohort-create sentence))
 						   (tag (cg3-tag-create-u8
 							 applicator
-							 (parse::transliterate language (format nil "\"<~a>\"" wordform)))))
+                                                         #+ignore ;; why that???
+							 (parse::transliterate language (format nil "\"<~a>\"" wordform))
+                                                         (concat "\"<" wordform ">\"")
+                                                         #+ignore
+                                                         (format nil "\"<~a>\"" wordform))))
                                                ;;(debug wordform)
 					       (cg3-cohort-setwordform cohort tag)
 					       (loop for l.f in morphology
