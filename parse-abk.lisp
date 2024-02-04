@@ -185,9 +185,14 @@
 
 (defparameter *dictionary-lemma-table* (make-hash-table :test #'equal))
 
+#+test
+(print (lemma-in-dictionary "аа-ра́"))
+
 (defun lemma-in-dictionary (lemma)
   (let ((hyph-pos (position #\- lemma :from-end t)))
-    (when (and hyph-pos (>= hyph-pos 3)
+    (when (and hyph-pos
+               (or (>= hyph-pos 3)
+                   (string= lemma "аа-ра́")) 
                (or (string= lemma "ра" :start1 (- (length lemma) 2))
                    (string= lemma "ра́" :start1 (- (length lemma) 3))))
       (setf lemma (u:concat (subseq lemma 0 hyph-pos) (subseq lemma (1+ hyph-pos)))))
@@ -200,6 +205,13 @@
           (and (= (count-if (lambda (c) (find c "аыеоу")) lemma) 1)
                ;; one-syllable words may have no accent in the dictionary
                (gethash (delete #\́ lemma) *dictionary-lemma-table*))))))
+
+;; refine for lemmas with hyphen
+(defun word-equals-lemma (word lemma)
+  (equal word (delete-if (lambda (c) (find c '(#\- #\́ #\· #\:))) lemma)))
+
+(defun word-equals-lemma-lc (word lemma)
+  (equal (string-downcase word) (delete-if (lambda (c) (find c '(#\- #\́ #\· #\:))) lemma)))
 
 #+test
 (print (lemma-in-dictionary "а-к-ра́"))
@@ -279,12 +291,18 @@
                                          features)
                                         ((find "Punct" features :test #'string=)
                                          features)
-                                        ((eq (lemma-in-dictionary lemma) :hunting-lang)
-                                         (append features (list "<HuntingLang>")))
-                                        ((lemma-in-dictionary lemma)
-                                         features)
                                         (t
-                                         (append features (list "<NoLex>")))))
+                                         (let ((lemma-in-dict (lemma-in-dictionary lemma)))
+                                           (cond ((word-equals-lemma word lemma)
+                                                  (append features (list "<Lemma>")))
+                                                 ((word-equals-lemma-lc word lemma)
+                                                  (append features (list "<LemmaLC>")))
+                                                 ((not lemma-in-dict)
+                                                  (append features (list "<NoLex>")))
+                                                 ((eq lemma-in-dict :hunting-lang)
+                                                  (append features (list "<HuntingLang>")))
+                                                 (t
+                                                  features))))))
                         (features (sort-abkhaz-features features))
                         (rid -1))
                    
@@ -314,14 +332,15 @@
                            (or (string< (car lf1) (car lf2))
                                (and (string= (car lf1) (car lf2))
                                     (< (length (cadr lf1)) (length (cadr lf2))))
-                               #+ignore
                                (and (string= (car lf1) (car lf2))
-                                    (= (length (cadr lf1)) (length (cadr lf2))))))))
+                                    (= (length (cadr lf1)) (length (cadr lf2)))
+                                    (loop for f1 in (cadr lf1)
+                                          for f2 in (cadr lf2)
+                                          thereis (string< f1 f2)))))))
              
              ;; mark +Det reading if one without +Det exists
-             
              (setf lemmas+features
-                   (loop with prev-lemma = ""
+                   (loop with prev-lemma = "" and collected = nil
                       and prev-features = ()
                       and prev-filtered-features = ()
                       for l+f in lemmas+features
@@ -342,7 +361,8 @@
                       do (setf (cdr prev-features) (append (cdr prev-features) (list "[Det]")))
                       else if (and (string= prev-lemma lemma)
                                    (= (length prev-filtered-features) (1- (length filtered-features)))
-                                   (let ((diff (set-difference filtered-features prev-filtered-features :test #'string=)))
+                                   (let ((diff (set-difference filtered-features prev-filtered-features
+                                                               :test #'string=)))
                                      (and (car diff)
                                           (null (cadr diff))
                                           (string= (car diff) "LO:3SgNH"))))
