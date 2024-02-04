@@ -138,7 +138,7 @@
                                             &allow-other-keys)
   (when (eq variety :kat) (setf variety :ng))
   (setf *text* text)
-  (case (debug mode)
+  (case mode
     (:redisambiguate
      nil)
     (:renormalize
@@ -383,7 +383,7 @@
 						(cadr node))))
 			  (segments (unless readings (split-tmesis token))))
                      (when (and (null readings) unknown-tree)
-                       (incf (dat:string-tree-get unknown-tree normalized-token 0))) 
+                       (incf (dat:string-tree-get unknown-tree normalized-token 0)))
 		     (multiple-value-bind (guess eq)
 			 (when (and correct-spelling-errors
 				    (> (length token) 6)
@@ -434,7 +434,7 @@
 			     (setf (getf (cddr node) :mwe) mwe-length))
 			   (dolist (i (cdr next-token+j)) (push i mwe-positions)))
 			 (when *break* (setf *break* nil) (break))
-			 (cond ((find i mwe-positions)
+                         (cond ((find i mwe-positions)
 				(setf (getf (cddr node) :morphology)
 				      (if keep-non-mwe-readings
 					  (cons (list "" "<MWE>" nil nil) readings)
@@ -443,7 +443,7 @@
 				(setf (getf (cddr node) :norm)
 				      (list (list :characters  guess))
 				      (getf (cddr node) :morphology) guess-readings))
-			       (readings
+			       ((or readings (eq language :abk)) 
                                 (when wid-table
                                   (let ((wid (or (getf node :wid) ;; from corpus att
                                                  (getf node :|xml:id|)))) ;; from xml text
@@ -451,7 +451,8 @@
                                       (let* ((id (parse-integer wid :start 1))
                                              (reading (gethash id wid-table)))
                                         (when reading
-                                          (destructuring-bind (&optional w l fl label parent status comment) reading
+                                          (destructuring-bind (&optional w l fl label parent status comment)
+                                              reading
                                             (declare (ignore w))
                                             (let ((reading1 (find-if (lambda (r)
                                                                        ;; compare lemma and features,
@@ -471,7 +472,8 @@
                                               (when status
                                                 (setf (getf (cddr node) :status) status))
                                               (when comment
-                                                (setf (getf (cddr node) :comment) comment))
+                                                (setf (getf (cddr node) :comment) comment)
+                                                (debug node))
                                               (when parent ;; preliminarily store wid here; has to be changed to node id
                                                 ;; after disambiguation
                                                 (setf (getf (cddr node) :stored-parent) (list parent)))
@@ -530,7 +532,6 @@
 #+test
 (process-text *text* :disambiguate :variety :non :mode :redisambiguate)
 
-;; ups: two times mode!
 (defmethod process-text ((text parsed-text) (mode (eql :disambiguate))
                          &key (variety :og) (load-grammar t) mode
                            (sentence-end-strings vislcg3::*sentence-end-strings*)
@@ -542,7 +543,8 @@
 				  :sentence-end-strings sentence-end-strings
                                   :sentence-start-is-uppercase (eq variety :abk))
   (let ((token-array (text-array text))
-        (wid-table (word-id-table text)))
+        (word-id-table (word-id-table text))
+        (wid-table (wid-table text)))
     (loop for node across token-array
           do (let* ((msa (getf node :morphology))
                     (reading (or (find-if (lambda (reading)
@@ -551,20 +553,36 @@
 					  msa)
 				 (find-if-not (lambda (r) (find :discarded-cg r)) msa)))
 		    (features (cadr reading))
-		    (pos (subseq features 0 (position #\space features)))
+		    ;; (pos (subseq features 0 (position #\space features)))
 		    (rel-start (search " >" features :from-end t))
 		    (rel-end (when rel-start (position #\space features :start (+ 2 rel-start))))
 	            (relation (when rel-start (subseq features (+ 2 rel-start) rel-end)))
                     )
                (setf (getf (cddr node) :label) relation)))
     ;; fix stored-parent
-    (loop for node across token-array
+    (print :fix-stored-parent)
+    (loop for node across token-array for i from 0
           for p = (getf node :stored-parent)
-          when (listp p) ;; list ensures that this is done only once, but not on redisambiguation
-          do (setf (getf node :stored-parent)
-                   (getf (gethash (format nil "w~a" (car p)) wid-table) :self)))))
+          do (list i)
+          when (and p (listp p)) ;; list ensures that this is done only once, but not on redisambiguation
+          do (debug node)(setf (getf node :stored-parent)
+                   (getf (debug (gethash (debug (car p)) wid-table)) :self)))))
 
-;; *text*
+#+test
+(:NODE (:WORD "Тариел" :LABEL "NSUBJ" :PARENT 14573 :SELF 14568 :STORED-LABEL "NSUBJ" :STORED-PARENT (14571) :MORPHOLOGY (("Тариел" "Noun Prop Anthr M <NoLex> >NSUBJ" :SELECTED-CG ("with:3737" "map:3740" "with:4505" "with:3737" "setparent:5180"))) :|xml:id| "w14569"))
+
+#+test
+(print (aref (token-array kp::*text*) 18363))
+
+#+test
+(let ((word-id-table (word-id-table kp::*text*)))
+  (loop for node across (token-array kp::*text*)
+        for p = (getf node :stored-parent)
+        when (and p (listp p)) ;; list ensures that this is done only once, but not on redisambiguation
+        do (setf (getf node :stored-parent)
+                 (getf (gethash (format nil "w~a" (car p)) word-id-table) :self))))
+
+;; kp::*text*
 
 (defmethod write-text-json ((text parsed-text) stream
                             &key tracep split-trace
