@@ -2,10 +2,12 @@
 # Abkhaz disambiguator                         #
 # ============================================ #
 
+# see https://edu.visl.dk/cg3/single/ for CG documentation
+
 # add rules: DO:Ad => -1 cannot be Pron Pers 1Sg etc.
 
 # tags taken from abkhaz-noun.fst and abkhaz-verb.fst Sigma lists
-STRICT-TAGS += Abbrev Abs Adhort 
+STRICT-TAGS += Abbrev Abs Cnv Adhort 
        Adj Adv Advb Again AgainPfx Agit Alas Anthr Aor Approx
        AsIf AsLongAs Bracket Card Caus Cj Coll Colon Comma 
        Cond-I Cond-II Conj-I Conj-II Connect Coord Cop
@@ -55,7 +57,7 @@ STRICT-TAGS += Abbrev Abs Adhort
        ToWhere Tr TrCaus Until V VCoord VN WhEver When Where 
        Why 1Pl 1Sg 2Pl 2SgF 2SgM 3Pl 3Sg 3SgF 3SgM 3SgNH  [S:3SgNH]
        <Manner>
-       <Relax> <NoLex> <HuntingLang> <NumPfxNoHyphen> <PreAdj> <Deriv>
+       <Relax> <NoLex> <HuntingLang> <NumPfxNoHyphen> <PreAdj> <Deriv> <PlStem>
        >ROOT ROOT
        >NSUBJ >IO >LO >PREDLINK
        >POSS >GEN >OBJ
@@ -94,7 +96,7 @@ STRICT-TAGS += Abbrev Abs Adhort
        >FLAT
        >COP
        CopNounFin
-       <Dis>
+       <Lemma> <LemmaLC>
        <Sel> ;
 
 # OPTIONS += safe-setparent ;
@@ -165,7 +167,7 @@ SET FPv = FPv:аа | FPv:на | FPv:ла́ | FPv:ҩа | FPv:лы́ | FPv:ны | 
 
 # Argument markers
 
-SET AM:1Sg = S:1Sg | DO:1Sg | IO:1Sg | RO:1Sg ;
+SET AM:1Sg = S:1Sg | DO:1Sg | IO:1Sg | RO:1Sg | LO:1Sg ;
 SET AM:2SgF = S:2SgF | DO:2SgF | IO:2SgF | RO:2SgF ;
 SET AM:2SgM = S:2SgM | DO:2SgM | IO:2SgM | RO:2SgM ;
 SET AM:2SgH = AM:2SgF | AM:2SgM ; 
@@ -186,7 +188,7 @@ SET S:3Sg = S:3SgH | S:3SgNH | S:3SgM | S:3SgF ;
 
 SET MF = M | F ;
 
-SET S:Hum = S:1Sg | S:2Sg | S:3SgH | S:1Pl | S:2Pl ;
+SET S:Hum = S:1Sg | S:2Sg | S:3SgH | S:3SgM | S:3SgF | S:1Pl | S:2Pl ;
 
 SET DET = Det | ([Det]) ;
 
@@ -194,6 +196,9 @@ SET  S:Hum3Sg =  S:3SgF | S:3SgH | S:3SgM ;
 SET DO:Hum3Sg =  DO:3SgH ; 
 SET IO:Hum3Sg =  IO:3SgF | IO:3SgM | IO:3SgNH ;
 # SET AM:Hum3Sg =  S:Hum3Sg | DO:Hum3Sg | IO:Hum3Sg ;
+
+SET DO:12 = DO:1Pl | DO:1Sg | DO:2Pl | DO:2SgF | DO:2SgM ;
+SET DO:Hum = DO:12 | DO:3SgH ;
 
 SET  S:NonHum3Sg =  S:3 | S:3SgNH ;
 SET IO:NonHum3Sg =  IO:3SgNH ;
@@ -229,7 +234,7 @@ LIST VSaying = "а-ҳәа-ра́" "а́·ҳәа-ра" "а́иц·ҳәа-ра" "�
   SECTION  #
 # ======== #
 
-SELECT <Dis> ; # select manually disambiguated reading, REMOVE!
+# SELECT <Dis> ; # select manually disambiguated reading, REMOVE!
 SELECT <Sel> ; # select manually disambiguated reading
 
 REMOVE Subj + S:2Sg ; # prelim. bug fix
@@ -240,6 +245,8 @@ REMOVE Why + Conj-I ;
 REMOVE CONJIPF + AsIf ;
 REMOVE CONJIPF + QWhat ;
 REMOVE Purp + When ;
+
+REMOVE Why + Cnv ; 
 
 REMOVE Redup ;
 
@@ -265,6 +272,13 @@ REMOVE LO + <Manner> ;
 
 REMOVE ("а́у-ра" Stat) ;
 
+REMOVE ("аа-ра́") + FPv:аа ;
+
+REMOVE ("а́а") + Noun ;
+REMOVE ("аа́") + Noun ;
+
+REMOVE ("а-иа-ра́") IF (0 ("а-иа́ша") + How) ; # дышиашаз 
+
 REMOVE ("ҳаҭы́рла") ; # prefer а́-ҳаҭыр + PP:ла
 
 SELECT ("ҵау́ланы" Adv) ;
@@ -279,9 +293,9 @@ SELECT Prt + Quote ; # ҳәа, ҳәагьы etc.
 REMOVE ("<бзиа>" V) ;
 SELECT ("уи́") ;
 
-SELECT ("а-у́с") IF (1 ("а-у-ра́")) ;
+# SELECT ("а-у́с") IF (1 ("а-у-ра́")) ;
 
-SELECT ("ус") ;
+# SELECT ("ус") ;
 
 REMOVE ("аи́бга") ; # ист. аи́бга (абхазское племя)
 
@@ -291,6 +305,12 @@ SELECT ("<изкны>" "а-з·к-ра́") ;
 SELECT ("<азы>" PP) ;
 SELECT ("сара́" Pron) ;
 SELECT ("уара́" Pron) ;
+
+REMOVE ("аҽакы́") + Adv ; # remove from morph!
+
+"<шәаҳауазар>" REMOVE ("а́у-ра") ; # remove from morph!
+
+REMOVE ("а-вакы́") + Noun ;
 
 SELECT ("иара́" Pron) ;
 SELECT ("иара́" 3SgM Coord) IF (1 ("сара́" Coord)) ;
@@ -327,7 +347,7 @@ REMOVE ("а-дауҳа́") IF (0 ("а-доуҳа́")) ;
 
 SELECT ("ҳа́рҭ") ;
 
-REMOVE ("а́ҳцәа") ;
+# REMOVE ("а́ҳцәа") ;
 
 SELECT ("заҵәы́к") ;
 
@@ -335,8 +355,23 @@ SELECT ("хаз-хазы́") ;
 
 SELECT ("а́-ҭыҧынтәи") ;
 
+SELECT ("а́из·ааигәа-ра") ; # and not а́аигуа
+
+REMOVE ("а-ҳәа-ра́") + StatPass ;
+
+REMOVE ("а-з·иа́·ха-ра") IF (0 ("а-бзи́а·ха-ра")) ;
+
 SELECT ("а́-цха") IF (-1 ("а́-шьха")) ;
 SELECT ("а́-цха") IF (1 ("а-гьа́ма")) ;
+
+REMOVE ("а-цәы́мҕ·ха-ра") ; # denominal, see а-цәы́·мҕ·ха-ра
+
+REMOVE ("а́-уадаҩ") + Noun + Pred ;
+
+REMOVE ("а́-ма-заа-ра") + IO:Rec ; # = аимазаара
+REMOVE ("а́има-ра") ; # = аимазаара
+
+REMOVE ("ҽе́иҵыхны") ; # prefer а-ҽ·е́и·ҵы·х-ра
 
 SELECT ("аа́нтәи") ;
 SELECT ("ара́хь" Adv) ;
@@ -363,8 +398,12 @@ SELECT ("хара́нтә") ;
 REMOVE ("ауы́ха") ;
 REMOVE ("а-бга́") ; # охот. яз.
 
+REMOVE ("а́б") IF (0 ("а́-бз")) ;
+
 # can be noun! check.
 SELECT ("еиҳа́рак" Adv) ;
+
+REMOVE ("аҩы́на") IF (0 ("а-ҩна́-заа-ра")) ;
 
 REMOVE 	("а́из·га-ра" Intr) ;
 
@@ -374,6 +413,8 @@ REMOVE ("а́-ҧш") IF (0 ("а-зы·ҧш-ра́")) ;
 
 SELECT ("а-шәы́") IF (1 ("а-шә·ҵа-ра́")) ;
 REMOVE ("а-шәы́") ;
+
+REMOVE ("а-ны́мха") IF (0 ("а-зы·н·ха-ра́")) ;
 
 SELECT ("а-зы́ҳәа") + PP IF (0 (/зыҳәа>/r)) ;
 
@@ -445,6 +486,8 @@ SELECT ("еицҿа́кны" Adv) ;
 
 SELECT ("а-ҭы́ҧан") ;
 
+"<злам>" SELECT ("а́-ла-заа-ра") + Rel ;
+
 REMOVE ("а-ҳа́" Noun) IF (NOT -1 <PreAdj>) ;
 
 REMOVE ("а́-хьӡ-заа-ра") IF (0 ("а́хьӡ-заа-ра")) ;
@@ -507,6 +550,8 @@ SELECT ("оҳ") ;
 
 SELECT ("а́-мза") IF (1 ("а-шәахәа́")) ;
 
+"<умшәан>" SELECT ("а-шәа-ра́") ;
+
 # сыҟоуп
 SELECT ("а́-ҟа-заа-ра" Pres S:1Sg) ;
 
@@ -522,6 +567,8 @@ SELECT ("Аҧсны́") ;
 SELECT ("а́-рацәа") ;
 
 SELECT ("а́ҧхьаҟа") ;
+
+SELECT ("ааигәа́-сигәа") + Adv ;
 
 SELECT ("а́-мчра") IF (-1 ("а-сове́т")) ;
 
@@ -546,7 +593,7 @@ SELECT ("инаркны́" PP) ;
 
 SELECT ("<аӡы>" "а-ӡы́") ;
 
-SELECT ("а-ҿы́" PP) IF (-1 Noun OR Adj) ; # can go wrong
+# SELECT ("а-ҿы́" PP) IF (-1 Noun OR Adj) ; # can go wrong
 
 SELECT ("абни́") ;
 
@@ -669,6 +716,8 @@ REMOVE ("а-ба́р") IF (0 ("а-ба-ра́")) ;
 REMOVE ("а-ҳәа́р" Pred) ;
 REMOVE ("а-ҳәы́с" Pred) ;
 
+# REMOVE ("Иаха") ;
+
 SELECT ("а-ҵыхәтәантәи́") ;
 SELECT ("и́-рццакны") ;
 
@@ -705,9 +754,8 @@ SELECT ("а́ҧхьа") + PP + Poss IF (NOT 0 Impv) ; # шәаҧхьа
 SELECT ("а́иҧш") ;
 SELECT ("а́иҧш" Poss:3SgM) IF (-1 H) ; # аҭаҳмада еиҧш
 SELECT ("а́иҧш" Poss:3SgNH) IF (-1 NH) ;
-SELECT ("а́иҧш" Poss:3SgNH) IF (-1 How) ; # ишдыру еиҧш
+SELECT ("а́иҧш" Poss:3SgNH) IF (-1 How OR When) ; # ишдыру еиҧш
 SELECT ("а́иҧш" Poss:3SgNH) IF (-1 Adv) ; # абас еиҧш
-
 
 SELECT ("а-бызшәа́") ;
 
@@ -724,6 +772,8 @@ SELECT ("а-ҩы́за") ;
 SELECT ("а-ҧе́иҧш") ;
 
 # SELECT ("а-ҳа́мҭа") ;
+
+REMOVE ("а́-мҭа") + Poss:1Pl IF (0 ("а-ҳа́мҭа") + Advb) ;
 
 SELECT ("а́асҭа" PP) ;
 
@@ -856,6 +906,15 @@ SELECT ("ас" Adv) ;
 SELECT ("<есҽнытәи>" "есҽны́тәи") ;
 SELECT ("<есыҽнытәи>" "есы́ҽнытәи") ;
 
+LIST TempAdv = "иаха́" "жәытәна́тә" "жәытә-на́тә" "ахана́тә" "наџьна́тә" "шьыжьы́" "иаха́" "иацы́" "а-жәы́тә"
+     "а́-жәтә" "ажәы́тә" "шьыжьымҭа́н" "нахьхьи́" "ҵыҧх" "аха́ан" "ау́ха" "шьжьымҭа́н" "жәытә-на́тәӡа" "а-ха́ан"
+     "жәытәна́тәӡа" "иацу́ха" "хааны́" "шьыбжьо́н" "а-шарҧы́" "ажәы́тәан" "аха́" "шарҧазы́" "ҧа́хьа" "а-иа́"
+     "а́-хәылбыҽха" "а́-шьжьымҭан" "а́дырҩаҽны" "а́нкьа" "аша́мҭаз" "аша́мҭазы" "у́сҟан" "уахы́ки-ҽна́ки" "ҧы́ҭрак"
+     ;
+
+SELECT ("аахы́с") + PP + Poss:3SgNH
+    IF (-1 TempAdv) ;
+
 # аха сымаӡам
 
 REMOVE ("а́-ха" Noun) IF (NOT 1 ("а́-ма-заа-ра")) ;
@@ -900,7 +959,13 @@ SELECT ("еиҭа́" Adv) ;
 
 SELECT (/".*чч/r) IF (0 (/<.*чч/r)) ;
 
-SELECT ("Гагра" Place) ;
+SELECT ("Гагра") + Place ;
+SELECT ("Гагратәи") + Place ;
+
+SELECT ("Шәача") + Place ;
+SELECT ("Шәачатәи") + Place ;
+
+REMOVE ("а-гәа·ҧха-ра́") + S:Ad IF (-1 When) ; # more of these?
 
 SELECT ("дзаҟа́разаалакь") ; # add to lex.!
 
@@ -988,8 +1053,6 @@ REMOVE ("а́-мдыр") IF (0 ("а-ды́р-ра")) ;
 
 SELECT ("а́н" Noun H Sg Poss:3SgF) IF (-1 F) ;
 
-SELECT ("а-ла́") IF (-1 ("а́-хьча")) ; # Schäferhund
-
 SELECT ("ари́") ;
 
 SELECT ("ара́") ;
@@ -998,6 +1061,7 @@ SELECT ("абра́") ;
 SELECT ("а-дуне́и") ;
 
 SELECT ("а-ҩны́") IF (-1 H OR M OR LastName) ; # not а-ҩ-ра
+SELECT ("а-ҩны́") IF (-1 ("а-ҧсшьа́рҭа")) ;
 
 REMOVE Noun + Reln:TogetherWith ;
 
@@ -1010,6 +1074,10 @@ REMOVE ("а-ҩы́за" Adj)
 SELECT ("а-ҩы́за" Adj)
     IF (-1 ("ари́") OR ("абри́") OR ("убри́") OR ("уи́")) ;
 
+# аҩыза Сталин
+SELECT ("а-ҩы́за" Noun) IF (1 LastName) ;
+
+
 SELECT ("а-ҩы́за" Adj Poss:3SgNH) ;
 
 SELECT ("уи́" Pers)
@@ -1018,6 +1086,14 @@ SELECT ("уи́" Pers)
 REMOVE ("а́ша") ; # иа́ша
 
 SELECT ("а-цә·к-ра́" DO:Ad) IF (-1 ("ма́п")) ;
+
+# адырра инаҭеит
+SELECT ("а-ды́рра") IF (1 ("а́-ҭа-ра") + Tr + Ad) ;
+SELECT ("а́-ҭа-ра") + Tr + Ad IF (-1 ("а-ды́рра")) ;
+SELECT ("а-ды́рра") IF (1 ("а́у-ра") + S:Ad) ;
+SELECT ("а́у-ра") + S:Ad - IO:Rec IF (-1 ("а-ды́рра")) ;
+
+
 
 # too general?
 REMOVE ("<.*ын>"r Abs) ;
@@ -1033,6 +1109,8 @@ REMOVE PP:аан IF (NOT 0 ("<.*аан>"r)) ;
 SELECT ("жәытәна́тә") ;
 SELECT ("аахы́с" PP) IF (-1 ("жәытәна́тә") OR ("жәытә-на́тә")) ;
 
+REMOVE ("а-ша-ра́") + Tr + S:3SgF + DO:12 ;
+
 # ихьӡ зху
 SELECT ("а-хы́-заа-ра" LO:Rel) IF (-1 ("а́-хьӡ")) ;
 
@@ -1044,6 +1122,8 @@ REMOVE Abs IF (1 ("а-џь·шьа-ра́")) ;
 REMOVE QWhat IF (1 ("а-џь·шьа-ра́")) ;
 REMOVE Why IF (1 ("а-џь·шьа-ра́")) ;
 
+SELECT QWhat + RHP IF (-1 ("иа́рбан")) ;
+
 ####
 
 REMOVE Why + Purp ; # should be removed from morphology!
@@ -1053,20 +1133,22 @@ REMOVE Why + Cond-II ; # should be removed from morphology!
 # remove non-finite forms without rel marker not preceded
 # by a relativized argument
 # that is, except e.g. зҧа дубо
-REMOVE NonFin - Abs - Rel - CONJIPF - Cond-I - RHP - Q - Purp - Opt - Rhet - AsLongAs - Until - EveryTime
-    IF (NOT -1 Rel) ;
+REMOVE NonFin - Abs - Rel - CONJIPF - Cond-I - Conj-I - Conj-II - RHP
+       - Q - Purp - Opt - Rhet - AsLongAs - Until - EveryTime - AsIf
+    IF (NOT -1 Rel)
+       (NOT -2 Rel) ;
 
-SELECT Purp IF (1 ("а-ҭах-ра́")) ;
+SELECT Purp IF (1 ("а-ҭах-ра́") OR ("а-ҭах·ха-ра́")) ;
 
 REMOVE Purp + Rel IF (NOT 1 Rel) ;
 
 SELECT Purp + Rel IF (1C Rel) ;
 
 # Инагӡа, – иҳәан.
-REMOVE Abs IF (NOT 0* V BARRIER Dash) ;
+REMOVE Abs IF (NEGATE 0* V BARRIER Dash) ;
 
 # Иуҳәарц иуҭахыз, interesting construction: DO is Rel, and not the Purp!
-SELECT ("а-ҭах-ра́")
+SELECT ("а-ҭах-ра́") OR ("а-ҭах·ха-ра́")
     IF (-1 Purp) ;
 
 # if not DO:Ad it has to be Rel
@@ -1076,22 +1158,26 @@ REMOVE ("а-ҭах-ра́") + DO:3 - DO:Ad
 SELECT ("а-ҭах-ра́") + Rel
     IF (-1 Purp + Rel) ;
 
-SELECT DO:Ad IF (-1 Purp) ;
+SELECT DO:Ad IF (1C V) (-1 Purp) ;
+
+SELECT ("а-ҭах·ха-ра́") + S:Ad
+    IF (-1 VN) ;
 
 # ижәбо ала
 SELECT ("а́-ла") + PP IF (-1 ("а-ба-ра́") + DO:Rel) ;
 
-# ??
+# ?? marker must be д-
 # REMOVE DO:Ad IF (-1 H + Sg OR Anthr) ;
+REMOVE S:Ad IF (-1C H + Sg OR Anthr - Pl) ;
 
-REMOVE S:Ad IF (-1 Pron + Pers + 3Sg) ; # can only be S:3SgH
-REMOVE S:Ad IF (-1 Pron + Pers + 1Sg) ;
-REMOVE S:Ad IF (-1 Pron + Pers + 2SgM) ;
-REMOVE S:Ad IF (-1 Pron + Pers + 2SgF) ;
-REMOVE S:Ad IF (-1 Pron + Pers + 1Pl) ;
-REMOVE S:Ad IF (-1 Pron + Pers + 2Pl) ;
+REMOVE Ad IF (-1C Pron + Pers + 3Sg) ; # can only be S:3SgH
+REMOVE Ad IF (-1 Pron + Pers + 1Sg) ;
+REMOVE Ad IF (-1 Pron + Pers + 2SgM) ;
+REMOVE Ad IF (-1 Pron + Pers + 2SgF) ;
+REMOVE Ad IF (-1 Pron + Pers + 1Pl) ;
+REMOVE Ad IF (-1 Pron + Pers + 2Pl) ;
 
-REMOVE S:Ad IF (-1 Punct) (NOT 0 VSaying) ;
+REMOVE POSTP IF (1C Ad) ;
 
 REMOVE Poss:3SgNH - PP - ("ха́ла");
 
@@ -1130,7 +1216,8 @@ REMOVE Ad
     IF (-1C V - HowPurp OR Cond-I OR AsIf OR Adv OR POSTP)
        (NOT 0 PhraseObjVerb)
        (NOT -1 NonFin + Rel)
-       (NOT -1 NonFin + CONJIPF) ;
+       (NOT -1 NonFin + CONJIPF)
+       (NOT -1 ("уа́ҳа")) ; # уаҳа сылшом
 
 REMOVE Ad IF (-1C Cop) ;
 
@@ -1173,6 +1260,9 @@ SELECT ("зны") + Adv ;
 SELECT ("аба́с") + Adv ;
 
 SET FIN = Fin | Cop | QUEST ;
+
+# Pers + 3Sg is Hum and needs д as agens marker
+REMOVE Pers + 3Sg IF (0 Dem) (1C Ad) ;
 
 REMOVE Dem IF (0 Pers) (1C Punct OR FIN) ;
 
@@ -1264,6 +1354,9 @@ SELECT ("а́а·на·га-ра") IF (-1 ("а-гәы́")) ;
 
 SELECT ("а́-л·ша-ра") IF (-1 Conj-I) ;
 
+# асахьақәа ранҵара илшеит
+SELECT ("а́-л·ша-ра") + S:Ad IF (-1 VN) ;
+
 SELECT ("а-у-ра́") IF (-1 Conj-I) ;
 
 LIST DirectSpeechMarker = "ҳәа́" "уҳәа́" "<»>" "–" ;
@@ -1294,11 +1387,18 @@ SELECT ("а́-ла·га-ра")
        IF (-1 VN) ;
 
 # уҧсы ушьап
-SELECT ("а-шьа-ра́") + DO:Ad IF (-1 ("а-ҧсы́")) ;
+SELECT ("а-шьа-ра́") + DO:Ad IF (-1 ("а-ҧсы́") OR ("а-хы́")) ;
+SELECT ("а-хы́") IF (1 ("а-шьа-ра́") + Ad) ;
 
-# ҧсы схоу
-SELECT ("а-ҧсы́" NH) IF (1 ("а-ха́-заа-ра")) ;
+
+# ҧсы схоу, ҧсы злам
+SELECT ("а-ҧсы́" NH) IF (1 ("а-ха́-заа-ра") OR ("а́-ла-заа-ра")) ;
 SELECT ("а-ха́-заа-ра") IF (-1 ("а-ҧсы́")) ;
+
+# ала
+SELECT ("а-ла́") IF (-1 ("а́-хьча")) ; # Schäferhund
+
+REMOVE ("а-ла́") IF (1 ("а́аҳә-ра") + S:Ad) ;
 
 SELECT ("а-у́с") IF (1 ("а-у-ра́")) ;
 
@@ -1311,6 +1411,14 @@ SELECT ("а-у-ра́") IF (-1 Conj-I) ;
 LIST Precipitation = "а-қәа́" "а-сы́" "а-кы́рцх" "а-қәаршаҩы́" ;
 
 SELECT ("а·у-ра́" Dyn) IF (-1 Precipitation) ;
+
+LIST Sound = "а-бжьы́" "а́-шьҭыбжь" ;
+
+# loose semantic connection
+SELECT ("аҳа-ра́") IF (-1* Sound) ;
+
+SELECT ("аҳа-ра́") + Ad IF (-1 Sound) ;
+
 
 REMOVE ("а-ды́р-ра") + Neg - Reln:Pot ;
 
@@ -1333,12 +1441,12 @@ SELECT ("а-га-ра́" Tr S:Ad Reln:Pot)
 # LIST Hunger = "а́-мла" "а́-ӡба" ;
 
 # дагоит, даганы
-SELECT ("а-га-ра́") + Intr + IO:3SgNH - S:Ad ;
+# OBS: иалагаргьы!
+SELECT ("а-га-ра́") + Intr + IO:3SgNH - S:Ad IF (0C ("а-га-ра́")) ;
+# REMOVE ("а-га-ра́") + Tr + IO:3SgNH - S:Ad ;
 
 REMOVE ("а-га-ра́") + Intr
     IF (NOT 0 IO:3SgNH) ;
-
-LIST Sound = "а-бжьы́" "а́-шьҭыбжь" ;
 
 SELECT ("а-га-ра́" Intr) IF (-1 Sound) ;
 SELECT ("а́-ҵ·га-ра" Intr) IF (-1 Sound) ;
@@ -1350,6 +1458,14 @@ SELECT ("бзи́а" Adv)
 
 SELECT ("бзи́а" Adv)
        IF (1 ("а́иба·ба-ра")) ;
+
+SELECT ("аиа́шазы" Adv) ;
+
+REMOVE ("а-иа́ша" Adj)
+    IF (0 ("а-иа́ша" Noun))
+       (NOT -1 Noun) ;
+
+REMOVE ("а-баҟа́") IF (0 ("а́-ҟа-заа-ра")) ; # абаҟоу
 
 SELECT ("ус") + Adv
        IF (NOT 1 Ad) ;
@@ -1397,6 +1513,7 @@ REMOVE ("а́и·ма·к-ра") IF (0 ("а́има·к-ра")) ;
 SELECT ("а-ҭах-ра́" DO:Ad) IF (-1 Conj-I) ;
 
 SELECT ("а́-ла") + PP IF (-1 How) ;
+SELECT ("а́-ла") + PP IF (-1 ("зегьы́")) ;
 
 SELECT ("а́-ла") + PP IF (-1 ("а́-л·ша-ра")) ; # исылшоз ала
 
@@ -1496,7 +1613,7 @@ REMOVE ("а-ла́р") IF (0 ("лара́")) ;
 # Аҿатә/Ажәытә Уасиат
 SELECT ("а-уаси́аҭ") IF (-1 <PreAdj>) ;
 
-SELECT Noun IF (-1 <PreAdj> - Pred) ;
+SELECT Noun IF (-1C <PreAdj> - Pred) ;
 
 # word affinities, experimental
 
@@ -1507,6 +1624,18 @@ SELECT ("а-ҵа-ра́" Tr) IF (-1 ("а-ҵара́")) ; # аҵара зҵоз
 SELECT ("ииу́н") - Poss:3SgM IF (-1 ("а́-шықәса")) ;
 
 REMOVE ("а-ча́") IF (0 ("а́-ча")) (1 ("а-шь-ра́")) ;
+
+# ишьацәа хаххала дааргеит
+SELECT ("а́-шьацәа") IF (1 ("ха́ххала")) ;
+
+SELECT ("а́-шьжьымҭан") + Adv ;
+
+SELECT ("ха́ла") ;
+
+LIST sizeAdj = "а-ду́" "а-ма́ҷ" "а-ду́ӡӡа" "а́-наӡа" "а-бзи́а" "а́-ҕәҕәа" "а́-мыжда" "а́-наскьа" ;
+
+REMOVE ("а-қәра́") + Noun
+    IF (1 sizeAdj) ;
 
 # ========================
 
@@ -1613,13 +1742,14 @@ REMOVE Abs + Pres
        (1 <PreAdj>)
        (2 Noun) ;
 
+# аха ибжьы адгьыл иҵыҩны изаҳауадаз ?
 REMOVE Abs + Rel
-    IF (NOT 1* Rel BARRIER CLB) ;
+    IF (NEGATE 1* Rel - QWho BARRIER CLB OR VMain) ;
 
 # dangerous?
 REMOVE NonFin - QUEST - Cop
-    IF (NEGATE 1* FIN) 
-       (NEGATE -1* FIN);
+    IF (NEGATE 0* FIN)
+       (NEGATE 0* AsIf) ;
 
 REMOVE NOUN + PP:зы IF (0 Purp) ;
 # REMOVE VN + PP:зы IF (0 Purp) ;
@@ -1637,12 +1767,22 @@ SELECT VN
 SELECT ("а-рацәа́" Adj) IF (-1C Noun) ;
 
 # Noun vs. VN
-SELECT Noun IF (1 ("а́-л·га-ра") + LO:3SgNH) ;
+# SELECT Noun IF (1 ("а́-л·га-ра") + LO:3SgNH) ;
 
 SELECT Num + H + Indet + Card IF (-1 H + Pl) ;
 SELECT H + Pl IF (1 Num + H + Indet) ;
 
+# Noun vs. Adj
+
+# ideally only for equal lemma form, but that cannot be formulated in CG?
+REMOVE Adj + Det + Pl IF (0 Noun + Det + Pl) ;
+
+# too dangerous?
+# SELECT Ad if (-1 NH) ;
+
 # SELECT Noun IF (-1C Rel) ;
+
+REMOVE <Deriv> ;
 
 # Syntactic disambiguation
 # ========================
@@ -1676,9 +1816,9 @@ SELECT COORD + Noun - POSTP
     IF (-2C COORD + Noun) ;
 
 # ??
-REMOVE COORD
-    IF (NEGATE 1* COORD LINK NEGATE 1* COORD BARRIER CLB)
-       (NEGATE -1* COORD LINK NEGATE -1* COORD BARRIER CLB) ;
+#REMOVE COORD
+#    IF (NEGATE 1* COORD LINK NEGATE 1* COORD BARRIER CLB)
+#       (NEGATE -1* COORD LINK NEGATE -1* COORD BARRIER CLB) ;
 
 # уааи ҳахәаҧшып; уааи only?
 SELECT Impv
@@ -1702,7 +1842,7 @@ SELECT Int
 
 # remove Impv if finite non-imperative follows
 REMOVE Impv
-    IF (1* Fin - Impv BARRIER CLB OR Say OR Impv OR Dash) ;
+    IF (1* Fin - Impv BARRIER CLB OR Comma OR Say OR Impv OR Dash) ;
 
 SELECT Impv
     IF (1 Comma)
@@ -1719,8 +1859,8 @@ REMOVE PastIndef + Fin
 REMOVE AsIf + Rel
     IF (NOT 1 Rel) ;
 
-REMOVE Abs + Rel
-    IF (NOT 1 Rel) ;
+#REMOVE Abs + Rel
+#    IF (NOT 1 Rel) ;
 
 # serial with Rel uptake: дызҭираны иҟаз Иуда иҳәоит
 SELECT Rel
@@ -1741,7 +1881,7 @@ SELECT Abs OR NonFin
 
 REMOVE NonFin - Cop
        IF (0 Fin)
-       	  (NEGATE 0* Fin BARRIER CLB) ;
+       	  (NEGATE 0* Fin OR AsIf BARRIER CLB) ;
 
 REMOVE Fin - PastIndef - Impv - Connect
        IF (0C* Fin BARRIER CLBc OR ("а-ҟы́нтә") OR ("а-зы́н")) ;
@@ -1821,6 +1961,8 @@ SELECT Adj + Pl - Pred - DET - Num - Poss
 #SELECT Adj - DET - Pred - Poss
 #    IF (-1 Noun) ;
 
+SELECT Adj + Pl IF (-1 <PlStem>) ;
+
 SELECT Noun - PP
     IF (1C Adj - <PreAdj> - DET - Pred - Poss) ;
 
@@ -1855,7 +1997,7 @@ REMOVE ("уи́" Dem) IF (1 Poss:3Pl) ;
 # but: 
 # REMOVE Stat IF (-1* NonFin + Abs + Dyn BARRIER V) ;
 
-LIST TempExp = "аҽны́" "аа́мҭа" "аамҭазы́" "а́мш" "а́уха" "а́шьҭахь" "нахы́с" "а́иҧш" ; # and more
+LIST TempExp = "аҽны́" "аа́мҭа" "аамҭазы́" "а́мш" "а́уха" "а́шьҭахь" "нахы́с" "а́иҧш" "иаха́" ; # and more
 
 SELECT When
     IF (1 TempExp | Comma ) ;
@@ -1893,7 +2035,10 @@ SELECT Mult IF (1 ("а́ан")) ;
 
 SELECT H + Pl IF (-1 Num + H + Card) ;
 
-# Lexical disambiguation
+# prefer the analysis without agent marker
+REMOVE AsIf + Tr + S:Hum IF (0 AsIf + Tr - S:Hum) ;
+
+### Lexical disambiguation
 
 LIST TempNoun = "а́амҭа" "а-мину́ҭ" "а́-шықәса" "а́-мш" "а́-шқәс" "а-саа́ҭ" "а́-мз" "а-шәы́мҭа" "а́амҭа" "а́-мчыбжьа" "а-шәы́шықәса" "а-жәа́мш" "а-жәа́шықәса" "а́-мчыбжь" "ха́ха-хымш" "а́-мшцәгьа" "а-зқьы́шықәса" "а-секу́нд" "а́-ӡынра" ;
 
@@ -1919,6 +2064,11 @@ SELECT ("а-шьа-ра́") IF (-1 ("а-ҧсы́")) ;
 
 
 SELECT ("а-цәа́") IF (1 ("а-ҭы́·ҵ-ра")) ;
+
+# Наҳар иҟаиҵара изымдыруа, дшаҟь-шаҟьо дааихаххит
+
+SELECT ("а-ды́р-ра") + S:Ad OR DO:Ad
+    IF (-1 Fut-I + NonFin) ;
 
 # аҧара
 
@@ -1946,6 +2096,138 @@ REMOVE PP:ны IF (NOT 0 ("<.+ны>"r)) ;
 # prefer V Abs
 REMOVE PP:ны IF (0 V + Abs) ;
 
+# агәы as DO
+# many more!
+LIST DO_агәы_V = "а-ша́ҭа-ра" ;
+
+SELECT DO_агәы_V + Tr + Ad IF (-1 ("а-гәы́")) ;
+
+# агәы as LO
+LIST LO_агәы_V = "а-ҭа́-заа-ра" ;
+
+# игәы иҭоу
+SELECT LO_агәы_V + LO:3SgNH - Ad IF (-1 ("а-гәы́")) ;
+
+
+# аҧсы NH as DO
+
+LIST DO_аҧсы_V = "а́и·в·га-ра"  ;
+
+SELECT ("а-ҧсы́") + NH IF (1 DO_аҧсы_V + DO:Ad) ;
+
+# as S
+
+SELECT ("а-ҧсы́") + NH IF (1 ("а-ха́-заа-ра") + S:Ad) ;
+SELECT ("а-ха́-заа-ра") IF (-1 ("а-ҧсы́")) ;
+
+# а-ҿы́, а-ҿа́
+
+# аҿахьы
+SELECT ("а-ҿы́") + Noun + PP:ахь ;
+
+# а́жәа as DO
+
+LIST DO_ажәа_V = "а-ҳәа-ра́" "а́ила·ҟәаҟәа-ра" ;
+
+# аха иҿы ааихыхны ажәак изымҳәеит
+SELECT DO_ажәа_V + Tr + Ad IF (-1 ("а́жәа")) ;
+
+SELECT DO_ажәа_V + Tr - Ad
+    IF (-1 Cnv)
+       (-2 ("а́жәа")) ;
+
+
+SELECT ("а-лы́мҳа") IF (1 ("а-кы́д·ҵа-ра") + Ad) ;
+
+REMOVE ("кы́дҵаны") ; # prefer а-кы́д·ҵа-ра
+
+# аус уны, but also: аус иухьаны (!)
+SELECT ("а-у-ра́") + Tr IF (-1 ("а-у́с")) ;
+
+# а́-ла vs. а-ла́ as DO
+
+LIST DO_а́ла_V = "а́и·қә·ҧса-ра" "а́и·ха·ҟәыс-ра"
+                "а́-р:кәараҵа-ра" # this is rare
+                ;
+
+SELECT ("а́-ла") + Noun IF (1 DO_а́ла_V + Ad) ;
+
+SELECT DO_а́ла_V + Ad IF (-1 ("а́-ла") + Noun) ;
+
+# а́-ла S
+# ила иамбаӡеит
+SELECT ("а́-ла") + Noun IF (1 ("а-ба-ра́") + S:3SgNH - Ad) ;
+
+SELECT ("а́-ла") + PP + Poss:3SgNH
+    IF (-1 Noun + NH + Sg - POSTP - Advb)
+       (1 ("а́-ҟа·ҵа-ра") - Ad) ;
+
+# verbs that prefer an animated (human, animal) DO
+LIST DO_Anim_V = "а-шь-ра́" ;
+
+LIST Anim = "а-ҳәа́" ;
+
+SELECT Anim OR Hum
+    IF (1 Ad + DO_Anim_V) ;
+
+# place LO
+
+LIST PLACE = Place "а́дгьыл" ;
+
+SELECT ("а́-қәын·ха-ра") + LO:3SgNH IF (-1 PLACE) ;
+
+# уаҳама: prelim, should be removed from morph
+REMOVE ("а-ҳа-ра́") + Q + S:2SgM + DO:3 + DO:Ad ;
+
+# place LO of -хы-
+
+LIST OnPlace = "а-ҭы́ҧ" "а-дуне́и" "а-мшы́н" "а-ҩны́" "а-ӡи́ас" "а́-жәҩан" "а-мху́рсҭа"
+               "а́-шьҭа" "а́-лаҧш" "а-ҧсҭа́заара" ;
+
+SELECT OnPlace IF (1* ("а-хы-заа-ра́") + LO:3SgNH - S:Ad) ;
+SELECT OnPlace IF (2* ("а-хы-заа-ра́") + LO:3SgNH + S:Ad BARRIER V) ;
+
+SELECT ("а-хы-заа-ра́") + LO:3SgNH - S:Ad IF (-1 OnPlace) ;
+SELECT ("а-хы-заа-ра́") + LO:3SgNH + S:Ad IF (-2 OnPlace BARRIER V) ;
+
+# verbs prefering non-human DO
+# add more
+
+LIST DO_NH_V = "а-у-ра́" # (о свадьбе) сыграть; (о мамалыге) сварить
+               "а·у-ра́" # получить, получать
+               "а-ҳа-ра́"
+               ;
+
+REMOVE DO_NH_V + DO:Hum ;
+REMOVE DO_NH_V + DO:Rel + QWho ;
+
+# verbs prefering human Agent
+
+# as IO:
+
+List IO_H_V = "а-ҳа-ра́" ;
+
+REMOVE IO_H_V + IO:3SgNH ;
+
+# илаҧш
+SELECT ("а́-лаҧш") + Noun + Poss:3SgM IF (-1 Hum) ;
+
+SELECT ("а́-лаҧш") + Noun IF (1 ("а-кы́д·хала-ра") + S:Ad) ;
+
+# nouns that can go with Adj а́ӡа jung, frisch, unreif
+LIST Noun_аӡа = "а-ҧсы́" "а-ны́шә" "а́дгьыл" "а-кәа́ц" "а́-махә" "а-џьықәре́и"
+                "а-кы́кахш" "а-уаҩы́" "а-хы́" "а-хы́ш" "а́-хш" "а-бҕьы́нҵә" "а-карто́ш"
+                "а-кьа́т" "а-кәта́ҕь" "а-нхаҩы́" "а-па́ркь" "а-шьа́ц"
+                "а-ҩы́" "а-ҭаҭы́н" "а-ҭы́рас" "а́-мажәа" "а́са" ;
+
+SELECT ("а́ӡа") + Adj IF (-1 Noun_аӡа) ;
+
+# -х-
+
+LIST Headgear = "а-хы́лҧа" ; # and more
+
+SELECT ("а-хы́·х-ра") + DO:Ad IF (-1 Headgear) ;
+
 # sit on vehicle/horse
 # could be further disambiguated by distinguishing between vehicle (иақәтәеит) and
 # place to sit on (branch etc.) (иқәтәеит) as LO
@@ -1955,15 +2237,50 @@ REMOVE ("а́-қә·тәа-заа-ра" LO:3SgM) ;
 REMOVE ("а́-қә·тәа-ра") - LO:3SgNH ;
 # REMOVE ("а́-қә·тәа-заа-ра") - LO:3SgNH ;
 
+LIST VMoveTo = "а-ца-ра́" ;
+
+SELECT VMoveTo IF (-1 PP:ҿы́) ;
+
+# to be generalized: object + verb collocations
+
+SELECT ("а́у-ра") + S:Rel IF (1 ("а-ҧа́ра")) ; 
+
+# агәыҩбара иоуит он засомневался
+SELECT ("а́у-ра") + S:Ad IF (-1 ("а-гәы́ҩбара")) ; 
+
+SELECT ("а-ҧа́ра") IF (-1 ("а́у-ра") + S:Rel) ; 
+
 SELECT ("а-иа́ша" Adj Sg) IF (-1 Noun) ;
 
 SELECT ("а́-ҵаҟа" PP) IF (-1 Noun) ;
 
-# should make this unconditional, since ‘freeze’ reading is very rare?
+SELECT ("а́и·х·га-ра") + Tr + Ad IF (-1 ("а-шьаҿа́") OR ("а-шьапы́")) ;
+
+SELECT ("а-ха́ра") IF (1 ("а́-д·ҵа-ра") + Ad) ;
+SELECT ("а́-д·ҵа-ра") + Ad IF  (-1 ("а-ха́ра")) ;
+
+# харада ахара идҵаны
+SELECT ("а-ха́ра") + PP:да IF (1 ("а-ха́ра")) ;
+
+SELECT ("а́-қә·ла-ра") + LO:NonHum3Sg IF (-1 ("а́-мҩа") OR ("а-дәы́")) ;
+
+REMOVE ("а-р:ба-ра́") + Intr + Caus + DO:3 - DO:Ad ; # иирбеит
+
+SELECT ("а-р:ба-ра́") + Intr + DO:Ad
+   IF (-1 ("а-ҧхӡы́")) ; # more things that can be dried (off)
+
+
+# freeze/ask for
 SELECT ("а-ҵаа-ра́") IF (-1* ("ҳәа́") BARRIER CLB) ; # not "а-ҵа́а-ра"
 SELECT ("а-ҵаа-ра́") IF (-1 ("<–>")) ;
 
+# ask for needs Hum Subj
+REMOVE ("а-ҵаа-ра́") + Ad IF (-1 NH) ;
+REMOVE ("а-ҵаа-ра́") + Ad IF (-1 Adj) (-2 NH) ;
+
 SELECT ("а́·ҳәа-ра" DO:Ad) IF (-1 ("ҳәа́")) ;
+
+SELECT ("а́·ҳәа-ра" DO:Ad) IF (-1 ("а́-цәгьа")) ;
 
 SELECT ("а-ҳәа-ра́" DO:Ad) IF (-1 Pron + Dem) ;
 
@@ -1976,7 +2293,11 @@ REMOVE ("а́-ҳәа-ра") IF (-1 Speech) ;
 
 SELECT ("а-ҳәа-ра́" DO:Ad) IF (-1 Speech) ;
 
+# generalize!
+REMOVE ("а́-ҳәа-ра") + S:Ad IF (-1 Advb) ;
+
 REMOVE ("а́·ҳәа-ра" DO:Ad) IF (-1C Hum) ;
+SELECT ("а́·ҳәа-ра" DO:Ad) IF (-1 ("а́ҧсшәа")) ; # begrüßen
 
 REMOVE ("а-ҳәа-ра́" DO:Ad) IF (-1C Hum) ;
 
@@ -2047,9 +2368,12 @@ SELECT ("а́-хәа-ра") IF (-1 ("а-хы́")) ;
 
 REMOVE ("а́-ҭаа-ра") + HumDO ; # only inanimate direct object
 
+REMOVE Noun + Pl IF (1 ("а-ҭы́ҧ") + Pl - Det) ;
+
 REMOVE Det + PP:да ;
 REMOVE Poss + PP:да ;
 
+"<иқәын>" REMOVE ("а-қәны́") ; # Lein
 
 SELECT ("ара́" Adv) IF (-2 ("ана́" Adv)) ; 
 
@@ -2073,7 +2397,22 @@ SELECT Hydronym IF (1 ("а-ҧшаҳәа́")) ;
 # generalize!
 REMOVE ("а-џь-ра́" DO:Ad) IF (-1C H) ;
 
+
+# Rel + Noun
+
+LIST ReadingStuff = "а-шәҟәы́" ;
+
+REMOVE ("а́-лы·ҩ-ра") + Rel
+    IF (0 ("а́-ҩ-ра") + Rel)
+       (1 ReadingStuff) ;
+
+
+
+
 SELECT Q IF (1 IntMark) ;
+
+REMOVE S:Ad - VSaying IF (-1 Punct OR Adv) ;
+
 
 # ======== #
   SECTION  #
@@ -2091,10 +2430,16 @@ SELECT Q IF (1 IntMark) ;
 # but: ила
 # SELECT PP IF (-1 Noun) ;
 
-# SELECT PP + Poss:3Pl IF (-1 Noun + Pl) ;
+# ?? check in corpus
+SELECT ("а́-ла") + PP + Poss:3Pl IF (-1 Noun + Pl) ;
 
 # dangerous!
 # SELECT ("а́-ла" PP) ; # could in rare cases be Noun
+
+# 15 мшы рыла
+SELECT ("а́-ла") + PP + Poss:3Pl
+   IF (-1 Noun)
+      (-2 Num + Card) ;
 
 # REMOVE StatPass IF (0 Stat) ;
 
@@ -2127,6 +2472,11 @@ REMOVE ("а-ды́р-ра") + Neg - Reln:Pot ;
 REMOVE ("а́-р:дыр-ра") IF (0 ("а-ды́р-ра")) ;
 
 REMOVE ("а́-маӡа") IF (0 ("а́-ма-заа-ра")) ;
+
+REMOVE Pred + EveryTime ;
+SELECT EveryTime ;
+
+SELECT ("а́-ҭа-ра") + Ad IF (-1 ("ҭа́ха")) ;
 
 SELECT ("ари́" Pron) ;
 SELECT ("ара́ҟа" Adv) ;
@@ -2202,16 +2552,19 @@ SELECT ("а́-ҵәца") IF (1* ("а́зна") OR ("а-ӡы́")) ; # etc.
 
 REMOVE ("а-це́и-ра") ;
 
+# иаауҭаххалак зегьы ахьубо аџьырмыкьаҿы дцаны деимдарц
+REMOVE ("а́-дар-ра") IF (0 ("а́и·м·да-ра")) ;
+
 SELECT H IF (1 ("а́-ц-заа-ра")) ;
 
 SELECT ("а́-ма-заа-ра" S:Ad) IF (-1 ("ха́р")) ;
 
 SELECT ("а́-жә-ра" Abs) IF (1 ("а́-ҟа-заа-ра")) ;
 
-List Beverage = "а-ӡы́" "а-ҩы́" "а-ча́и" "а-каҳуа́" "а-уа́тка" "а-уара́ш"
+List Beverage = "а-ӡы́" "а-ҩы́" "а-ча́и" "а-каҳуа́" "а-уа́тка" "а-уара́ш" "а-шәы́рӡ"
                 "а-ко́ниак" "<мартини>" ;
 
-SELECT ("а́-жә-ра") IF (-1 Beverage) ;
+SELECT ("а́-жә-ра") + Tr + Ad IF (-1 Beverage) ;
 SELECT ("а́-жә-ра") IF (1 Beverage) ;
 
 SELECT ("а-ҩы́") IF (1 ("а́-жә-ра")) ;
@@ -2224,6 +2577,9 @@ SELECT ("а-қы́жә") IF (1 ("а-жьы́")) ;
 SELECT How IF (1 ("а́иҧш")) ; 
 
 SELECT ("а-ҳәа-ра́" How) IF (1 ("а́иҧш")) ; 
+
+SELECT ("а́иҧш" Poss:3SgNH) IF (-1C V) ;
+
 
 # REMOVE ("а́хьӡ-заа-ра") ; # competing with а́-хьӡ-заа-ра
 
@@ -2253,6 +2609,10 @@ SELECT ("а-гәы́") IF (NOT 0 ("а-гәы́ла"))
 
 SELECT ("а́-лахь") IF (1 ("а́и·ҵы·х-ра")) ;
 
+# can go wrong?
+SELECT ("а́-шьҭахь") + PP + Poss:3SgM IF (-1 H OR M OR LastName) ; 
+SELECT ("а́-шьҭахь") + PP + Poss:3Pl IF (-1 Pron + Pl) ; 
+
 SELECT ("уа́" Adv) ;
 
 SELECT ("а́а·на·га-ра") ;
@@ -2267,6 +2627,9 @@ SELECT ("а-ха́-заа-ра")
 
 SELECT ("<ихан>" "а-ха́н" NH) IF (-1 Anthr OR H) ;
 
+# Ба бшәахәоуп
+SELECT ("ба́") + Pron IF (1 AM:2SgF) ;
+
 SELECT Impv + S:2Pl ;
 
 REMOVE LO:3SgM IF (0 LO:Rec) ; # неицуҵар etc.
@@ -2279,6 +2642,8 @@ REMOVE FPv ;
 REMOVE VN + Stat IF (0 VN + Dyn) ; # prelim.
 
 REMOVE VN - DET ;
+
+REMOVE Ad IF (-1C Adj + Emph) ; # is Adv
 
 # dangerous
 # REMOVE Noun IF (0C NOUN) (NOT 0 Pl) (NOT 0 POSTP) ;
@@ -2318,6 +2683,8 @@ SELECT ("дара́") ;
 
 #SELECT Adv ;
 
+SELECT ("а-ҿы́") + PP + Poss:3Pl IF (-1C NH + Pl) ;
+
 REMOVE Det + Advb ;
 
 REMOVE Emph - Neg ;
@@ -2336,7 +2703,23 @@ REMOVE VN + Indet ;
 # nonhum causee
 REMOVE Cs:3SgNH ;
 
-SELECT Fin IF (NEGATE 1* V OR Pred BARRIER Period) ;
+SELECT Fin IF (NEGATE 0* V OR Pred BARRIER Period) ;
+
+REMOVE NonFin - Rel - Abs IF (1C Noun - Pred) ;
+
+# ??
+REMOVE StatPass ;
+
+# exceptions for <Lemma>:
+
+LIST LemmaExcept = "а́ҳцәа" ; # Pockennarben
+
+SELECT <Lemma> - LemmaExcept
+    IF (NOT -1 BOS)
+       (NEGATE -1 Dash OR ("“") OR ("«") LINK -1 BOS) ;
+
+# word is uppercase form of lemma
+SELECT <LemmaLC> ;
 
 # END
 
@@ -2387,6 +2770,7 @@ WITH NOPARENT PP | ("нахы́с")
          Where | # иахьиго азы
          ("уажәы́") |
          ("жәытәна́тә") | # жәытәнатә аахыс # fixme: either MWE or Noun + PP
+         ("ҧы́ҭрак") | # ҧыҭрак ашьҭахь
          ("аба́с" Adv)) # аба́с а́ла
         (NOT p (*)) {
    MAP >CASE (*) ;
@@ -5128,7 +5512,8 @@ WITH ("ҳәа́") # Prt + Quote
 
 # this overcomes the problem: rule has to be anchored inside PARENTHESES
 WITH VMain
-  IF (1* RQuote LINK 1w ("ҳәа́")) {
+  IF (1* RQuote LINK 1w ("ҳәа́"))
+     (NOT p (*)) {
   SETCHILD  (*) TO (jC1 (*)) ;
 } ;
 
