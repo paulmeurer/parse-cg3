@@ -454,17 +454,19 @@
                                           (destructuring-bind (&optional w l fl label parent status comment)
                                               reading
                                             (declare (ignore w))
-                                            (let ((reading1 (find-if (lambda (r)
-                                                                       ;; compare lemma and features,
-                                                                       (and (string= (car r) l)
-                                                                            (or (string= (cadr r) fl)
-                                                                                (let ((s-f (u:split fl #\space))
-                                                                                      (d-f (u:split (cadr r) #\space)))
-                                                                                  (loop for f in s-f
-                                                                                        always (or (find f '("<Relax>" "<NoLex>")
-                                                                                                         :test #'string=)
-                                                                                                   (find f d-f :test #'string=)))))))
-                                                                     readings)))
+                                            (let ((reading1
+                                                   (find-if
+                                                    (lambda (r)
+                                                      ;; compare lemma and features,
+                                                      (and (string= (car r) l)
+                                                           (or (string= (cadr r) fl)
+                                                               (let ((s-f (u:split fl #\space))
+                                                                     (d-f (u:split (cadr r) #\space)))
+                                                                 (loop for f in s-f
+                                                                    always (or (find f '("<Relax>" "<NoLex>")
+                                                                                     :test #'string=)
+                                                                               (find f d-f :test #'string=)))))))
+                                                            readings)))
                                               (when reading1
                                                 ;; mark found reading as <Sel>
                                                 (setf (cadr reading1)
@@ -560,7 +562,7 @@
                     )
                (setf (getf (cddr node) :label) relation)))
     ;; fix stored-parent
-    (print :fix-stored-parent)
+    #+debug(print :fix-stored-parent)
     (loop for node across token-array for i from 0
           for p = (getf node :stored-parent)
           do (list i)
