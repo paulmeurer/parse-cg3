@@ -10,7 +10,7 @@
    (document :initform nil :initarg :document :reader document) ;; document name in corpus
    (corpus :initform nil :initarg :corpus :reader corpus)
    (text-array :initform (make-array 0 :adjustable t :fill-pointer t) :accessor text-array)
-   ;; word-id -> index in text-array
+   ;; word-id (as 'w<wid>') -> index in text-array
    (word-id-table :initform (make-hash-table :test #'equal) :reader word-id-table) 
    (lexicon :initform (dat:make-string-tree) :accessor text-lexicon)
    (disambiguation-table :initform (make-hash-table :test #'equal) :reader disambiguation-table) 
@@ -326,9 +326,16 @@
 	   for i from 0
 	   do (case (car node)
 		(:start-element
-		 (push (let ((lang (getf node :|xml:lang|)))
+                 (push (let ((lang (or (getf node :|xml:lang|)
+                                       (let ((atts (getf node :atts)))
+                                         (when atts
+                                           (let ((start (search "xml:lang=\"" atts)))
+                                             (when start
+                                               (subseq atts (+ start 10) (position #\" atts :start 11)))))))))
 			 (cond ((null lang)
 				nil)
+                               ((eq variety :abk)
+                                (intern (string-upcase lang) :keyword))
 			       ((equal lang "oge")
 				:og)
 			       ((or (equal lang "mge") (equal lang "kat-mg"))
@@ -365,7 +372,7 @@
 			  (readings (when token ;; TODO: use second value (norm)
 				      (lookup-morphology language normalized-token
 							 :lookup-guessed lookup-guessed 
-							 :variety variety
+							 :variety variety ;; 
 							 :orthography (orthography text))))
 			  #+not-used
 			  (word-readings (when (and token (string/= token word))
@@ -398,6 +405,7 @@
 								   :lookup-guessed lookup-guessed 
 								   :guess t)))
 			      (mwe2-reading (when (and (car next-token+j2)
+                                                       (not (and (eq language :abkx) (not (eq language variety))))
 						       (not (find (char token 0) ",;.:?!“”«»–"))
 						       (not (find (char (car next-token+j2) 0)
 								  ",;.:?!“”«»")))
@@ -407,6 +415,7 @@
                                                                  :variety variety :mwe t
                                                                  :orthography (orthography text))))
 			      (mwe3-reading (when (and (not mwe2-reading)
+						       (not (and (eq language :abkx) (not (eq language variety))))
 						       (not (find (char token 0) ",;.:?!“”«»–"))
 						       (car next-token+j3)
 						       (not (find (char (car next-token+j2) 0)
@@ -532,6 +541,10 @@
 #+test
 (process-text *text* :disambiguate :variety :non :mode :redisambiguate)
 
+#+test
+(process-text *text* :analyze)
+
+
 (defmethod process-text ((text parsed-text) (mode (eql :disambiguate))
                          &key (variety :og) (load-grammar t) mode
                            (sentence-end-strings vislcg3::*sentence-end-strings*)
@@ -544,7 +557,8 @@
                                   :sentence-start-is-uppercase (eq variety :abk))
   (let ((token-array (text-array text))
         (word-id-table (word-id-table text))
-        (wid-table (wid-table text)))
+        ;; (wid-table (wid-table text)) ;; what whas this supposed to be used for?
+        )
     (loop for node across token-array
           do (let* ((msa (getf node :morphology))
                     (reading (or (find-if (lambda (reading)
@@ -561,26 +575,11 @@
                (setf (getf (cddr node) :label) relation)))
     ;; fix stored-parent
     (print :fix-stored-parent)
-    (loop for node across token-array for i from 0
+    (loop for node across token-array ;; for i from 0
           for p = (getf node :stored-parent)
-          do (list i)
           when (and p (listp p)) ;; list ensures that this is done only once, but not on redisambiguation
-          do (debug node)(setf (getf node :stored-parent)
-                   (getf (debug (gethash (debug (car p)) wid-table)) :self)))))
-
-#+test
-(:NODE (:WORD "Тариел" :LABEL "NSUBJ" :PARENT 14573 :SELF 14568 :STORED-LABEL "NSUBJ" :STORED-PARENT (14571) :MORPHOLOGY (("Тариел" "Noun Prop Anthr M <NoLex> >NSUBJ" :SELECTED-CG ("with:3737" "map:3740" "with:4505" "with:3737" "setparent:5180"))) :|xml:id| "w14569"))
-
-#+test
-(print (aref (token-array kp::*text*) 18363))
-
-#+test
-(let ((word-id-table (word-id-table kp::*text*)))
-  (loop for node across (token-array kp::*text*)
-        for p = (getf node :stored-parent)
-        when (and p (listp p)) ;; list ensures that this is done only once, but not on redisambiguation
-        do (setf (getf node :stored-parent)
-                 (getf (gethash (format nil "w~a" (car p)) word-id-table) :self))))
+          do (setf (getf node :stored-parent)
+                   (getf (gethash (format nil "w~a" (car p)) word-id-table) :self)))))
 
 ;; kp::*text*
 
@@ -1033,6 +1032,7 @@
   (assert (not (null node-id)))
   (multiple-value-bind (token-table node-id diff)
       (get-token-table text :node-id node-id :stored stored)
+    (print (list stored :diff diff))
     (let ((node-table (make-hash-table :test #'equal)) ;; rehashed in display-dep-graph() below; populated where?
 	  (children-table (make-hash-table :test #'equal))
 	  (slash-nodes (make-hash-table :test #'equal))
