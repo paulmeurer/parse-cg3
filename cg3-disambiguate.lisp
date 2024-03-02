@@ -154,6 +154,7 @@
 		(35 "setrelation")
 		(50 "addcohort")
                 (45 "remcohort")
+                (48 "copy")
                 (64 "with"))))
     (if line
 	(format nil "~:[~;; ~]~a:~d" discarded name line)
@@ -226,8 +227,8 @@
 
 (defparameter +disambiguate-lock+ (make-process-lock :name "disambiguate-lock"))
 
-(defun lemma-unique-frequency (lemma)
-  (declare (ignore lemma))
+(defun lemma-unique-frequency (l f &rest rest)
+  (declare (ignore l f rest))
   nil)
 
 (defparameter *sentence-end-strings* '("." "?" "!" "…" ";" ":"))
@@ -236,8 +237,8 @@
 (defmethod cg3-disambiguate-text ((text parse::parsed-text)
 				  &key (variety :og) (tracep t) (load-grammar t) mode
 				    (sentence-end-strings *sentence-end-strings*)
-                                    sentence-start-is-uppercase ;; if true sentence is not ended if lowercase follows
-                                    )
+                                    ;; if true sentence is not ended if lowercase follows
+                                    sentence-start-is-uppercase)
   (with-process-lock (+disambiguate-lock+)
     (load-grammar variety :force load-grammar)
     (let* ((grammar (ecase variety
@@ -246,7 +247,10 @@
 		      ((:ng :jg) *ng-grammar*)
 		      (:abk *abk-grammar*)
                       (:non *non-grammar*)))
-           (language (if (eq variety :abk) :abk :kat))
+           (language (case variety
+                       (:abk :abk)
+                       (:non :non)
+                       (otherwise :kat)))
 	   (applicator (cg3-applicator-create grammar))
 	   (sentence nil)
 	   #+debug(word-list ()) ;; for debugging
@@ -323,10 +327,12 @@
 						       (otherwise
 							(list
 							 (list "??" "Unrecognized" nil nil)
+                                                         #|
 							 (list "??" "N Prop Anthr FirstName" nil nil)
 							 (list "??" "N Prop Anthr LastName" nil nil)
 							 (list "??" "N Prop Top Place" nil nil)
-							 (list "??" "N Prop" nil nil)))))
+							 (list "??" "N Prop" nil nil)
+                                                         |#))))
 					       (if (find :morphology token)
 						   (setf (getf token :morphology) morphology)
 						   (setf (cddr token)
@@ -338,8 +344,6 @@
 					     (let ((cohort (cg3-cohort-create sentence))
 						   (tag (cg3-tag-create-u8
 							 applicator
-                                                         #+ignore ;; why that???
-							 (parse::transliterate language (format nil "\"<~a>\"" wordform))
                                                          (concat "\"<" wordform ">\"")
                                                          #+ignore
                                                          (format nil "\"<~a>\"" wordform))))
@@ -353,7 +357,7 @@
 						       (cg3-reading-addtag reading tag)
 						       (cg3-reading-addtag
 							reading (cg3-tag-create-u8 applicator (format nil "[~d]" i)))
-						       (let ((uf (lemma-unique-frequency (car l.f))))
+						       (let ((uf (apply #'lemma-unique-frequency l.f)))
                                                          (when uf
                                                            (cg3-reading-addtag
                                                             reading (cg3-tag-create-u8
@@ -474,14 +478,14 @@
 				    (destructuring-bind (&key morphology tmesis-msa &allow-other-keys) token
 				      (cond (tmesis-msa
 					     (loop for ((segment . msa) . rest) on tmesis-msa
-						do (msa-set-disambiguation cohort msa)
+						do (msa-set-disambiguation cohort msa language)
 						when rest
 						do (incf coh)
 						(setf cohort (cg3-sentence-getcohort sentence coh)
 						      tag (cg3-cohort-getwordform cohort)
 						      word (cg3-tag-gettext-u8 tag))))
 					    (t
-					     (setf added (msa-set-disambiguation cohort morphology)))))
+					     (setf added (msa-set-disambiguation cohort morphology language)))))
 				    ;; dependencies
 				    #+ccl
 				    (let ((self (ccl::%new-gcable-ptr 4 t))
@@ -519,9 +523,10 @@
 	   do (setf (getf subtoken :parent) (1+ (or (position (getf subtoken :parent) ids) -2)))))
       text)))
 
-(defun msa-set-disambiguation (cohort morphology)
+(defun msa-set-disambiguation (cohort morphology language)
   (let* ((added nil)
 	 (reading-count (length morphology))
+         (set-tags-from-cg-output (eq language :kat))
 	 (selected
 	  (u:collecting
 	    (dotimes (re (cg3-cohort-numreadings cohort))
@@ -553,12 +558,19 @@
 			 when (find (char tag 0) ">@")
 			 collect tag
 			 when (equal tag "@ADDED")
-			 do (setf added t))))
-		(when dependency-labels
-		  (let ((rlist (nth reading-id morphology)))
-		    (when rlist
+			    do (setf added t))))
+                (if set-tags-from-cg-output
+                    (let ((rlist (nth reading-id morphology)))
 		      (setf (cadr rlist)
-			    (format nil "~a~{ ~a~}" (cadr rlist) dependency-labels)))))
+			    (format nil "~{~a~^ ~}"
+                                    (loop for i from 3 ;; 4
+                                          below (cg3-reading-numtags reading)
+		                          collect (cg3-tag-gettext-u8 (cg3-reading-gettag reading i))))))
+		    (when dependency-labels
+		      (let ((rlist (nth reading-id morphology)))
+		        (when rlist
+		          (setf (cadr rlist)
+			        (format nil "~a~{ ~a~}" (cadr rlist) dependency-labels))))))
 		(when appended-p
 		  (setf (cdr morphology)
 			(append (cdr morphology)
