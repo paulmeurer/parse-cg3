@@ -10,8 +10,13 @@
 (defparameter *mg-analyzer* nil)
 (defparameter *ng-analyzer* nil)
 
+(defparameter *ng-guess-verb-analyzer*
+  (make-instance 'fst-net
+		 :file "projects:georgian-morph;regex;guessed-verb.fst"
+                 :name :ng-guess-verb))
+
 (defmethod init-transducers ((language (eql :kat))
-                             &key ng-only
+                             &key ng-only plain-og (guess t)
                                (transducer-dir (ecase +fst+
                                                  (:foma "projects:parse-cg3;regex;")
                                                  (:fst "projects:georgian-morph;regex;")))
@@ -31,6 +36,7 @@
     (labels ((load-morph (file-list)
 	       (u:collecting
 		 (loop for name in file-list
+                    when name
 		    do ;; (print name)
 		      (format t "~&loading: ~s~%" name) 
 		      (case name
@@ -38,6 +44,7 @@
 			 (u:collect (or ng-net
 					(setf ng-net (make-instance 'fst-net
 								    :file ng-file :name :ng)))))
+                        #+what-is-that?
 			(:georgian-comp-ng
 			 (u:collect (or comp-ng-net
 					(setf comp-ng-net
@@ -73,11 +80,15 @@
 			   :file (u:concat transducer-dir "geo-tokenize." type)))
       (unless ng-only
         (setf *og-analyzer*
-              (load-morph '(:georgian-morph-og
+              (if plain-og
+                  (load-morph '(:georgian-morph-og
+                                ;; :georgian-comp-ng
+                                ))
+                  (load-morph '(:georgian-morph-og
                             :georgian-morph-ng
-                            :georgian-comp-ng
+                            ;; :georgian-comp-ng
                             ;;"georgian-noun-guessed"
-                            )))
+                            ))))
         (setf *xm-analyzer*
               (load-morph '(:georgian-morph-xanmeti
                             :georgian-morph-haemeti
@@ -100,19 +111,21 @@
               (load-morph '("georgian-morph-mg"
                             :georgian-morph-ng
                             :georgian-morph-og
-                            :georgian-comp-ng
+                            ;; :georgian-comp-ng
                             ))))
       (setf *ng-analyzer*
-            (load-morph '(:georgian-morph-ng
-                          "georgian-redup-ng"
-                          "georgian-morph-ng-pv"
-                          ;;"georgian-verb-ng-guessed" ; has to be improved
-                          :georgian-comp-ng ;; taken out because of many (?) wrong composita
-                          :georgian-morph-og
-                          "ng-prefix-noun-adj"
-                          #+ignore "georgian-noun-guessed"
-                          "anthr-coll"
-                          "foreign-morph"))))
+            (load-morph (list :georgian-morph-ng
+                              "georgian-redup-ng"
+                              "georgian-morph-ng-pv"
+                              ;;"georgian-verb-ng-guessed" ; has to be improved
+                              ;; :georgian-comp-ng ;; taken out because of many (?) wrong composita
+                ;;              :georgian-morph-og
+                              "ng-prefix-noun-adj"
+                              #+ignore "georgian-noun-guessed"
+                              "anthr-coll"
+                              "foreign-morph"
+                              (when guess "georgian-guessed")
+                              ))))
     )
   (print :done))
 
@@ -195,14 +208,59 @@
 	  (format nil "~a=~a/~a=~a+~a" (seg 0) (seg 2) (seg 1) (seg 3) (seg 4))))))
 
 #+test
-(print (lookup-morphology :kat "ნიდერლანდიური" :lookup-guessed nil))
+(print (lookup-morphology :kat "K-ჯგუფებისათვის"))
+
+#+test
+(print (lookup-morphology :kat "წერს"))
+
+#+test
+(pprint (lookup-morphology :kat "პარირებს"))
+
+#+test
+(pprint (guess-ng-verb-morphology "რეპარირებს"))
+
+(defun guess-ng-verb-morphology (word)
+  (let ((lemmas+features ())
+        (prev nil))
+    ;; try analysing word by verb guesser, for any possible segmentation into prefix, root, suffix
+    ;; root is replaced by $
+    (loop for start from 0 below (1- (length word))
+          do (loop for end from (1+ start) below (1- (length word))
+                   for prefix = (subseq word 0 start)
+                   for root = (subseq word start end)
+                   for suffix = (subseq word end)
+                   do (fst-lookup *ng-guess-verb-analyzer*
+                                  (u:concat prefix "$" suffix)  
+                                  (lambda (w l+f net)
+                                    (declare (ignore w net))
+                                    (when (> (length l+f) 0)
+                                      (let ((exp-l+f ""))
+                                        (labels ((insert-root (pos)
+                                                   (let ((dpos (position #\$ l+f :start pos)))
+                                                     (setf exp-l+f
+                                                           (u:concat exp-l+f (subseq l+f pos dpos)))
+                                                     (when dpos
+                                                       (setf exp-l+f (u:concat exp-l+f root))
+                                                       (insert-root (1+ dpos))))))
+                                          (insert-root 0)
+                                          (let ((readings (u:split exp-l+f #\newline nil nil t)))
+                                            (multiple-value-setq (lemmas+features prev)
+                                              (append-readings lemmas+features
+                                                               word
+                                                               (mapcar (lambda (r)
+                                                                         (u:concat r " Guess"))
+                                                                       readings)
+                                                               :variety :ng
+                                                               :prev prev))))))))))
+    lemmas+features))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) tmesis-segment guess mwe
                                 (lookup-guessed t)
                                 &allow-other-keys)
   (let ((lemmas+features ())
-	(stripped-word
+        (is-guessed nil)
+        (stripped-word
 	 (remove-if (lambda (c) 
 		      (find c "ՙ‹›{}\\|")) ;; #\Armenian_Modifier_Letter_Left_Half_Ring in numbers
 		    word))
@@ -222,10 +280,7 @@
             (lambda (w l+f net)
               (declare (ignore w))
               ;; strip some markers and features
-              (let* ((readings (or (u:split l+f #\newline nil nil t)
-                                   #+gekko
-                                   (and lookup-guessed
-                                        (lookup-guessed stripped-word))))
+              (let* ((readings (u:split l+f #\newline nil nil t))
                      (prev "")
                      (og-readings
                       (when (find variety '(:xm :hm))
@@ -235,6 +290,14 @@
                                       (lambda (w l+f net)
                                         (declare (ignore w net))
                                         (return-from og l+f)))))))
+                (multiple-value-setq (lemmas+features prev)
+                  (append-readings lemmas+features stripped-word readings
+                                   :variety variety
+                                   :og-readings og-readings
+                                   :tmesis-segment tmesis-segment
+                                   :net net
+                                   :prev prev))
+                #+orig
                 (dolist (reading (remove-subsumed-preverbs (sort readings #'string<)))
                   (when (and net (eq (net-name net) :georgian-redup-ng))
                     (setf reading (normalize-reduplication-reading reading))
@@ -251,12 +314,12 @@
                                                (eq (net-name net) :hm))
                                       (not (search reading og-readings)))))
                       (loop for i from 0
-                         for c across reading
-                         when (char= c #\+) do (setf f-start i)
-                         when (and f-start
-                                   (= i (1+ f-start))
-                                   (char<= #\A c #\Z))
-                         do (return))
+                            for c across reading
+                            when (char= c #\+) do (setf f-start i)
+                            when (and f-start
+                                      (= i (1+ f-start))
+                                      (char<= #\A c #\Z))
+                            do (return))
                       (let* ((features (when f-start (subseq reading f-start)))
                              (features (if features (subseq (substitute #\space #\+ features) 1) ""))
                              (reading (subseq reading 0 f-start)))
@@ -278,23 +341,68 @@
                                          nil ;; flag
                                          nil) ;; trace (used CG rules)
                                    lemmas+features :test #'equal)))))
-                  (setf prev reading))))))
-	  (mwe ;; don’t recognize foreign stuff as mwe
+                  (setf prev reading)))))
+           (when (and (eq variety :ng)
+                      (not (find #\space stripped-word))
+                      (or (null lemmas+features)
+                          (search "Guess" (cadar lemmas+features))))
+             (setf lemmas+features
+                   (append lemmas+features
+                           (debug (guess-ng-verb-morphology (debug stripped-word)))))))
+          (mwe ;; don’t recognize foreign stuff as mwe
 	   nil)
 	  (t
 	   (setf lemmas+features (list (list "-" (format nil "Foreign ~a" variety) nil nil)))))
-    #+test
-    (:fst-lookup *georgian-guessed* w
-                 (lambda (w l+f net)
-                   (declare (ignore w net))
-                   (unless lemmas+features
-                     (dolist (reading (u:split l+f #\newline nil nil t))
-                       (let* ((f-start (position #\+ reading))
-                              (features (subseq reading f-start))
-                              (reading (subseq reading 0 f-start)))
-                         (pushnew (list reading (substitute #\space #\+ features))
-                                  lemmas+features :test #'equal))))))
     (values lemmas+features stripped-word)))
+
+(defun append-readings (lemmas+features stripped-word readings
+                        &key (variety :ng) og-readings tmesis-segment net prev)
+  (dolist (reading (remove-subsumed-preverbs (sort readings #'string<)))
+    (when (and net (eq (net-name net) :georgian-redup-ng))
+      (setf reading (normalize-reduplication-reading reading))
+      #+debug(debug reading))
+    (unless (and (eq (string< prev reading) (length prev))
+                 (equal (subseq reading (length prev)) "+NonStand"))
+      (let* ((f-start nil)
+             (xm-only (when (and (find variety '(:xm :hm))
+                                 (find #\ხ stripped-word)
+                                 (eq (net-name net) :xm))
+                        (not (search reading og-readings))))
+             (hm-only (when (and (find variety '(:xm :hm))
+                                 (find #\ჰ stripped-word)
+                                 (eq (net-name net) :hm))
+                        (not (search reading og-readings)))))
+        (loop for i from 0
+              for c across reading
+              when (char= c #\+) do (setf f-start i)
+              when (and f-start
+                        (= i (1+ f-start))
+                        (char<= #\A c #\Z))
+              do (return))
+        (let* ((features (when f-start (subseq reading f-start)))
+               (features (if features (subseq (substitute #\space #\+ features) 1) ""))
+               (reading (subseq reading 0 f-start)))
+          (cond (xm-only
+                 (setf features (u:concat features " Xan")))
+                (hm-only
+                 (setf features (u:concat features " Hae")))
+                #+ignore
+                (guess
+                 (setf features (u:concat features " LevGuess"))))
+          (unless (and (eq tmesis-segment :infix)
+                       (search "N " features))
+            (pushnew (list reading
+                           (cond ((eq tmesis-segment :infix)
+                                  (u:concat features " <TmInfix>"))
+                                 ((eq tmesis-segment :verb)
+                                  (u:concat features " <TmV>"))
+                                 (t
+                                  features))
+                           nil ;; flag
+                           nil) ;; trace (used CG rules)
+                     lemmas+features :test #'equal)))))
+    (setf prev reading))
+  (values lemmas+features prev))
 
 #+moved
 (defmethod process-gnc-text ((text parsed-text) (mode (eql :disambiguate))
@@ -816,7 +924,7 @@
   atts)
 
 #+disabled
-(if (eq +fst+ :fst)
+(if nil ;;(eq +fst+ :fst)
     ;; Initialize the transducers
     (init-transducers :kat)
     ;; if you are interested in Modern Georgian only use this instead:
