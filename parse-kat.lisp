@@ -211,7 +211,7 @@
 (print (lookup-morphology :kat "K-ჯგუფებისათვის"))
 
 #+test
-(print (lookup-morphology :kat "წერს"))
+(pprint (lookup-morphology :kat "ენტომოფაგები"))
 
 #+test
 (pprint (lookup-morphology :kat "პარირებს"))
@@ -248,18 +248,16 @@
                                               (append-readings lemmas+features
                                                                word
                                                                (mapcar (lambda (r)
-                                                                         (u:concat r " Guess"))
+                                                                         (u:concat r " GuessV Guess"))
                                                                        readings)
                                                                :variety :ng
                                                                :prev prev))))))))))
     lemmas+features))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
-                              &key (variety :ng) tmesis-segment guess mwe
-                                (lookup-guessed t)
+                              &key (variety :ng) tmesis-segment mwe
                                 &allow-other-keys)
   (let ((lemmas+features ())
-        (is-guessed nil)
         (stripped-word
 	 (remove-if (lambda (c) 
 		      (find c "ՙ‹›{}\\|")) ;; #\Armenian_Modifier_Letter_Left_Half_Ring in numbers
@@ -296,59 +294,14 @@
                                    :og-readings og-readings
                                    :tmesis-segment tmesis-segment
                                    :net net
-                                   :prev prev))
-                #+orig
-                (dolist (reading (remove-subsumed-preverbs (sort readings #'string<)))
-                  (when (and net (eq (net-name net) :georgian-redup-ng))
-                    (setf reading (normalize-reduplication-reading reading))
-                    #+debug(debug reading))
-                  (unless (and (eq (string< prev reading) (length prev))
-                               (equal (subseq reading (length prev)) "+NonStand"))
-                    (let* ((f-start nil)
-                           (xm-only (when (and (find variety '(:xm :hm))
-                                               (find #\ხ stripped-word)
-                                               (eq (net-name net) :xm))
-                                      (not (search reading og-readings))))
-                           (hm-only (when (and (find variety '(:xm :hm))
-                                               (find #\ჰ stripped-word)
-                                               (eq (net-name net) :hm))
-                                      (not (search reading og-readings)))))
-                      (loop for i from 0
-                            for c across reading
-                            when (char= c #\+) do (setf f-start i)
-                            when (and f-start
-                                      (= i (1+ f-start))
-                                      (char<= #\A c #\Z))
-                            do (return))
-                      (let* ((features (when f-start (subseq reading f-start)))
-                             (features (if features (subseq (substitute #\space #\+ features) 1) ""))
-                             (reading (subseq reading 0 f-start)))
-                        (cond (xm-only
-                               (setf features (u:concat features " Xan")))
-                              (hm-only
-                               (setf features (u:concat features " Hae")))
-                              (guess
-                               (setf features (u:concat features " LevGuess"))))
-                        (unless (and (eq tmesis-segment :infix)
-                                     (search "N " features))
-                          (pushnew (list reading
-                                         (cond ((eq tmesis-segment :infix)
-                                                (u:concat features " <TmInfix>"))
-                                               ((eq tmesis-segment :verb)
-                                                (u:concat features " <TmV>"))
-                                               (t
-                                                features))
-                                         nil ;; flag
-                                         nil) ;; trace (used CG rules)
-                                   lemmas+features :test #'equal)))))
-                  (setf prev reading)))))
+                                   :prev prev)))))
            (when (and (eq variety :ng)
                       (not (find #\space stripped-word))
                       (or (null lemmas+features)
                           (search "Guess" (cadar lemmas+features))))
              (setf lemmas+features
                    (append lemmas+features
-                           (debug (guess-ng-verb-morphology (debug stripped-word)))))))
+                           (guess-ng-verb-morphology stripped-word)))))
           (mwe ;; don’t recognize foreign stuff as mwe
 	   nil)
 	  (t
