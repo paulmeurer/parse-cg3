@@ -7,6 +7,8 @@
 # E.g., om-SELECT …			       #
 # ============================================ #
 
+# see https://edu.visl.dk/cg3/single/
+
 # tavisupleba/content/article/1538021
 # ალექსანდრე ქუთათელი: პირისპირ
 
@@ -48,7 +50,8 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
 	    <Gen> <IO:Dat> <IO:Gen> <Inst> <Null> <OldPl> <PP:გან> <PP:თან>
 	    <S-DO-IO> <S-DO> <S-IO> <S-OTh-Pred> <S:Dat> <S:Erg> <S:Nom> <S>
             <IO:Obl>
-	    Unrecognized Guess @NC @CLB @ADDED [0] MWE <MWE> Coll
+	    Unrecognized Guess Cand @NC @CLB @ADDED [0] MWE <MWE> Coll
+            GLastName # test
 	    # dependency relations
 	    >SUBJ >DO >IO >XOBJ >PRL
 	    >COMP >ATR >NUM >POSS >GEN >OBJ >OBL >AG
@@ -133,7 +136,7 @@ om-LIST TENSE = Pres Impf Conj-I Conj-II Conj-III Aor Impv-I Impv-II PluPerf
 	       	IterPres IterImpf IterPerf Iter-II Iter-III ;
 
 # Unrecognized is a reading that is added on the fly for tokens without morphology.
-LIST Guess = Guess Unrecognized ;
+# LIST Guess = Guess Unrecognized ;
 
 SET S:1 = S:1Sg | S:1Pl ;
 SET S:2 = S:2Sg | S:2Pl ;
@@ -154,7 +157,7 @@ SET ErgPl = (Erg Pl) ;
 SET DatSg = (Dat Sg) ;
 SET DatPl = (Dat Pl) ;
 
-SET AUX = (<AuxTrans>) | (<AuxTransHum>) | (<AuxIntr>) ;
+LIST AUX = <AuxTrans> <AuxTransHum> <AuxIntr> ;
 
 # verbs (optionally) taking a Hum IO
 LIST IOHumV = "და-ბარებ[ა]/ბარ" ;
@@ -184,7 +187,7 @@ LIST PREDADJVerb = "და·ტოვებ[ა]/ტოვ"
 		   "და·ხვდომ[ა]/ხვდ" ;
 
 # TODO: "და" should only be CLB if it conjoins clauses ;-)
-LIST CLBwords = "<:>" "<;>" "<.>" "<?>" "<…>" "რომ[ე]ლ·ი" "როგორც" "მაგრამ" Dash ;
+LIST CLBwords = "<:>" "<;>" "<.>" "<?>" "<…>" "რომ[ე]ლ·ი" "როგორც" "მაგრამ" "ხოლო" Dash ;
 SET CLB1 = ("<,>") | ("<:>") | ("–") | ("<…>") | ("რომ") | ("თუ" Cj Sub) | ("რომ[ე]ლ·ი") ;
 
 # those starting in @ are added by an ADD rule
@@ -353,6 +356,8 @@ REMOVE ("მერმე" V) ;
 
 n-REMOVE ("ჩენ[ა]/ჩნ" Inv S:2Sg Old) ; # გაჩნდა
 
+REMOVE ("უკანა") + Voc ;
+
 SELECT ("<გარს>" Adv) ;
 # remove ("<ვის>" "ვა") ;
 SELECT ("<კიდევ>" Adv) ;
@@ -379,7 +384,7 @@ n-REMOVE (".*სლვ\\[ა\\]"r) ;
 REMOVE ("იყ·ი" N) ;
 REMOVE ("მი·მართულ·ი/მართ" A Part Pl) ; 
 REMOVE ("<დიდი>" V) ;
-REMOVE ("<ვ·ი>") ; # ვით
+REMOVE ("ვ·ი") ; # ვით
 REMOVE ("<მუნ>" N) ;
 o-SELECT ("<თქუენ>" Pron) ; # not V (??)
 REMOVE Att + (Encl:IndSp3) ;
@@ -404,6 +409,8 @@ n-REMOVE ("რამ[ე]" A Sg) ;
 on-REMOVE ("ვის·ი") ;
 
 SELECT ("ზოგ·ი" A) ;
+
+REMOVE ("მიკროსკოპ·ი") + Prop ;
 
 REMOVE ("საქართველო" <Der:სა-ო>) ;
 
@@ -715,7 +722,7 @@ SELECT ("მისიან·ი") ;
 # for plays (…. მანანა.)
 SELECT FirstName IF (-1 BOS) (1 Period) ;
 
-REMOVE Prop IF (-1 Ord) ;
+REMOVE Prop IF (-1 Ord - Roman) ;
 
 # more such?
 SELECT ("მდგარ·ი/დგ" A) IF (-1 PP:ზე) ; # not N
@@ -895,15 +902,24 @@ n-SELECT ("თავ·ი") + N
 # აფხაზები
 REMOVE (LastName Pl) ;
 
+#SELECT (".*([a-zA-Z]).*"r) + Org + Guess ;
+
+REMOVE (".*(ა|ე|ი|ო|უ).*"r) + Org + Guess ;
+
+REMOVE (".*[0-9].*"r) + Anthr + Guess ;
+
+
 # ქართველი
-n-REMOVE (LastName)
+n-REMOVE LastName - Guess
 	 IF (NOT -1 FirstName)
 	    (NOT -1 QUAL)
 	    (NOT -1 Anthr + Abbrev) ;
 
-LIST TOWN = "ქალაქ·ი" "სოფ[ე]ლ·ი" ;
+LIST PlaceQual = "ქალაქ·ი" "დედაქალაქ·ი" "სოფ[ე]ლ·ი" "კურორტ·ი" "აულ·ი" ;
 
-SELECT Place IF (-1 TOWN) ;
+SELECT Place IF (-1 PlaceQual) ;
+SELECT Place + Gen IF (1 ("დედაქალაქ·ი")) ;
+
 SELECT ("<ქ.>" "ქალაქ·ი") IF (1 (Place)) ;
 SELECT ("<წ.>" "წელთაღრიცხვ[ა]") IF (-1 ("<ძვ.>") ) ;
 SELECT ("<წ.>" "წელთაღრიცხვ[ა]") IF (-1 ("<ჩვ.>") ) ;
@@ -1175,13 +1191,18 @@ n-SELECT Impv
        (1* Impv) ;
 
 # corrdinate equal POS
-n-SELECT N + $$CASE # + L
+n-SELECT N + $$CASE - Guess # + L
     IF (1 COORD)
        (2C N + $$CASE) ;
 
-n-SELECT A + $$CASE + L
+n-SELECT A + $$CASE + L - Guess
     IF (1 COORD)
        (2C A + $$CASE) ;
+
+n-SELECT $$CASE + L + Guess
+    IF (1 COORD)
+       (2C A + $$CASE) ;
+
 
 TEMPLATE NPDat = ? Dat - Att - PP - Cj LINK NOT 1 Pp ;
 TEMPLATE NPDatHum = ? Dat + Hum - Att - PP - Cj LINK NOT 1 Pp ;
@@ -1193,7 +1214,7 @@ REMOVE Dat
        (NEGATE -1* V BARRIER CLB)
        (1C* T:NPDat BARRIER CLB OR V) ;
 
-REMOVE NA + Dat - Att - Temp
+REMOVE NA + Dat - Att - Temp - PP
     IF (0 Gen - <OldPl> - L)
        (1 N)
        (NEGATE 0* V + DatArg3 BARRIER CLB) ;
@@ -1248,6 +1269,74 @@ REMOVE Compl IF (-1 BOP) (1 Neg) (2 V);
 
 # First/Last name
 
+LIST HydrQual = "მდინარ[ე]" "ტბ[ა]" "რუ" ;
+
+LIST AreaQual = "ველ·ი" "კუნძულ·ი" "დაბლობ·ი" "მაღლობ·ი" "მთ[ა]"
+                "არქიპელაგ·ი" "ვულკან·ი" "ნახევარკუნძულ·ი" "ოლქ·ი" "რეგიონ·ი" "რაიონ·ი" ;
+
+
+LIST FirstNameQual = LastName "ბები[ა]" "ბაბუ[ა]" "ბრძენ·ი" "მეფ[ე]" "წყეულ·ი/წყ" "ბრძენ·ი"
+                     "აღ·მდგენ[ე]ლ·ი/დგენ" Roman
+                     ;
+
+LIST SciQual = "ალკალოიდ·ი" "ფენომენ·ი" "ალკალოიდ·ი" "ვირუს·ი" "თევზ·ი" "იზოტოპ·ი" "ოჯახ·ი"
+               "პრეპარატ·ი" "ფენომენ·ი" "ფრინველ·ი" "შხამ·ი" "ჰორმონ·ი" ;
+
+LIST TitleQual = "ბატონ·ი" "ქალბატონ·ი" "ამხანაგ·ი" "მინისტრ·ი"
+         	 "ცოლ·ი" "ქმ[ა]რ·ი" "მეუღლ[ე]"
+    	         "წმიდ[ა]" "<წმ.>" "ნეტარ·ი" "მამ[ა]" "მოწამ[ე]"
+	         "მცველ·ი" "წევრ·ი"
+	         "<.*ისტ>"r
+	         "<მაესტრო>" ;
+
+LIST OrgQual  = "კლუბ·ი" "კომპანი[ა]" "აგარაკ·ი" "აეროდრომ·ი" "ავიამზიდ·ი" "ავტომობილ·ი" "ალმანახ·ი"
+                "აპარატ·ი" "არ[ა]ყ·ი" "აუზ·ი" "ბაზარ·ი" "ბალეტ·ი" "ბანაკ·ი" "ბანკ·ი" "ბატალიონ·ი" "ბაღ·ი"
+                "ბენზინგასამართ·ი" "ბლოკ·ი" "ბორან·ი" "გაზეთ·ი" "გემ·ი" "გემთსაშენ·ი" "გუნდ·ი" "დევიზ·ი"
+                "დივიზიონ·ი" "დუეტ·ი" "ეპოს·ი" "ერთეულ·ი" "ვესტერნ·ი" "თბომავ[ა]ლ·ი" "თეატრ·ი" "თვითმფრინავ·ი"
+                "ინსტიტუტ·ი" "კაბრიოლეტ·ი" "კავშირ·ი" "კინოთეატრ·ი" "კინოფესტივალ·ი" "კინოფილმ·ი" "კლიპ·ი"
+                "კლუბ·ი" "კოდექს·ი" "კოლეჯ·ი" "კომბინატ·ი" "კომიტეტ·ი" "კომპლექს·ი" "კონიაკ·ი" "კონკურს·ი"
+                "კონსორციუმ·ი" "კონცერნ·ი" "კორპუს·ი" "კრეისერ·ი" "ლაინერ·ი" "ლეგიონ·ი" "მეიდან·ი"
+                "მეტროსადგურ·ი" "მეჩეთ·ი" "მილსადენ·ი" "მოდელ·ი" "მონოპოლისტ·ი" "მულტსერიალ·ი" "ობიექტ·ი"
+                "ოტელ·ი" "პანსიონატ·ი" "პოლიგონ·ი" "პორტ·ი" "პორტალ·ი" "პროექტ·ი" "პროტოტიპ·ი" "პუნქტ·ი"
+                "ჟურნალ·ი" "რაზმ·ი" "რესტორან·ი" "როკ-ჯგუფ·ი" "სადგურ·ი" "სამსახურ·ი" "სახლ·ი"
+                "სახლ-მუზეუმ·ი" "სერიალ·ი" "სექტორ·ი" "სიგარეტ·ი" "სპექტაკლ·ი" "სპორტკლუბ·ი" "სპორტკომპლექს·ი"
+                "სცენარ·ი" "ტაიფუნ·ი" "ტანკერ·ი" "ტაძ[ა]რ·ი" "ტელესერიალ·ი" "ტელეცენტრ·ი" "ტერმინალ·ი"
+                "ტურნირ·ი" "უნივერმაღ·ი" "უნივერსიტეტ·ი" "ფესტივალ·ი" "ფილმ·ი" "ფილმოთეკ[ა]" "ფონდ·ი"
+                "ფორუმ·ი" "ფრაქცი[ა]" "ფსევდონიმ·ი" "ქსელ·ი" "ჩემპიონატ·ი" "ცათამბჯენ·ი" "ცირკ·ი" "ცხენ·ი"
+                "ძეგლ·ი" "წიგნ·ი" "ხომალდ·ი" "ჯგუფ·ი" "ჰიდროელექტროსადგურ·ი" "ჰიტ·ი" "ჰოლდინგ·ი" ;
+
+SET nonAnthrQual = PlaceQual | HydrQual | SciQual ;
+
+n-REMOVE Anthr IF (-1C nonAnthrQual + Qual + Att) ;
+
+n-ADD (Anthr FirstName Cand) TARGET Prop + Guess - FirstName
+    IF (1 FirstNameQual) ;
+
+n-ADD (Cand) TARGET Prop + Guess + Anthr + FirstName - Cand
+    IF (1 FirstNameQual) ;
+
+n-ADD (Anthr FirstName Cand) TARGET Prop + $$CASE + Guess - FirstName
+    IF (1C LastName + $$CASE);
+
+n-ADD (Cand) TARGET Prop + $$CASE + Guess + Anthr + FirstName - Cand
+    IF (1C LastName + $$CASE);
+
+n-ADD (Anthr LastName Cand) TARGET Prop + $$CASE + Guess - LastName
+    IF (-1C FirstName + $$CASE);
+       
+LIST Relative = "ძ[ე]" "შვილ·ი" "ვაჟ·ი" "მამ[ა]" "დედ[ა]" ;
+
+n-ADD (Anthr FirstName Cand) TARGET Prop + Gen + Guess - FirstName
+    IF (1 Relative);
+
+n-ADD (Cand) TARGET Prop + Gen + Anthr + FirstName + Guess - Cand
+    IF (1 Relative);
+
+LIST AnthrGenAttribute = "ნაშრომ·ი" "წიგნ·ი" "სტატი[ა]" "ნახატ·ი" "ლემ[ა]" ; # and more
+
+n-ADD (Anthr Cand) TARGET Prop + Gen + Guess - Anthr
+    IF (1 AnthrGenAttribute);
+
 n-SELECT FirstName + $$CASE
     IF (1C LastName + $$CASE);
 
@@ -1264,7 +1353,8 @@ n-SELECT Anthr
        (0 Guess) ;
 
 n-REMOVE FirstName + Att
-    IF (NOT 1 LastName OR ("ბები[ა]") OR ("ბაბუ[ა]")) # ირინე ბებია; more?
+    IF (NOT 1 FirstNameQual) # ირინე ბებია; more?
+       (NEGATE 1 Roman LINK 1 FirstNameQual) # without ბებია, ბაბუა! fixme
        (NEGATE 1 ("და") LINK 1 LastName) ;
 
 om-SELECT Anthr + Abs
@@ -1272,6 +1362,8 @@ om-SELECT Anthr + Abs
 
 om-SELECT Anthr + Abs
     IF (1 ("ოქროპირ·ი")) ;
+
+# n-ADD (Top Area Cand) TARGET Prop + Guess + (".*ეთ·ი"r) - Cand ;
 
 REMOVE Dem + Att IF (NOT 1 NOM) ;
 
@@ -1547,6 +1639,9 @@ n-SELECT ("რა" Interj)
 
 REMOVE Interj if (NEGATE 1* ExclPoint BARRIER CLB) ;
 
+# შუა საუკუნეებში
+n-SELECT ("შუ[ა]") IF (1 ("საუკუნ[ე]") + Pl) ;
+
 # Postposition case agreement
 
 o-SELECT ("<ზედა>" Pp)
@@ -1744,14 +1839,20 @@ REMOVE Prop + $$CASE
 SELECT FirstName
     IF (-1 (Coll) + Gen) ;
 
-# proper nouns normally have no genitive attribute
+# proper nouns normally have no genitive attribute, but it might be part of a Gen chain
 # refine!
-REMOVE Prop
+REMOVE Prop - Gen
     IF (-1C Gen) ;
 
+LIST localPP = PP:ში PP:თან ;
+
 # more local PPs?
-REMOVE N + Anthr OR Hum + (PP:ში)
-    IF (0 Prop + Top + (PP:ში)) ;
+REMOVE N + Anthr OR Hum + localPP
+    IF (0 Prop + Top + localPP) ;
+
+REMOVE N + Anthr OR Hum + localPP
+    IF (0 Prop + Guess + localPP) ;
+
 
 SELECT ("ხელა" A) IF (-1 Gen) ;
 
@@ -1782,6 +1883,7 @@ SELECT Att + Gen
 # can go wrong if 0 is Adv?
 SELECT Att + Nom
     IF (1C Nom - Pron)
+       (NOT 0 Gen)
        (NOT 0 Cj)
        (NOT 1 Aux)
        (NOT 2 AUX) ;
@@ -1854,7 +1956,7 @@ n-REMOVE Pron + Pers + Nom + (3)
 #    IF (1C $$CASE) ;
 
 # Prop, or better Anthr?
-SELECT QUAL + $$CASE
+SELECT QUAL + $$CASE - PlaceQual - HydrQual
     IF (1 Anthr + $$CASE)
        (NOT 0 ("<და>"))
        (1C N) ;
@@ -1862,7 +1964,7 @@ SELECT QUAL + $$CASE
 REMOVE ("ქართველ·ი" Prop) ;
 
 SELECT Anthr + $$CASE
-    IF (-1 QUAL + $$CASE) ;
+    IF (-1 QUAL + $$CASE - nonAnthrQual) ;
 
 REMOVE QUAL
     IF (1 Comma) ;
@@ -1881,24 +1983,50 @@ om-REMOVE (DDVoc) ;
 
 ### guessing rules for qualified unrecognized words (ბატონი XYZ)
 
-SET PlaceQual = ("<ქალაქ>") | ("<ქ.>") | ("<სოფელ>") ;
-
-SET HydrQual = ("<მდინარე>") | ("<ტბა>") ;
-
-SET TitleQual = ("ბატონ·ი") | ("ქალბატონ·ი") | ("ამხანაგ·ი") | ("მინისტრ·ი")
-    	      | ("ცოლ·ი") | ("ქმ[ა]რ·ი") | ("მეუღლ[ე]")
-    	      | ("წმიდ[ა]") | ("<წმ.>") | ("ნეტარ·ი") | ("მამ[ა]") | ("მოწამ[ე]")
-	      | ("მცველ·ი")
-	      | ("<.*ისტ>"r)
-	      | ("<მაესტრო>") ;
-
-SET OrgQual   = ("კლუბ·ი") | ("კომპანი[ა]") ;
-
 SET LastNameRus = (".*სკი"r) | (".*იჩ·ი"r) | (".*ოვ·ი"r) | (".*ევ·ი"r) ;
 SET LastNameGeo = (".*(ა|ი)ძ\[ე\]"r) | (".*შვილ·ი"r) ;
 
 SET NounSFX = (".*ება"r) | (".*ობა"r) | (".*იზმ·ი"r) | (".*აცია"r)  | (".*ისტ·ი"r) ;
 
+#n-ADD (Anthr LastName Cand) TARGET Prop + Guess - LastName
+#    IF (-1C FirstName) ;
+
+n-REMOVE FirstName + Guess + $$CASE
+      IF (-1 FirstName + $$CASE)
+         (0 LastName) ;
+
+# ქალაქ კოლომიაში
+n-ADD (Top Place Cand) TARGET  Prop + Guess - LastName - FirstName - Place
+   IF (-1 PlaceQual) ;
+
+n-ADD (Top Place Cand) TARGET  Prop + Guess - LastName - FirstName - Place
+   IF (-2 PlaceQual)
+      (-1 ("ყოფნ[ა]/ყ[ავ]")) ;
+
+LIST PlaceAdj = "დასავლეთ·ი" "სამხრეთ·ი" "აღმოსავლეთ·ი" "ჩრდილო" ;
+
+n-ADD (Top Place Cand) TARGET  Prop + Gen + Guess - LastName - Place - Cand
+   IF (-1 PlaceAdj + Att) ;
+
+# პისანკას მუზეუმი ??
+n-ADD (Top Place Cand) TARGET  Prop + Gen + Guess - LastName - Place
+   IF (1 ("მუზეუმ·ი")) ;
+
+#n-ADD (Top Place Cand) TARGET  Prop + PP:ში + Guess - LastName - Place ;
+
+# ქალაქ კოლომიაში
+n-ADD (Top Hydr Cand) TARGET  Prop + Guess - LastName - FirstName - Hydr
+   IF (-1 HydrQual) ;
+
+# ქართველები etc is not Prop!
+# LIST PropGen = "კულტურ[ა]" "დინასტი[ა]" ;
+
+#n-ADD (Cand) TARGET  Prop + Gen + Guess - Cand
+#   IF (1 PropGen) ;
+
+
+#n-SUBSTITUTE (LastName) (GLastName) TARGET Guess
+#    IF (-1 FirstName) ;
 
 n-SELECT LastName
     IF (-1 FirstName) ;
@@ -1948,8 +2076,7 @@ n-SELECT Place
 n-SELECT Hydr
     IF (-1 HydrQual) ;
 
-n-SELECT Place + Guess
-    IF (0 ("<.*ში>"r)) ;
+# n-SELECT Place + Guess + PP:ში ;
 
 # guessed words
 
@@ -1959,6 +2086,8 @@ n-SELECT Prop IF (-1 Quote) (1 Quote) ;
 
 n-SELECT Org IF (-1 Quote) (-2 ("კომპანი[ა]")) ;
 
+
+# n-SELECT NewPl + Guess ; #- (<lemma=MAX>) ; # prefer treating -ებ as pl suffix, not part of stem
 
 # remove Att readings if there is no congruent case in next pos.
 # BUT: ხელით დაწერილი სამად სამი სიტყვა
@@ -1973,11 +2102,14 @@ SELECT A + Abs
 REMOVE $$CASE + Att
     IF (NOT 1 $$CASE)
        (NOT 1 Comma)
+       (NOT 1 Foreign)
        (NEGATE 1 Coord | Adv LINK 1 $$CASE)
        # (NEGATE 1 T:NPGen LINK 1 $$CASE) ; # doesn't work
        (NEGATE 1 NA + Gen LINK 1 $$CASE)
        (NEGATE 1 Num + Advb LINK 1 $$CASE)
-       (NEGATE 1 NA + Gen + Att LINK 1 NA + Gen LINK 1 $$CASE) ;
+       (NEGATE 1 NA + Gen LINK 1 NA + Gen LINK 1 $$CASE)
+       (NEGATE 1 NA + Gen LINK 1 NA + Gen LINK 1 NA + Gen LINK 1 $$CASE)
+       (NEGATE 1 NA + Gen LINK 1 NA + Gen LINK 1 NA + Gen LINK 1 NA + Gen LINK 1 $$CASE) ;
 
 # Because of prev. rule we know that the reduced reading has a head.
 # Should add condition on temporal expressions?
@@ -1994,7 +2126,7 @@ REMOVE $$CASE + Nom - Att
        (NOT 1 Cj)
        (1 $$CASE - Pron) ;
 
-REMOVE Dat - Att
+REMOVE Dat - Att - PP
     IF (0 Att)
        (NEGATE 0* DatArg3 BARRIER CLB) ;
 
@@ -2103,7 +2235,7 @@ REMOVE Erg
        (NOT -1C Erg)
        (NEGATE 0* V + S:Erg BARRIER CLB) ;
 
-n-SELECT PERSON + Erg - Att
+n-SELECT PERSON + Erg - Att - Guess
     IF (0*C V + S:Erg BARRIER CLB)
        (NOT 1* Erg BARRIER CLB)
        (NOT 0 OldPl) ;
@@ -2180,8 +2312,10 @@ n-SELECT ADJ + $$CASE + Att
       IF (1C NAPropPart + $$CASE - Poss - Gen)
       	 (NOT 1 Part + Aux)
          (NOT 0 (Ext))
-	 (NOT 0 Adv)
-	 (NOT 0 Advb) ;
+	 (NOT 0 Adv OR Advb OR Gen
+         ) ;
+
+n-REMOVE (".*ის·ი"r) + Dat + Guess ; # treat -ის as Gen
 
 n-SELECT ("თავის·ი") + Refl + $$CASE
     IF (1C NA + $$CASE) ;
@@ -2192,8 +2326,9 @@ n-REMOVE Att
     IF (1 ("ყველა")) ;
 
 # could go wrong when Gen modifies a Nom. Elaborate!
-n-SELECT ADJ + Gen + Att - (<OldPl>)
-      IF (1C NAPropPart + Gen - Poss) ;
+n-SELECT ADJ + Gen + Att - <OldPl>
+      IF (1C NAPropPart + Gen - Poss)
+         (NOT 0 PP) ;
 
 # rationale: allow two arguments with equal case if the verb licenses them, e.g. S:Nom + NomPrl
 # SELECT ??
@@ -2280,6 +2415,16 @@ SELECT (<OldPl>) + $$CASE
 
 SELECT (<OldPl>) + $$CASE
     IF (1 COORD LINK 1C OLDPL + $$CASE) ;
+
+SELECT N + $$CASE
+    IF (-1 FirstName)
+       (-2 Att + $$CASE) ;
+
+# მთავარმა კონრად I მაზოვიელმა
+SELECT N + $$CASE
+    IF (-1 Card + Roman)
+       (-2 FirstName)
+       (-3 Att + $$CASE) ;
 
 # Double case
 # ------------------------
@@ -2756,7 +2901,8 @@ SELECT NProp + Gen - Att
 
 # remove Gen if not attributive or licensed by PP or V
 n-REMOVE Gen
-    IF (NOT 1 POSTP + <Gen>)
+    IF (NOT 0 PP)
+       (NOT 1 POSTP + <Gen>)
        (NOT 1 POSTP + <Dat/Gen>)
        (NOT 1 Gen)
        (NOT 1 NACProp)
@@ -2875,6 +3021,7 @@ SELECT A + Gen - Att
 
 REMOVE Att + $$CASE
     IF (NOT 1 NOM)
+       (NOT 1 Foreign)
        (NOT 1 Pron + Dem + $$CASE) # მთელი ეს ფიქრი
        (NOT 1 Pron + Poss + $$CASE) # დღევანდელი ჩვენი მწერლობის
        (NEGATE 1 COORD LINK 1 Att + $$CASE)
@@ -2962,7 +3109,14 @@ n-REMOVE Att
     IF (1 Refl) ;
 
 n-SELECT Att - <OldPl> + $$CASE
-    IF (1 $$CASE - <OldPl>) ;
+    IF (NOT 0 Gen - Att)
+       (NOT 0 PP)
+       (1C $$CASE - <OldPl>) ;
+
+#n-SELECT Att - <OldPl> + Gen
+#    IF (1C $$CASE - <OldPl> + Gen)
+#       (NOT 0 Gen - Att) ;
+
 
 # DNom
 
@@ -3475,6 +3629,8 @@ REMOVE ("ხიდ·ი" Prop) ;
 SELECT ("ნებ[ა]") IF (1 ("მი-ცემ[ა]/[ე]ც")) ;
 SELECT ("ნებ[ა]") IF (1 Neg) (2 ("მი-ცემ[ა]/[ე]ც")) ;
 
+SELECT ("ა·ღებ[ა]/ღ") + <S-DO> IF (1 Place) ;
+
 o-REMOVE LastName IF (0C Anthr) ;
 
 SELECT ("<წელს>" "წელ·ი") IF (1C Loc) ;
@@ -3483,8 +3639,8 @@ SELECT ("<წელს>" "წელ·ი") IF (1C Loc) ;
 n-SELECT ("ვერ" L) IF (NEGATE 0* V BARRIER CLB) ;
 
 SELECT Prop IF (-1 Quote) (1 Quote) ;
-REMOVE ("??" Top) ;
-REMOVE ("??" Anthr) ;
+#REMOVE ("??" Top) ;
+#REMOVE ("??" Anthr) ;
 
 # coordinated verbs have same tense
 SELECT $$TENSE
@@ -3530,6 +3686,12 @@ REMOVE (Encl:მე) ;
 
 SELECT ("<და>" Cj) ;
 
+# Semantic disambiguation of difficult words
+
+
+
+n-SELECT ("დენ·ი") IF (-1 ("ცვლად·ი") + Att) ;
+
 # Heuristic syntactic disambiguation
 # ========================
 
@@ -3569,7 +3731,7 @@ ADD @CLB ("მაშინ") IF (-1* V LINK -1* Cj + Sub BARRIER V) ;
 
 # Misc.
 
-SELECT N + Sg
+SELECT N + Sg - Guess
     IF (0 A + Sg)
        (NOT 0 Att) ;
 
@@ -3578,6 +3740,12 @@ n-SELECT ("იზაბელა" Gen) IF (1 ("ღვინო")) ;
 n-SELECT ("<გახლდათ>" "ხლებ[ა]/ახლ") ;
 
 n-REMOVE ("ხელ·ი") + A - Att ;
+
+n-REMOVE Guess - Cand IF (0 Cand) ; # remove those that weren’t chosen
+
+n-REMOVE A + Gen + Att + <OldPl> + Guess ;
+
+n-REMOVE ("<.*ის>"r ".*ა"r) ;
 
 # ==================== #
   SECTION	       #
@@ -4898,12 +5066,20 @@ SETPARENT (*)
 
 ADD (>??) TARGET (*) IF (NEGATE 0 RELS) ; # rest
 
-REMOVE (*) - RELS ;
-
-REMOVE (NonStand) ;
+# REMOVE (*) - RELS ;
 
 n-SELECT (<lemma=MAX>)
-      IF (0C N) ;
+      IF (0C N OR A) ;
 
+n-SELECT (<lemma=MAX>)
+      IF (0C V) ;
+
+n-SELECT NewPl + Guess ; #- (<lemma=MAX>) ; # prefer treating -ებ as pl suffix, not part of stem
+
+REMOVE Prop + Guess - Cand ;
+
+REMOVE NonStand ;
+
+n-REMOVE Ext ;
 
 END
