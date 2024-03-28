@@ -208,18 +208,20 @@
 	  (format nil "~a=~a/~a=~a+~a" (seg 0) (seg 2) (seg 1) (seg 3) (seg 4))))))
 
 #+test
-(print (lookup-morphology :kat "K-ჯგუფებისათვის"))
+(pprint (lookup-morphology :kat "K-ჯგუფებისათვის"))
 
 #+test
 (pprint (lookup-morphology :kat "ენტომოფაგები"))
 
 #+test
-(pprint (lookup-morphology :kat "პარირებს"))
+(pprint (lookup-morphology :kat "მ³/წმ"))
+#+test
+(pprint (lookup-morphology :kat "+14°C"))
 
 #+test
-(pprint (guess-ng-verb-morphology "რეპარირებს"))
+(pprint (guess-ng-verb-morphology "ვავარეპარირებ"))
 
-(defun guess-ng-verb-morphology (word)
+(defun guess-ng-verb-morphology (word &optional guess-table)
   (let ((lemmas+features ())
         (prev nil))
     ;; try analysing word by verb guesser, for any possible segmentation into prefix, root, suffix
@@ -232,7 +234,8 @@
                    do (fst-lookup *ng-guess-verb-analyzer*
                                   (u:concat prefix "$" suffix)  
                                   (lambda (w l+f net)
-                                    (declare (ignore w net))
+                                    ;;(declare (ignore w net))
+                                    (when (string/= l+f "") (list w l+f))
                                     (when (> (length l+f) 0)
                                       (let ((exp-l+f ""))
                                         (labels ((insert-root (pos)
@@ -251,11 +254,12 @@
                                                                          (u:concat r " GuessV Guess"))
                                                                        readings)
                                                                :variety :ng
-                                                               :prev prev))))))))))
+                                                               :prev prev
+                                                               :guess-table guess-table))))))))))
     lemmas+features))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
-                              &key (variety :ng) tmesis-segment mwe
+                              &key (variety :ng) guess-table tmesis-segment mwe
                                 &allow-other-keys)
   (let ((lemmas+features ())
         (stripped-word
@@ -294,14 +298,15 @@
                                    :og-readings og-readings
                                    :tmesis-segment tmesis-segment
                                    :net net
-                                   :prev prev)))))
+                                   :prev prev
+                                   :guess-table guess-table)))))
            (when (and (eq variety :ng)
                       (not (find #\space stripped-word))
                       (or (null lemmas+features)
                           (search "Guess" (cadar lemmas+features))))
              (setf lemmas+features
                    (append lemmas+features
-                           (guess-ng-verb-morphology stripped-word)))))
+                           (guess-ng-verb-morphology stripped-word guess-table)))))
           (mwe ;; don’t recognize foreign stuff as mwe
 	   nil)
 	  (t
@@ -309,61 +314,97 @@
     (values lemmas+features stripped-word)))
 
 (defun append-readings (lemmas+features stripped-word readings
-                        &key (variety :ng) og-readings tmesis-segment net prev)
-  (dolist (reading (remove-subsumed-preverbs (sort readings #'string<)))
-    (when (and net (eq (net-name net) :georgian-redup-ng))
-      (setf reading (normalize-reduplication-reading reading))
-      #+debug(debug reading))
-    (unless (and (eq (string< prev reading) (length prev))
-                 (equal (subseq reading (length prev)) "+NonStand"))
-      (let* ((f-start nil)
-             (xm-only (when (and (find variety '(:xm :hm))
-                                 (find #\ხ stripped-word)
-                                 (eq (net-name net) :xm))
-                        (not (search reading og-readings))))
-             (hm-only (when (and (find variety '(:xm :hm))
-                                 (find #\ჰ stripped-word)
-                                 (eq (net-name net) :hm))
-                        (not (search reading og-readings)))))
-        (loop for i from 0
-              for c across reading
-              when (char= c #\+) do (setf f-start i)
-              when (and f-start
-                        (= i (1+ f-start))
-                        (char<= #\A c #\Z))
-              do (return))
-        (let* ((features (when f-start (subseq reading f-start)))
-               (features (if features (subseq (substitute #\space #\+ features) 1) ""))
-               (reading (subseq reading 0 f-start)))
-          (cond (xm-only
-                 (setf features (u:concat features " Xan")))
-                (hm-only
-                 (setf features (u:concat features " Hae")))
-                #+ignore
-                (guess
-                 (setf features (u:concat features " LevGuess"))))
-          (unless (and (eq tmesis-segment :infix)
-                       (search "N " features))
-            (pushnew (list reading
-                           (cond ((eq tmesis-segment :infix)
-                                  (u:concat features " <TmInfix>"))
-                                 ((eq tmesis-segment :verb)
-                                  (u:concat features " <TmV>"))
-                                 (t
-                                  features))
-                           nil ;; flag
-                           nil) ;; trace (used CG rules)
-                     lemmas+features :test #'equal)))))
-    (setf prev reading))
+                        &key (variety :ng) og-readings tmesis-segment net guess-table prev)
+  (let* ((readings (remove-subsumed-preverbs (sort readings #'string<)))
+         (is-guessed (and guess-table (search "Guess" (car readings))))
+         (wf-table (car guess-table))
+         (max-wf-count 0))
+    (when is-guessed
+      ;; find the maximal number of attested wordforms for any of the lemmas + Pos
+      (dolist (reading readings)
+        (let* ((pos-start (position #\+ reading))
+               (pos-end (position #\+ reading :start (1+ pos-start)))
+               (lemma (subseq reading 0 pos-start))
+               (wf-count 0)
+               (amb-guess-readings (gethash lemma wf-table)))
+          (when amb-guess-readings
+            (dat:do-string-tree (word count amb-guess-readings)
+              (when (string= reading word ;; word is word+Pos; compare Pos
+                             :start1 pos-start
+                             :end1 pos-end
+                             :start2 (position #\+ word :from-end t))
+                (incf wf-count))))
+          (setf max-wf-count (max max-wf-count wf-count)))))
+    
+    (dolist (reading readings)
+      (when (and net (eq (net-name net) :georgian-redup-ng))
+        (setf reading (normalize-reduplication-reading reading)))
+      (unless (and (eq (string< prev reading) (length prev))
+                   (equal (subseq reading (length prev)) "+NonStand"))
+        (let* ((f-start nil)
+               (xm-only (when (and (find variety '(:xm :hm))
+                                   (find #\ხ stripped-word)
+                                   (eq (net-name net) :xm))
+                          (not (search reading og-readings))))
+               (hm-only (when (and (find variety '(:xm :hm))
+                                   (find #\ჰ stripped-word)
+                                   (eq (net-name net) :hm))
+                          (not (search reading og-readings)))))
+          (loop for i from 0
+                for c across reading
+                when (char= c #\+) do (setf f-start i)
+                when (and f-start
+                          (= i (1+ f-start))
+                          (char<= #\A c #\Z))
+                do (return))
+          (let* ((features (when f-start (subseq reading f-start)))
+                 (features (if features (subseq (substitute #\space #\+ features) 1) ""))
+                 (lemma (subseq reading 0 f-start)))
+            (when (and guess-table (search "Guess" features))
+              ;;(print (list :l lemma :f features))
+              (let* ((wf-count 0)
+                     (unamb-freq 0)
+                     (wf-table (car guess-table))
+                     (unamb-table (cdr guess-table))
+                     (amb-guess-readings (gethash lemma wf-table))
+                     (unamb-guess-readings (gethash lemma unamb-table)))
+                (when amb-guess-readings
+                  (dat:do-string-tree (word count amb-guess-readings)
+                    (when (string= features word
+                                   :end1 (position #\space features)
+                                   :start2 (1+ (position #\+ word :from-end t)))
+                      (incf wf-count))))
+                (when (> wf-count 0)
+                  (setf features (u:concat features (format nil " <WFGuess> <guess=~a>" wf-count)))
+                  (when (= wf-count max-wf-count)
+                    (setf features (u:concat features " <WFMax>"))))
+                (when unamb-guess-readings
+                  (dat:do-string-tree (word count unamb-guess-readings)
+                    (incf unamb-freq count)))
+                (when (> unamb-freq 0)
+                  (setf features (u:concat features (format nil " <GlobalGuess> <uaguess=~a>" unamb-freq)))
+                  (setf features (u:concat features " <UnambGuess>")))))
+            (cond (xm-only
+                   (setf features (u:concat features " Xan")))
+                  (hm-only
+                   (setf features (u:concat features " Hae")))
+                  #+ignore
+                  (guess
+                   (setf features (u:concat features " LevGuess"))))
+            (unless (and (eq tmesis-segment :infix)
+                         (search "N " features))
+              (pushnew (list lemma
+                             (cond ((eq tmesis-segment :infix)
+                                    (u:concat features " <TmInfix>"))
+                                   ((eq tmesis-segment :verb)
+                                    (u:concat features " <TmV>"))
+                                   (t
+                                    features))
+                             nil ;; flag
+                             nil) ;; trace (used CG rules)
+                       lemmas+features :test #'equal)))))
+      (setf prev reading)))
   (values lemmas+features prev))
-
-#+moved
-(defmethod process-gnc-text ((text parsed-text) (mode (eql :disambiguate))
-			     &key (variety :og) (load-grammar t)
-			       (sentence-end-strings vislcg3::*sentence-end-strings*)
-			       &allow-other-keys)
-  (vislcg3::cg3-disambiguate-text text :variety variety :load-grammar load-grammar
-				  :sentence-end-strings sentence-end-strings))
 
 (defconstant +asomtavruli+ "ႠႡႢႣႤႥႦჁႧႨႩႪႫႬჂႭႮႯႰႱႲჃႳႴႵႶႷႸႹႺႻႼႽႾჄႿჀჅ")
 (defconstant +nuskhuri+ "ⴀⴁⴂⴃⴄⴅⴆⴡⴇⴈⴉⴊⴋⴌⴢⴍⴎⴏⴐⴑⴒⴣⴓⴔⴕⴖⴗⴘⴙⴚⴛⴜⴝⴞⴤⴟⴠⴥ")
@@ -886,8 +927,11 @@
 ;; Takes a txt file as input and outputs a json array.
 ;; Make sure there are no line breaks in sentences.
 ;; Each element in the array is a parsed sentence.
+;; If is :file parsing is run in two passes, in the first one frequency information
+;; is collected for guessed (and other?) words, which is used in the second
+;; pass to disambiguate guesses
 (defun parse-kat-file (file &key (format :json) (input-format :txt) (write-xml-id t)
-                              write-rest dependencies write-unknown)
+                              write-rest dependencies write-unknown guess-scope)
   (let ((out-file (merge-pathnames (format nil ".~(~a~)" format) file))
         (unknown-file (merge-pathnames ".unk" file))
         (unknown-tree (dat:make-string-tree))
@@ -899,17 +943,54 @@
            (:json
             (write-string "[ " stream)
             (u:with-file-lines (line file)
-              (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil
-                                           :unknown-tree unknown-tree :count count)
+              (write-text-json (parse-text line
+                                           :variety :ng
+                                           :disambiguate t
+                                           :lookup-guessed nil
+                                           :unknown-tree unknown-tree
+                                           :cg3-variables '("guess" "rank")
+                                           :guess-scope guess-scope
+                                           :count count)
                                stream)
               (terpri stream))
             (write-string "]" stream))
            (:tsv
-            (u:with-file-lines (line file)
-              (write-text-tsv (parse-text line :variety :ng :disambiguate t :lookup-guessed nil
-                                          :unknown-tree unknown-tree :count count)
-                              stream :write-xml-id write-xml-id :dependencies dependencies)
-              (terpri stream))))))
+            (let ((guess-table (cons (make-hash-table :test #'equal)
+                                     (make-hash-table :test #'equal))))
+              (when (eq guess-scope :file)
+                (print :first-pass)
+                (u:with-file-lines (line file)
+                  (parse-text line
+                              :variety :ng
+                              :disambiguate t
+                              :guess-scope guess-scope
+                              :guess-table guess-table
+                              :count count
+                              :cg3-variables '("guess")
+                              ))
+                (maphash (lambda (lemma readings)
+                           (write-line lemma)
+                           (dat:do-string-tree (word count readings)
+                             (format t "~a	~a~%" count word)))
+                         (car guess-table))
+                (maphash (lambda (lemma readings)
+                           (write-line lemma)
+                           (dat:do-string-tree (word count readings)
+                             (format t "~a	~a~%" count word)))
+                         (cdr guess-table)))
+              (print :second-pass)
+              (u:with-file-lines (line file)
+                (write-text-tsv (parse-text line
+                                            :variety :ng
+                                            :disambiguate t
+                                            :guess-table guess-table
+                                            :unknown-tree unknown-tree
+                                            :cg3-variables '("guess" "rank")
+                                            :count count)
+                                stream
+                                :write-xml-id write-xml-id
+                                :dependencies dependencies)
+                (terpri stream)))))))
       (:tsv
        (with-open-file (stream out-file :direction :output :if-exists :supersede)
          (ecase format
@@ -917,26 +998,59 @@
            (:json
             (write-string "[ " stream)
             (u:with-file-lines (line file)
-              (write-text-json (parse-text line :variety :ng :disambiguate t :lookup-guessed nil
-                                           :unknown-tree unknown-tree :count count)
+              (write-text-json (parse-text line
+                                           :variety :ng
+                                           :disambiguate t
+                                           :unknown-tree unknown-tree
+                                           :cg3-variables cg3-variables
+                                           :guess-scope guess-scope
+                                           :count count)
                                stream :dependencies dependencies)
               (terpri stream))
             (write-string "]" stream))
            (:tsv
             (let ((tokens ()))
               (u:with-file-fields ((&rest tl) file :end-line :eof)
-                (cond ((eq (car tl) :eof)
-                       (write-text-tsv (parse-text (nreverse tokens) :variety :ng :disambiguate t :lookup-guessed nil
-                                                   :unknown-tree unknown-tree :count count)
-                                       stream :write-xml-id write-xml-id :write-rest write-rest :dependencies dependencies))
-                      ((equal (car tl) ".")
-                       (push tl tokens)
-                       (write-text-tsv (parse-text (nreverse tokens) :variety :ng :disambiguate t :lookup-guessed nil
-                                                   :unknown-tree unknown-tree)
-                                       stream :write-xml-id write-xml-id :write-rest write-rest :dependencies dependencies)
-                       (setf tokens ()))
-                      (t
-                       (push tl tokens))))
+                (let ((is-dot (equal (car tl) "."))
+                      (is-eof (eq (car tl) :eof)))
+                  (cond ((or is-dot is-eof)
+                         (when is-dot
+                           (push tl tokens))
+                         (write-text-tsv (parse-text (nreverse tokens)
+                                                     :variety :ng
+                                                     :disambiguate t
+                                                     :unknown-tree unknown-tree)
+                                         stream
+                                         :write-xml-id write-xml-id
+                                         :write-rest write-rest
+                                         :dependencies dependencies)
+                         (when is-dot
+                           (setf tokens ())))
+                        #+old
+                        ((eq (car tl) :eof)
+                         (write-text-tsv (parse-text (nreverse tokens)
+                                                     :variety :ng
+                                                     :disambiguate t
+                                                     :unknown-tree unknown-tree
+                                                     :count count)
+                                         stream
+                                         :write-xml-id write-xml-id
+                                         :write-rest write-rest
+                                         :dependencies dependencies))
+                        #+old
+                        ((equal (car tl) ".")
+                         (push tl tokens)
+                         (write-text-tsv (parse-text (nreverse tokens)
+                                                     :variety :ng
+                                                     :disambiguate t
+                                                     :unknown-tree unknown-tree)
+                                         stream
+                                         :write-xml-id write-xml-id
+                                         :write-rest write-rest
+                                         :dependencies dependencies)
+                         (setf tokens ()))
+                        (t
+                         (push tl tokens)))))
               (terpri stream)))))))
     (when write-unknown
       (let ((unknown-count 0))

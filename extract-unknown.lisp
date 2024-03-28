@@ -5,7 +5,7 @@
 (init-transducers :kat :plain-og t)
 
 #+test
-(print (lookup-morphology :kat "გავთვალე" :variant :ng :lookup-guessed nil))
+(print (lookup-morphology :kat "გავთვალე" :variant :ng))
 
 (defparameter *words* (make-hash-table :test #'equal))
 
@@ -31,8 +31,8 @@
   (terpri)
   (loop with sum = 0
         for (word count) in word-list
-        for morph = (lookup-morphology :kat word :variety :og :lookup-guessed nil)
-        for ng-morph = (unless morph (lookup-morphology :kat word :lookup-guessed nil))
+        for morph = (lookup-morphology :kat word :variety :og)
+        for ng-morph = (unless morph (lookup-morphology :kat word))
         unless morph
         do (format t "~a	~a	~a~%" count word
                    (cond (morph "og") (ng-morph "ng") (t "-")))
@@ -665,7 +665,7 @@
                         ;; "projects:georgian-morph;wordlists;ngo-new.txt"
                         "projects:georgian-morph;wordlists;gazetebi.txt"
                         )
-      (let ((morph (lookup-morphology :kat word :lookup-guessed nil)))
+      (let ((morph (lookup-morphology :kat word)))
         (when morph (incf found-count))
         (incf count)
         (if morph
@@ -688,58 +688,57 @@
     (print (list :count count :found found-count))))
 
 #+test
-(print (lookup-morphology :kat "არაინერციული" :lookup-guessed nil))
+(pprint (lookup-morphology :kat "ინტეგრირდება"))
+#+test
+(pprint (lookup-morphology :kat "დავაინტეგრირებ"))
 
 #+test
-(parse-kat-file "projects:gnc;data;tina;corp_dict_ge-moambe-ka-202402229.csv"
-                :format :tsv :write-xml-id nil)
-
-#+test
-(with-open-file (stream "projects:gnc;data;tina;corp_dict_ge-moambe-ka-202402229-guessed.tsv"
-                        :direction :output :if-exists :supersede)
-  (u:with-file-lines (line "projects:gnc;data;tina;corp_dict_ge-moambe-ka-202402229.tsv") 
-    (when (search "Guess" line)
-      (write-line line stream))))
-
-(defparameter *word-list* (dat:make-string-tree))
-
-#+test
-(let ((word-list *word-list*))
-  (setf word-list (dat:make-string-tree))
+(progn
+  (parse-kat-file "projects:gnc;data;tina;corp_dict_ge-moambe-ka-202402229.csv"
+                  :format :tsv :write-xml-id nil :cg3-variables '("guess" "rank"))
+  
   (with-open-file (stream "projects:gnc;data;tina;corp_dict_ge-moambe-ka-202402229-guessed.tsv"
                           :direction :output :if-exists :supersede)
     (u:with-file-lines (line "projects:gnc;data;tina;corp_dict_ge-moambe-ka-202402229.tsv") 
       (when (search "Guess" line)
-        (destructuring-bind (word lemmas features-list)
-            (u:split line #\tab)
-          (loop for lemma in (u:split lemmas #\¦ nil nil t)
-                and features in (u:split features-list #\¦ nil nil t)
-                for lemma-words = (dat:string-tree-get word-list lemma)
-                do (when (null lemma-words)
-                     (setf lemma-words (dat:make-string-tree)))
-                (incf (dat:string-tree-get
-                       lemma-words
-                       (u:concat word (subseq features (1+ (or (position #\> features) -1))))
-                       0))
-                (setf (dat:string-tree-get word-list lemma) lemma-words)))
-        ;;(write-line line stream)
-        ))
-    (dat:do-string-tree (lemma lemma-words word-list)
-      (let ((lcount 0))
-        (dat:do-string-tree (lemma+features count lemma-words)
-          (incf lcount count))
-        (format stream "~a	~a~%" lcount lemma)
-        (dat:do-string-tree (lemma+features count lemma-words)
-          (format stream "	~a	~a~%" count lemma+features)))
-    )))
+        (write-line line stream))))
+  (let ((word-list (dat:make-string-tree)))
+    (setf word-list (dat:make-string-tree))
+    (with-open-file (stream "projects:gnc;data;tina;corp_dict_ge-moambe-ka-202402229-guessed.tsv"
+                            :direction :output :if-exists :supersede)
+      (u:with-file-lines (line "projects:gnc;data;tina;corp_dict_ge-moambe-ka-202402229.tsv") 
+        (when (search "Guess" line)
+          (destructuring-bind (word lemmas features-list)
+              (u:split line #\tab)
+            (loop for lemma in (u:split lemmas #\¦ nil nil t)
+                  and features in (u:split features-list #\¦ nil nil t)
+                  for lemma-words = (dat:string-tree-get word-list lemma)
+                  do (when (null lemma-words)
+                       (setf lemma-words (dat:make-string-tree)))
+                  (incf (dat:string-tree-get
+                         lemma-words
+                         (u:concat word (subseq features (1+ (or (position #\> features) -1))))
+                         0))
+                  (setf (dat:string-tree-get word-list lemma) lemma-words)))
+          ;;(write-line line stream)
+          ))
+      (dat:do-string-tree (lemma lemma-words word-list)
+        (let ((lcount 0))
+          (dat:do-string-tree (lemma+features count lemma-words)
+            (incf lcount count))
+          (format stream "~a	~a~%" lcount lemma)
+          (dat:do-string-tree (lemma+features count lemma-words)
+            (format stream "	~a	~a~%" count lemma+features)))
+        ))))
 
+;;; names
 
 #+test
 (with-open-file (stream "projects:gnc;data;tina;names-first-unknown.txt"
                         :direction :output :if-exists :supersede)
   (dolist (gend '("fem" "masc"))
     (u:with-file-lines (word (format nil "projects:gnc;data;tina;names-first-~a.txt" gend))
-      (let ((morph (lookup-morphology :kat word :lookup-guessed nil)))
+      (let ((morph (lookup-morphology :kat word)))
         (unless (find-if (lambda (r) (equal (cadr r) "N Prop Anthr FirstName Nom")) morph)
           (write-line word stream))))))
 
@@ -749,15 +748,24 @@
 
 
 #+test
-(with-open-file (stream "projects:gnc;data;tina;names-geo-unknown.txt"
+(with-open-filexxx (stream "projects:gnc;data;tina;names-geo-unknown.txt"
                         :direction :output :if-exists :supersede)
   (let ((unknown ()))
     (u:with-file-lines (word "projects:gnc;data;tina;names-geo.txt")
-      (let ((morph (lookup-morphology :kat word :lookup-guessed nil)))
+      (let ((morph (lookup-morphology :kat word)))
         (unless (find-if (lambda (r) (search "N Prop Top" (cadr r))) morph)
           (pushnew word unknown :test #'equal ))))
     (setf unknown (sort unknown (lambda (a b) (string< (reverse a) (reverse b)))))
     (dolist (word unknown)
       (write-line word stream))))
+
+#+test
+(parse-kat-file "projects:gnc;data;tina;bioinformatics-ka.txt"
+                :format :tsv :write-xml-id nil :guess-scope :file)
+
+#+test
+(parse-kat-file "projects:gnc;data;tina;test.txt"
+                :format :tsv :write-xml-id nil :guess-scope :file)
+
 
 :eof

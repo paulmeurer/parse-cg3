@@ -149,7 +149,9 @@
 		(20 "iff")
 		(21 "append")
 		(22 "substitute")
-		(32 "setparent")
+                (28 "remvariable")
+                (29 "setvariable")
+                (32 "setparent")
 		(33 "setchild")
 		(35 "setrelation")
 		(50 "addcohort")
@@ -233,12 +235,21 @@
 
 (defparameter *sentence-end-strings* '("." "?" "!" "…" ";" ":"))
 
+(defparameter *text* nil)
+
+#+test
+(cg3-disambiguate-text *text* :variety :ng :load-grammar nil :variables '("wiki"))
+
 ;; todo: check if grammar has changed
 (defmethod cg3-disambiguate-text ((text parse::parsed-text)
 				  &key (variety :og) (tracep t) (load-grammar t) mode
 				    (sentence-end-strings *sentence-end-strings*)
                                     ;; if true sentence is not ended if lowercase follows
-                                    sentence-start-is-uppercase)
+                                    variables
+                                    sentence-start-is-uppercase
+                                    guess-scope guess-table)
+  (setf *text* text) ;; debug
+  (unless guess-scope (setf guess-table nil))
   (with-process-lock (+disambiguate-lock+)
     (load-grammar variety :force load-grammar)
     (let* ((grammar (ecase variety
@@ -267,6 +278,20 @@
 	      (unwind-protect
 		   (progn
 		     (setf sentence (cg3-sentence-new applicator))
+
+                     (when variables
+                       (let ((cohort (cg3-cohort-create sentence))
+			     (tag (cg3-tag-create-u8
+				   applicator
+                                   (concat "_VAR_"))))
+		         (cg3-cohort-setwordform cohort tag)
+                         (let ((reading (cg3-reading-create cohort)))
+                           (dolist (var variables)
+			     (let ((tag (cg3-tag-create-u8 applicator (format nil "\"~a\"" var))))
+			       (cg3-reading-addtag reading tag)))
+			   (cg3-cohort-addreading cohort reading))
+                         (cg3-sentence-addcohort sentence cohort)))
+                     
                      ;; (setf word-list ())
 		     (loop with word-seen = nil ;; and w = nil
 			and end-punct-found = nil
@@ -298,11 +323,10 @@
 						     (setf str (u:concat str (cadr elt)))))
 						 (delete-if (lambda (c) (find c "{}[]|/\\‹›")) str)))))
 				      (setf word-seen (if mwe nil wordform))
-				      (cond (tmesis-msa ;; each tmesis element is separate cohort
+				      (cond (tmesis-msa ;; each tmesis element is a separate cohort
 					     (loop for (segment . msa) in tmesis-msa
-						do
-						(let ((cohort (cg3-cohort-create sentence))
-						      (tag (cg3-tag-create-u8 applicator (format nil "\"<~a>\"" segment))))
+						do (let ((cohort (cg3-cohort-create sentence))
+						         (tag (cg3-tag-create-u8 applicator (format nil "\"<~a>\"" segment))))
 						  (cg3-cohort-setwordform cohort tag)
 						  (loop for l.f in msa
 						     for i from 0
@@ -318,21 +342,12 @@
 						  (cg3-sentence-addcohort sentence cohort))))
 					    (t
 					     (when (null morphology)
-					       ;;(debug token)
-					       ;; add guessing
 					       (setf morphology
 						     (case variety
 						       (:abk (list (list "??" "Unrecognized" nil nil)))
 						       (:non (list (list "??" "unknown" nil nil)))
 						       (otherwise
-							(list
-							 (list "??" "Unrecognized" nil nil)
-                                                         #|
-							 (list "??" "N Prop Anthr FirstName" nil nil)
-							 (list "??" "N Prop Anthr LastName" nil nil)
-							 (list "??" "N Prop Top Place" nil nil)
-							 (list "??" "N Prop" nil nil)
-                                                         |#))))
+							(list (list "??" "Unrecognized" nil nil)))))
 					       (if (find :morphology token)
 						   (setf (getf token :morphology) morphology)
 						   (setf (cddr token)
@@ -344,10 +359,7 @@
 					     (let ((cohort (cg3-cohort-create sentence))
 						   (tag (cg3-tag-create-u8
 							 applicator
-                                                         (concat "\"<" wordform ">\"")
-                                                         #+ignore
-                                                         (format nil "\"<~a>\"" wordform))))
-                                               ;;(debug wordform)
+                                                         (concat "\"<" wordform ">\""))))
 					       (cg3-cohort-setwordform cohort tag)
 					       (loop for l.f in morphology
 						  for i from 0
@@ -362,7 +374,7 @@
                                                            (cg3-reading-addtag
                                                             reading (cg3-tag-create-u8
                                                                      applicator
-                                                                     (format nil "<lemma=~d>" uf)))))
+                                                                     (format nil "<lemma:~d>" uf)))))
                                                        ;; features
                                                        (let ((tags (u:split (cadr l.f) #\space nil nil t)))
                                                          (when (eq mode :redisambiguate)
@@ -416,7 +428,7 @@
                                                                    :test #'string=))))))))))
 		     #+debug(format t "~{~a ~}~%" (nreverse word-list))
 		     (cg3-sentence-runrules applicator sentence)
-		     (loop with coh = 0 and mwe-count = 0 and added = nil
+                     (loop with coh = 0 and mwe-count = 0 and added = nil
 			for i from prev-pos to pos ;; the sentence range
 			for token = (aref token-array i)
 			while (< coh (cg3-sentence-numcohorts sentence))
@@ -429,40 +441,39 @@
 				  (setf added nil)
 				  (let* ((cohort (cg3-sentence-getcohort sentence coh))
 					 (tag (cg3-cohort-getwordform cohort))
-					 (word (cg3-tag-gettext-u8 tag)))
-				    (let* (#+ccl(self (ccl::%new-gcable-ptr 4 t))
-					   #+ccl(parent (ccl::%new-gcable-ptr 4 t))
-					   ;; there is only one
-					   (reading (cg3-cohort-getreading cohort 0))
-					   (word (cg3-tag-gettext-u8
-						  (cg3-reading-gettag reading 0)))
-					   (word (subseq word 2 (- (length word) 2))))
-				      #+ccl(cg3-cohort-getdependency cohort self parent)
-				      (setf (getf (cddr token) :subtoken)
-					    (list :word word 
-						  #+ccl :parent #+ccl(ccl:%get-signed-long parent)
-						  #+ccl :self #+ccl(ccl:%get-signed-long self)
-						  :morphology
-						  (list
-						   (let* (;;(rid (cg3-reading-gettag reading 2))
-							  (traces (cg3-reading-numtraces reading))
-							  (lemma (cg3-tag-gettext-u8 (cg3-reading-gettag reading 1)))
-							  (tags
-							   (format nil "~{~a~^ ~}"
-								   (loop for i from 3 below (cg3-reading-numtags reading)
-								      for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i))
-								      collect tag))))
-						     (list (subseq lemma 1 (1- (length lemma)))
-							   tags
-							   nil
-							   (u:collecting
-							     (dotimes (tr traces)
-							       (let ((trace (cg3-reading-gettrace reading tr))
-								     (ruletype (cg3-reading-gettrace-ruletype reading tr)))
-								 (u:collect (rule-name ruletype trace)))))
-							   nil))))
-					    
-					    )))
+					 (word (cg3-tag-gettext-u8 tag))
+                                         #+ccl(self (ccl::%new-gcable-ptr 4 t))
+					 #+ccl(parent (ccl::%new-gcable-ptr 4 t))
+					 ;; there is only one
+					 (reading (cg3-cohort-getreading cohort 0))
+					 (word (cg3-tag-gettext-u8
+						(cg3-reading-gettag reading 0)))
+					 (word (subseq word 2 (- (length word) 2))))
+				    #+ccl(cg3-cohort-getdependency cohort self parent)
+				    (setf (getf (cddr token) :subtoken)
+					  (list :word word 
+						#+ccl :parent #+ccl(ccl:%get-signed-long parent)
+						#+ccl :self #+ccl(ccl:%get-signed-long self)
+						:morphology
+						(list
+						 (let* (;;(rid (cg3-reading-gettag reading 2))
+							(traces (cg3-reading-numtraces reading))
+							(lemma (cg3-tag-gettext-u8 (cg3-reading-gettag reading 1)))
+							(tags
+							 (format nil "~{~a~^ ~}"
+								 (loop for i from 3 below (cg3-reading-numtags reading)
+								       for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i))
+								       collect tag))))
+						   (list (subseq lemma 1 (1- (length lemma)))
+							 tags
+							 nil
+							 (u:collecting
+							   (dotimes (tr traces)
+							     (let ((trace (cg3-reading-gettrace reading tr))
+								   (ruletype (cg3-reading-gettrace-ruletype
+                                                                              reading tr)))
+							       (u:collect (rule-name ruletype trace)))))
+							 nil))))))
 				  (incf coh))
 				 (t
 				  (setf mwe-count (getf token :mwe 0)) 
@@ -474,18 +485,26 @@
 				      (setf cohort (cg3-sentence-getcohort sentence coh)
 					    tag (cg3-cohort-getwordform cohort)
 					    word (cg3-tag-gettext-u8 tag)))
-				    ;; lemma + features
+                                    (when (string= word "_VAR_")
+				      (incf coh)
+				      (setf cohort (cg3-sentence-getcohort sentence coh)
+					    tag (cg3-cohort-getwordform cohort)
+					    word (cg3-tag-gettext-u8 tag)))
+                                    ;;(print (list coh word tag))
+                                    ;; lemma + features
 				    (destructuring-bind (&key morphology tmesis-msa &allow-other-keys) token
 				      (cond (tmesis-msa
 					     (loop for ((segment . msa) . rest) on tmesis-msa
-						do (msa-set-disambiguation cohort msa language)
-						when rest
-						do (incf coh)
-						(setf cohort (cg3-sentence-getcohort sentence coh)
-						      tag (cg3-cohort-getwordform cohort)
-						      word (cg3-tag-gettext-u8 tag))))
+						   do (msa-set-disambiguation word cohort
+                                                                              msa language guess-table)
+						   when rest
+						   do (incf coh)
+						   (setf cohort (cg3-sentence-getcohort sentence coh)
+						         tag (cg3-cohort-getwordform cohort)
+						         word (cg3-tag-gettext-u8 tag))))
 					    (t
-					     (setf added (msa-set-disambiguation cohort morphology language)))))
+					     (setf added (msa-set-disambiguation
+                                                          word cohort morphology language guess-table)))))
 				    ;; dependencies
 				    #+ccl
 				    (let ((self (ccl::%new-gcable-ptr 4 t))
@@ -523,13 +542,14 @@
 	   do (setf (getf subtoken :parent) (1+ (or (position (getf subtoken :parent) ids) -2)))))
       text)))
 
-(defun msa-set-disambiguation (cohort morphology language)
+(defun msa-set-disambiguation (word cohort morphology language guess-table)
   (let* ((added nil)
 	 (reading-count (length morphology))
          (set-tags-from-cg-output (eq language :kat))
+         (numreadings (cg3-cohort-numreadings cohort))
 	 (selected
 	  (u:collecting
-	    (dotimes (re (cg3-cohort-numreadings cohort))
+	    (dotimes (re numreadings)
 	      (let* ((reading (cg3-cohort-getreading cohort re))
 		     (rid (cg3-reading-gettag reading 2))
 		     (reading-id (cg3-tag-gettext-u8 rid))
@@ -560,12 +580,45 @@
 			 when (equal tag "@ADDED")
 			    do (setf added t))))
                 (if set-tags-from-cg-output
-                    (let ((rlist (nth reading-id morphology)))
+                    (let ((rlist (nth reading-id morphology))
+                          (guessed nil))
 		      (setf (cadr rlist)
 			    (format nil "~{~a~^ ~}"
                                     (loop for i from 3 ;; 4
                                           below (cg3-reading-numtags reading)
-		                          collect (cg3-tag-gettext-u8 (cg3-reading-gettag reading i))))))
+                                          for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i)) 
+		                          collect tag
+                                          when (and guess-table (string= tag "Guess"))
+                                          do (setf guessed t))))
+                      (when (and guess-table guessed)
+                        
+                        (let* ((word (subseq word 2 (- (length word) 2)))
+                               (lemma (cg3-tag-gettext-u8 (cg3-reading-gettag reading 1)))
+                               (lemma (subseq lemma 1 (1- (length lemma))))
+                               (pos (cg3-tag-gettext-u8 (cg3-reading-gettag reading 4)))
+                               (amb-table (car guess-table))
+                               (unamb-table (cdr guess-table))
+                               )
+                          (unless (gethash lemma amb-table)
+                            (setf (gethash lemma amb-table) (dat:make-string-tree)))
+                          (incf (dat:string-tree-get
+                                 (gethash lemma amb-table)
+                                 (u:concat word "+" pos)
+                                 0))
+                          (when (= numreadings 1)
+                            (unless (gethash lemma unamb-table)
+                              (setf (gethash lemma unamb-table) (dat:make-string-tree)))
+                            (incf (dat:string-tree-get
+                                   (gethash lemma unamb-table) 
+                                   (format nil "~a	~{~a~^ ~}"
+                                           word
+                                           ;; numreadings
+                                           (loop for i from 4
+                                                 below (cg3-reading-numtags reading)
+                                                 for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i))
+                                                 until (eq (char tag 0) #\>)
+		                                 collect tag))
+                                   0))))))
 		    (when dependency-labels
 		      (let ((rlist (nth reading-id morphology)))
 		        (when rlist
@@ -688,12 +741,12 @@
 		    (cg3-sentence-addcohort sentence cohort)))))
 	     
 	   (cg3-sentence-runrules applicator sentence)
-		     
+	   
 	   (loop for coh below (cg3-sentence-numcohorts sentence)
 	      do (let* ((cohort (cg3-sentence-getcohort sentence coh))
 			(tag (cg3-cohort-getwordform cohort))
 			(word (cg3-tag-gettext-u8 tag)))
-		   (when (string/= word ">>>")
+		   (when (and (string/= word ">>>") (string/= word "_VAR_"))
 		     (setf cohort (cg3-sentence-getcohort sentence coh)
 			   tag (cg3-cohort-getwordform cohort)
 			   word (cg3-tag-gettext-u8 tag))
