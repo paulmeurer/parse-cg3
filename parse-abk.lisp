@@ -25,6 +25,8 @@
 		     :token-boundary #.(string #\newline)
 		     :file "projects:abnc;abk-tokenize.fst"))
 
+(defvar *transducers-initialzed* nil)
+
 (defmethod init-transducers ((language (eql :abk))
                              &key ;; symlinked to georgian-morph/regex
                                (transducer-dir "projects:abnc;")
@@ -74,6 +76,7 @@
       (setf *abk-old-to-new-orth*
             (load-morph '(:abkhaz-old-to-new-orth))))
     )
+  (setf *transducers-initialzed* t)
   (print :done))
 
 (defparameter *use-simple-dict-p* nil)
@@ -103,7 +106,7 @@
 #+test
 (print (lookup-abk-coord-compound "лхы-лҿы"))
 #+test
-(print (lookup-abk-coord-compound "схы-сҿы"))
+(print (lookup-abk-coord-compound "О-о"))
 
 ;; two types of coordination compounds:
 ;; 1. two complete words with comparable features
@@ -166,6 +169,7 @@
 							        (subseq lemma1 0 (1- (length lemma1))))
 						            "="
 						            (if (and (not keep-det2) ;; always T?
+                                                                     (> (length lemma2) 3)
                                                                      (find #\- lemma2 :end 3)
                                                                      #+ignore
 							             (find "<PreAdj>" features2 :test #'string=)
@@ -221,17 +225,20 @@
   nil)
 
 (defmethod lookup-morphology ((language (eql :abk)) word 
-                              &key mwe
+                              &key mwe variety
                                 coord ;; lookup abk coordinated compound segments?
                                 (orthography :abk-cyr)
                                 &allow-other-keys)
+  ;;(print (list word language variety))
   (let ((lemmas+features ())
 	(stripped-word
 	 (remove-if (lambda (c) 
 		      (find c "ՙ‹›{}\\|"))
 		    word))
 	(analyzer *abk-analyzer*))
-    (cond (analyzer
+    (cond ((and variety (not (eq variety :abk)))
+           (setf lemmas+features (list (list "-" (format nil "Foreign ~a" variety) nil nil))))
+          (analyzer
            (when (eq orthography :abk-cyr-old)
              (cl-fst:fst-lookup
               *abk-old-to-new-orth*
@@ -340,7 +347,7 @@
              
              ;; mark +Det reading if one without +Det exists
              (setf lemmas+features
-                   (loop with prev-lemma = "" and collected = nil
+                   (loop with prev-lemma = "" ;; and collected = nil
                       and prev-features = ()
                       and prev-filtered-features = ()
                       for l+f in lemmas+features
