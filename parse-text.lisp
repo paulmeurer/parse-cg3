@@ -19,7 +19,7 @@
    (end-wid :initform nil :initarg :end-wid :accessor end-wid)
    ;; stored reading by wid, where xml:id = "w<wid>"
    (wid-table :initform (make-hash-table) :reader wid-table)
-   (guess-table :initform (make-hash-table :test #'equal) :reader guess-table)
+   ;; (guess-table :initform (make-hash-table :test #'equal) :reader guess-table)
    ))
 
 (defmethod token-array ((text parsed-text))
@@ -248,7 +248,7 @@
                            keep-non-mwe-readings
                            guess-table
                            unknown-only-p &allow-other-keys)
-  ;;(print (list :process-text :mode :analyze :variety variety))
+  ;; (print (list :process-text :mode :analyze :variety variety))
   (setf (text-lexicon text) (dat:make-string-tree))
   (let ((language (if (eq variety :abk) :abk :kat))
         (token-array (text-array text))
@@ -297,17 +297,20 @@
 			     dipl)
 			 (or word dipl)
 			 lex-norm))))
-      (loop with mwe-positions = ()
+      (loop with mwe-positions = () and start-seen = nil
 	    for node across token-array
 	    for i from 0
-	    do (case (car node)
+	    do (case (debug (car node))
 		 (:start-element
                   (push (let ((lang (or (getf node :|xml:lang|)
                                         (let ((atts (getf node :atts)))
                                           (when atts
                                             (let ((start (search "xml:lang=\"" atts)))
                                               (when start
-                                                (subseq atts (+ start 10) (position #\" atts :start 11)))))))))
+                                                (print (list start atts))
+                                                (subseq atts
+                                                        (+ start 10)
+                                                        (position #\" atts :start (+ start 11))))))))))
 			  (cond ((null lang)
 				 nil)
                                 ((eq variety :abk)
@@ -322,9 +325,11 @@
 				 :jg)
 			        (t
 				 (intern (string-upcase lang) :keyword))))
-                        lang-stack))
+                        lang-stack)
+                  (setf start-seen t))
 		 (:end-element
-		  (pop lang-stack))
+                  (when start-seen
+		    (pop lang-stack)))
 		 (:word
 		  (multiple-value-bind (token word lex-norm) (node-token node)
 		    (declare (ignore lex-norm))
@@ -338,7 +343,7 @@
 					          for node = (aref token-array j)
 					          when (eq (car node) :word)
 					          do (return (list (node-token node) (cadr next-token+j2) j)))))
-			   (variety (find-if-not #'null lang-stack))
+			   (variety (find-if-not #'null (debug lang-stack)))
 			   (normalized-token (when token
 					       (cond ((and normalize (> (length token) 1))
                                                       ;; did include / before!
@@ -408,7 +413,7 @@
                                (when wid-table
                                  (let ((wid (or (getf node :wid) ;; from corpus att
                                                 (getf node :|xml:id|)))) ;; from xml text
-                                   (when wid
+                                   (when (and wid (string/= wid ""))
                                      (let* ((id (parse-integer wid :start 1))
                                             (reading (gethash id wid-table)))
                                        (when reading

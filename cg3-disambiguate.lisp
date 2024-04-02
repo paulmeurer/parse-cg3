@@ -584,7 +584,7 @@
                           (guessed nil))
 		      (setf (cadr rlist)
 			    (format nil "~{~a~^ ~}"
-                                    (loop for i from 3 ;; 4
+                                    (loop for i from 4 ;; 3 ;; 4
                                           below (cg3-reading-numtags reading)
                                           for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i)) 
 		                          collect tag

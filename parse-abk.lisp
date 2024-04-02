@@ -28,8 +28,7 @@
 (defvar *transducers-initialzed* nil)
 
 (defmethod init-transducers ((language (eql :abk))
-                             &key ;; symlinked to georgian-morph/regex
-                               (transducer-dir "projects:abnc;")
+                             &key (transducer-dir "projects:abnc;")
                                &allow-other-keys)
   (let ((abk-orth-file "projects:abnc;abkhaz-old-to-new-orth.fst")
         (abk-file "projects:abnc;abkhaz.fst")

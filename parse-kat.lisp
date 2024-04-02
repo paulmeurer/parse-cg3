@@ -463,6 +463,7 @@
 
 ;; *text*
 
+#+obsolete
 (defmethod write-gnc-text-json ((text parsed-text) stream
 				&key tracep split-trace
 				  (suppress-discarded-p t)
@@ -502,6 +503,7 @@
        ,@(when start-cpos `("endCpos" end-cpos)) ;; not needed?
        ))))
 
+#+obsolete ;; see parse-text.lisp
 (defun write-word-json (node &key id
 			       tracep ;; traces in view mode?
 			       split-trace
@@ -521,7 +523,8 @@
   (ecase (car node)
     (:word
      (destructuring-bind (&key word morphology facs dipl norm |id| cpos comment
-			       &allow-other-keys) node
+			       &allow-other-keys)
+         node
        (declare (ignore morphology comment |id| norm dipl facs))
        ;;(debug node)
        (let* ((morphology (unless no-morphology (getf (cddr node) :morphology)))
@@ -532,10 +535,11 @@
 	  `("word"
 	    ,word
 	    ,@(when dependencies 
-		    `("self"
-		      ,(unless (eql (getf node :self) 0) (getf node :self))
-		      "parent"
-		      ,(unless (eql (getf node :parent) -1) (getf node :parent))))
+		    `("self" ,(unless (eql (getf node :self) 0) (getf node :self))
+		      "parent" ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)
+                      "label" ,(or (getf node :label) :null)
+                      "stored_parent" ,(or (getf node :stored-parent) :null)
+                      "stored_label" ,(or (getf node :stored-label) :null)))
 	    ,@(when count `("count" ,(length morphology)))
 	    ,@(when cpos `("cpos" ,cpos))
 	    "id" ,id
@@ -564,6 +568,7 @@
 				 when rest
 				 do #m(gnc:tmesis/)))))))))))))
 
+#+moved
 (defun gnc-to-ud-features (features)
   (format nil "~{~a~^ ~}"
 	  (loop for f in (u:split features #\space)
@@ -571,12 +576,14 @@
 	     when (and ud (not (equal ud "-")))
 	     collect (string-left-trim "*" ud))))
 
+#+moved
 (defun remove-dep-edge-features (features)
   (format nil "~{~a~^ ~}"
 	  (loop for f in (u:split features #\space)
 	     unless (find (char f 0) ">@")
 	     collect f)))
 
+#+moved
 (defun load-suppressed-features (&optional file)
   (setf *suppressed-features*
 	(u:collecting
@@ -588,9 +595,11 @@
 
 (defvar *tagset*)
 
+#+moved
 (when (probe-file "projects:gnc;text-tool;static;suppressed-features.txt")
   (load-suppressed-features))
 
+#+moved
 (defun pos2 (features)
   (let* ((flist (u:split features #\Space))
 	 (filtered-list
@@ -602,6 +611,7 @@
 			   (cdr flist)))))
     (format nil "~{~a~^ ~}" filtered-list)))
 
+#+moved
 (defun filter-morphology (readings &key tagset)
   (case tagset
     (:reduced-tagset
@@ -663,33 +673,15 @@
     (:msa ;; i.e., no dependency edge labels
      (loop for (lemma features flag trace ids trans) in readings
 	for id from 0
-	collect (list lemma (remove-dep-edge-features features) flag trace ids trans)))
+	   collect (list lemma (remove-dep-edge-features features) flag trace ids trans)))
+    (:full-tagset
+     (loop for (lemma features flag trace ids trans) in readings
+	for id from 0
+	   collect (list lemma (u:split features #\+) flag trace ids trans)))
     (otherwise
      readings)))
 
-(defun write-msa-json (morphology &key node
-				    lemma
-				    features
-				    (suppress-discarded-p t)
-				    rid
-				    manual
-				    show-rules)
-  (let ((morphology (filter-morphology morphology :tagset :full-tagset #+orig *tagset*)))
-    (u:collecting
-      (loop for reading in morphology
-	 for rule-id from 0
-	 do (destructuring-bind (l f &optional flag trace ids) reading
-	      (declare (ignore ids)) ;; equivalent readings after filtering; not used here
-	      (unless (and suppress-discarded-p (eq flag :discarded-cg))
-		(u:collect (apply #'st-json::jso
-				  `(,@(when lemma `("lemma" ,l))
-				      ,@(unless suppress-discarded-p
-						`("status" ,(string-downcase flag)))
-				      ,@(when features `("features" ,f))
-				      ,@(when rid `("rid" ,rule-id))
-				      ,@(when manual `("manual" :null))
-				      ,@(when show-rules `("rules" ,trace)))))))))))
-
+#+obsolete? ;; see parse-text.lisp
 (defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
   (assert node-id)
   (let* ((id-table (make-hash-table :test #'equal))
@@ -907,6 +899,7 @@
            when subtoken
            do (write-node subtoken t))))))
 
+#+ignore ;; see parse-text.lisp
 (defstruct token-list
   terminal-p
   id
@@ -918,7 +911,7 @@
   atts)
 
 #+disabled
-(if nil ;;(eq +fst+ :fst)
+(if (eq +fst+ :fst)
     ;; Initialize the transducers
     (init-transducers :kat)
     ;; if you are interested in Modern Georgian only use this instead:
@@ -1061,6 +1054,10 @@
         (debug unknown-count)))
     (print (car count))
     (print :done)))
+
+(process-run-function "init-gnc-transducers"
+                      (lambda ()
+                        (init-transducers :kat)))
 
 ;; Example:
 
