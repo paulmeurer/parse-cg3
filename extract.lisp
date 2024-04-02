@@ -7,7 +7,7 @@
 ;; არა- +Prop
 
 #+test
-(u:with-file-fields ((lemma code pos features &rest rest) "projects:georgian-morph;regex;lemmas-2032-04-01.tsv")
+(u:with-file-fields ((lemma code pos features &rest rest) "projects:georgian-morph;regex;lemmas-2023-04-01.tsv")
   (when (find code '("A" "B") :test #'string=)
     (setf lemma (u:concat lemma "ი")))
   (let* ((morph (lookup-morphology :kat lemma :lookup-guessed nil))
@@ -32,7 +32,7 @@
 (defparameter *remove-table* (make-hash-table :test #'equal))
 
 #+test
-(u:with-file-lines (line "projects:georgian-morph;regex;lemmas-2032-04-01-remove.txt")
+(u:with-file-lines (line "projects:georgian-morph;regex;lemmas-2023-04-01-remove.txt")
   (let* ((l+f (read-from-string line))
          (l (car l+f)))
     (setf (gethash l *remove-table*) l+f)
@@ -41,9 +41,9 @@
 
 
 #+test
-(with-open-file (stream "projects:georgian-morph;regex;lemmas-2032-04-01.tsv"
+(with-open-file (stream "projects:georgian-morph;regex;lemmas-2023-04-01.tsv"
                         :direction :output :if-exists :supersede)
-  (u:with-file-lines (line "projects:georgian-morph;regex;lemmas-2032-04-01-to-clean.tsv")
+  (u:with-file-lines (line "projects:georgian-morph;regex;lemmas-2023-04-01-to-clean.tsv")
     (let ((lemma (subseq line 0 (position #\tab line))))
       (if (gethash lemma *remove-table*)
           (write-line line)
@@ -60,12 +60,12 @@
 
 ;; import
 #+test
-(with-open-file (stream "projects:georgian-morph;regex;lemmas-2032-04-01-rest.tsv"
+(with-open-file (stream "projects:georgian-morph;regex;lemmas-2023-04-01-rest.tsv"
                         :direction :output :if-exists :supersede)
   (with-database-connection ()
     (with-transaction ()
       (block test
-        (u:with-file-fields ((lemma code pos f &rest rest) "projects:georgian-morph;regex;lemmas-2032-04-01.tsv")
+        (u:with-file-fields ((lemma code pos f &rest rest) "projects:georgian-morph;regex;lemmas-2023-04-01.tsv")
           (let* ((features (unless (or (equal f "+Rus") (equal f "+Foreign") (equal f "")) f))
                  (style-features (if (or (equal f "+Rus") (equal f "+Foreign")) f))
                  (max-sub-id (or (car (select [max [sub-id]]
@@ -94,7 +94,7 @@
                                                ([sub-id] ,(1+ max-sub-id))
                                                ([features] ,features)
                                                ([style-features] ,style-features)
-                                               ([comment] "GNC-extracted-2032-04-01")
+                                               ([comment] "GNC-extracted-2023-04-01")
                                                ([author] "PM")
                                                ([date] ,(get-universal-time))))))))))))
 
@@ -120,7 +120,7 @@
                                       ([sub-id] ,(1+ max-sub-id))
                                       ([features] ,features)
                                       ([style-features] ,style-features)
-                                      ([comment] "Wiki-extracted-2032-04-04")
+                                      ([comment] "Wiki-extracted-2023-04-04")
                                       ([author] "PM")
                                       ([date] ,(get-universal-time)))))))))
 
@@ -144,7 +144,7 @@
                                       ([sub-id] ,(1+ max-sub-id))
                                       ;; ([features] ,features)
                                       ([style-features] ,style-features)
-                                      ([comment] "Wiki-extracted-2032-04-04")
+                                      ([comment] "Wiki-extracted-2023-04-04")
                                       ([author] "PM")
                                       ([date] ,(get-universal-time)))))))))
 
@@ -176,7 +176,7 @@
                                       ([sub-id] 0)
                                       ;; ([features] ,features)
                                       ([style-features] "+Term")
-                                      ([comment] "Wiki-extracted-2032-04-04")
+                                      ([comment] "Wiki-extracted-2023-04-04")
                                       ([author] "PM")
                                       ([date] ,(get-universal-time))))
           )))))
