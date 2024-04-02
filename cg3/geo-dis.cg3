@@ -3828,7 +3828,7 @@ n-REMOVE S:3Sg IF (0C IO:2 OR IO:2Pl) ;
 n-SELECT Impv
       IF (0C Impv OR Aor) ;
 
-n-REMOVE Old ;
+n-REMOVE Old - ("ჟამ·ი") ;
 
 REMOVE N
       IF (0 V)
@@ -3903,6 +3903,6 @@ n-REMOVE Ext ;
 # Dependencies  #
 # ============= #
 
-# INCLUDE geo-dep.cg3 ;
+INCLUDE geo-dep.cg3 ;
 
 END
