@@ -35,7 +35,7 @@
 
 
 ;; to be overridden
-(defun text-class ()
+(defmethod text-class ((variety t))
   'parsed-text)
 
 (defconstant +wrong-abk-chars+ "ԥԤӷӶӌӋ")
@@ -47,6 +47,9 @@
      when pos
      do (setf (char text i) (char +correct-abk-chars+ pos))))
 
+#+test
+(parse-text "ала" :variety :abk)
+
 (defmethod parse-text ((text string) &key variety load-grammar (disambiguate t) corpus
                                        orthography
                                        unknown-tree ;; obsolete?
@@ -56,7 +59,7 @@
   (when (eq variety :kat) (setf variety :ng))
   (when (eq variety :abk)
     (normalize-characters text))
-  (let* ((parsed-text (make-instance (text-class)
+  (let* ((parsed-text (make-instance (text-class variety)
                                      :orthography orthography
                                      :corpus corpus))
          (word-id-table (word-id-table parsed-text))
@@ -100,7 +103,7 @@
                                        &allow-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
-  (let ((parsed-text (make-instance (text-class))))
+  (let ((parsed-text (make-instance (text-class variety))))
     (dolist (tl tokens)
       (destructuring-bind (token . rest) tl
         (unless (or (equal token "@@@")
@@ -300,7 +303,7 @@
       (loop with mwe-positions = () and start-seen = nil
 	    for node across token-array
 	    for i from 0
-	    do (case (debug (car node))
+	    do (case (car node)
 		 (:start-element
                   (push (let ((lang (or (getf node :|xml:lang|)
                                         (let ((atts (getf node :atts)))
@@ -343,7 +346,7 @@
 					          for node = (aref token-array j)
 					          when (eq (car node) :word)
 					          do (return (list (node-token node) (cadr next-token+j2) j)))))
-			   (variety (find-if-not #'null (debug lang-stack)))
+			   (variety (find-if-not #'null lang-stack))
 			   (normalized-token (when token
 					       (cond ((and normalize (> (length token) 1))
                                                       ;; did include / before!
@@ -368,13 +371,15 @@
                       (when (and (null readings) unknown-tree)
                         (incf (dat:string-tree-get unknown-tree normalized-token 0)))
 		      (let* ((mwe2-reading (when (and (car next-token+j2)
+                                                      (not (eq language :abk))
                                                       (not (and (eq language :abkx) (not (eq language variety))))
 						      (not (find (char token 0) ",;.:?!“”«»–"))
 						      (not (find (char (car next-token+j2) 0)
 								 ",;.:?!“”«»")))
                                              (lookup-morphology language
                                                                 (u:concat token " " (car next-token+j2))
-                                                                :variety variety :mwe t
+                                                                :variety variety
+                                                                :mwe t
                                                                 :orthography (orthography text))))
 			     (mwe3-reading (when (and (not mwe2-reading)
 						      (not (and (eq language :abkx) (not (eq language variety))))
@@ -486,7 +491,6 @@
 
 #+test
 (process-text *text* :analyze)
-
 
 (defmethod process-text ((text parsed-text) (mode (eql :disambiguate))
                          &key (variety :og) (load-grammar t) mode
@@ -836,6 +840,43 @@
 
 ;; *text*
 
+;; todo: remove duplication of get-val here and in function below
+(defmethod initialize-depid-array ((text parsed-text) &key (diff (list nil)) stored (subtoken-count 0))
+  (let ((token-array (token-array text)))
+    (labels ((get-val (token att stored-att &optional reg)
+               (cond ((not stored)
+                      (getf token att))
+                     (t
+                      (let ((stored-val (getf token stored-att))
+                            (val (getf token att)))
+                        (when (and reg
+                                   (not (equal val stored-val))
+                                   (not (and (null stored-val)
+                                             (or (eq val -1) (equal val "ROOT")))))
+                          (setf (car diff) t)))
+                      (getf token stored-att)))))
+      (setf (depid-array text)
+	    (make-array (+ 1 (length token-array) subtoken-count) :initial-element ()))
+      (loop for i from 0
+	    for token across token-array
+            for parent = (if stored
+                             (get-val token :parent :stored-parent)
+                             (getf token :parent))
+            when (and (eq (car token) :word) (getf token :self))
+	    do (setf (getf (aref (depid-array text) (getf token :self)) :token) i)
+	    unless (or (null parent) (= parent -1))
+	    do (pushnew (getf token :self)
+		        (getf (aref (depid-array text) parent)
+                              :children))
+	    when (getf token :subtoken)
+	    do (let ((subtoken (getf token :subtoken)))
+	         (setf (getf (aref (depid-array text) (getf subtoken :self)) :token) (- -1 i))
+	         (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
+	           (pushnew (getf subtoken :self)
+			    (getf (aref (depid-array text)
+				        (getf subtoken :parent))
+                                  :children))))))))
+
 (defmethod get-token-table ((text parsed-text) &key node-id stored &allow-other-keys)
   (assert node-id)
   (let* ((id-table (make-hash-table :test #'equal))
@@ -845,7 +886,7 @@
 	 (word nil)
 	 (token-array (token-array text))
 	 (parents ())
-         (diff nil)
+         (diff (list nil))
 	 (subtoken-count (count-if (lambda (token) (getf token :subtoken)) token-array))
 	 (pre-subtoken-ids (loop for token across token-array
 			      when (getf token :subtoken)
@@ -854,9 +895,6 @@
     (declare (ignore id-table))
     (labels ((get-val (token att stored-att &optional reg)
                (cond ((not stored)
-                      #+orig
-                      (or (not (getf token stored-att))
-                          (equal (getf token stored-att) (getf token att)))
                       (getf token att))
                      (t
                       (let ((stored-val (getf token stored-att))
@@ -865,15 +903,14 @@
                                    (not (equal val stored-val))
                                    (not (and (null stored-val)
                                              (or (eq val -1) (equal val "ROOT")))))
-                          #+debug
-                          (print (list :word (getf token :word)
-                                       :val val
-                                       :stored-val stored-val))
-                          (setf diff t)))
+                          (setf (car diff) t)))
                       (getf token stored-att)))))
-      (unless nil	;(depid-table text) ;; maps dep node-ids to token-table ids
+      (unless nil ;; (depid-table text) ;; maps dep node-ids to token-table ids
+        (initialize-depid-array text :diff diff :stored stored :subtoken-count subtoken-count) 
+        #+orig
         (setf (depid-array text)
 	      (make-array (+ 1 (length token-array) subtoken-count) :initial-element ()))
+        #+orig
         (loop for i from 0
 	      for token across token-array
               for parent = (if stored
@@ -954,7 +991,7 @@
 			   (setf (token-list-head tl)
 				 (1+ (position (token-list-head tl) ids)))))))))
 	       token-table)
-      (values token-table (1+ (position node-id ids)) diff))))
+      (values token-table (1+ (position node-id ids)) (car diff)))))
 
 ;;  *text*
 
@@ -1144,20 +1181,32 @@ Field number:	Field name:	Description:
 
 (defun morph-to-ud (morph &key drop-pos)
   (let ((features (u:split morph #\space))
-        (ud-features ()))
+        (ud-features ())
+        (pos nil))
     (setf features (delete-if (lambda (f) (find #\> f)) features))
+    (setf pos (car features))
     (when drop-pos (pop features))
     (dolist (f features)
-      (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
-        (when (and ud (not is-pos))
-          (dolist (f (u:split ud #\|))
-            (pushnew f ud-features :test #'string= :key (lambda (fv) (subseq fv 0 (position #\= fv))))))))
-        (if ud-features
+      (cond ((and (equal f "Sg") (equal pos "PP")) ;; not sure why нахы́с has PP Sg
+             nil)
+            (t
+             (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
+               (when (and ud (not is-pos))
+                 (dolist (f (u:split ud #\|))
+                   (when (equal f "Number=Card")
+                     (setf ud-features (delete "Number=Sing" ud-features :test #'string=)))
+                   (pushnew f ud-features :test #'string=
+                            :key (lambda (fv) (subseq fv 0 (position #\= fv))))))))))
+    (if ud-features
         (format nil "~{~a~^|~}" (sort ud-features #'string-lessp))
         "_")))
 
 #+test
-(print (morph-to-ud-pos "PP Poss:3SgNH"))
+(print (morph-to-ud-pos "Noun Prop Name <Lemma> >NSUBJ"))
+#+test
+(print (morph-to-ud "Noun NH Sg NumPfx"))
+#+test
+(print (morph-to-ud "PP Sg"))
 
 (defun morph-to-ud-pos (morph)
   (let ((features (u:split morph #\space))
@@ -1166,9 +1215,11 @@ Field number:	Field name:	Description:
       (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
         (cond ((null is-pos)
                nil)
-              ((not (eq is-pos t))
-               (unless (or (equal pos "NOUN") (equal pos "PROPN")) ;; b/o coord
+              ((equal is-pos "CCONJ")
+               (unless pos
                  (setf pos is-pos)))
+              ((not (eq is-pos t))
+               (setf pos is-pos))
               (ud
                (setf pos ud)))))
     pos))
