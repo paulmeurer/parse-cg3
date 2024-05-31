@@ -1179,16 +1179,27 @@ Field number:	Field name:	Description:
     (when drop-pos (pop features))
     (format nil "~{~a~^_~}" features)))
 
-(defun morph-to-ud (morph &key drop-pos)
+(defun morph-to-ud (morph &key drop-pos lemma)
   (let ((features (u:split morph #\space))
         (ud-features ())
         (pos nil))
     (setf features (delete-if (lambda (f) (find #\> f)) features))
     (setf pos (car features))
     (when drop-pos (pop features))
+    (when (equal pos "VN")
+      (push "VerbForm=Vnoun" ud-features))
     (dolist (f features)
       (cond ((and (equal f "Sg") (equal pos "PP")) ;; not sure why нахы́с has PP Sg
              nil)
+            ((and (equal f "Neg") (equal pos "Pron"))
+             nil)
+            ((and (equal f "Cop")
+                  (not (equal lemma "а́кә-заа-ра"))
+                  (find "Mood=Conj1" ud-features :test #'string=))
+             (setf ud-features (delete "Mood=Conj1" ud-features :test #'string=))
+             (setf ud-features (delete "VerbForm=NonFin" ud-features :test #'string=))
+             (push "Mood=Nec" ud-features)
+             (push "VerbForm=Fin" ud-features))
             (t
              (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
                (when (and ud (not is-pos))
@@ -1201,28 +1212,73 @@ Field number:	Field name:	Description:
         (format nil "~{~a~^|~}" (sort ud-features #'string-lessp))
         "_")))
 
+#+test ;; ҳзеибадыруамызт wrong analysis ;; V Dyn Tr Fin Impf Neg S:Rec DO:1Pl
+(print (morph-to-ud "V Dyn Intr Fin Impf Neg S:Rec PO:1Pl"))
+
+#+test
+(print (morph-to-ud "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop"))
+#+test
+(print (morph-to-ud-pos "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop"))
+
+#+test
+(print (morph-to-ud-pos "Noun Prop Hydr"))
 #+test
 (print (morph-to-ud-pos "Noun Prop Name <Lemma> >NSUBJ"))
 #+test
-(print (morph-to-ud "Noun NH Sg NumPfx"))
+(print (morph-to-ud-pos "V Stat Fin Pres S:3 IO:1Sg Cop"))
 #+test
-(print (morph-to-ud "PP Sg"))
+(print (morph-to-ud-pos "V Dyn Fin Pres S:3 IO:1Sg Cop"))
+#+test
+(print (morph-to-ud-pos "Noun NH Sg NumPfx Cop"))
+#+test
+(print (morph-to-ud "V Stat Fin Pres S:3 IO:1Sg Cop"))
+
+#+test
+(print (morph-to-ud "VStat NonFin Pres Conj-I S:3 IO:3SgNH Cop" :lemma "а́кә-заа-ра"))
 
 (defun morph-to-ud-pos (morph)
   (let ((features (u:split morph #\space))
-        (pos nil))
+        (pos nil)
+        (dyn nil))
     (dolist (f features)
+      (when (equal f "Dyn")
+        (setf dyn t))
       (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
         (cond ((null is-pos)
                nil)
               ((equal is-pos "CCONJ")
                (unless pos
                  (setf pos is-pos)))
+              ((equal is-pos "AUX")
+               (setf pos is-pos))
               ((not (eq is-pos t))
                (setf pos is-pos))
+              #+ignore
+              ((and (equal pos "AUX") ;; а́кә-ха-ра
+                    (equal f "Dyn"))
+               (setf pos "VERB"))
               (ud
-               (setf pos ud)))))
+               (unless (and (equal ud "AUX") dyn)
+                 (setf pos ud))))))
     pos))
+
+(defun strip-segmentation (lemma word)
+  (cond ((< (length lemma) 5)
+         lemma)
+        ((and (> (length word) 4)
+              (find #\- word :start 4))
+         ;;(debug word)
+         (let ((hy-pos (position #\- lemma :from-end t :end (- (length lemma) 4))))
+           (setf lemma (remove-if (lambda (c) (find c "-:·")) lemma :start (1+ hy-pos)))
+           (remove-if (lambda (c) (find c "-:·")) lemma :start 3 :end hy-pos)))
+        (t
+         (debug lemma)
+         (remove-if (lambda (c) (find c "-:·")) lemma :start 3))))
+
+#+test
+(print (strip-segmentation "а-ҟрым-ҿры́м-ра" "аҟрым-ҿры́мра"))
+#+test
+(print (strip-segmentation "а-гыгшәы́г" "ҩ-гыгшәы́г"))
 
 (defmethod write-dependency-conll ((graph dep-node) stream
                                    &key text sentence-id (include-postag t) &allow-other-keys)
@@ -1233,13 +1289,14 @@ Field number:	Field name:	Description:
                                  (node-id (car (node-parents node)))
                                  0)))
                  (unless (zerop (node-id node))
-                   (let ((morph (getf atts :|morph|)))
+                   (let ((morph (getf atts :|morph|))
+                         (lemma (getf atts :|lemma|)))
                      (push (list (node-id node)
                                  (node-label node)
-                                 (getf atts :|lemma|)
+                                 lemma
                                  (morph-to-ud-pos morph)
                                  (if include-postag (morph-to-postag morph :drop-pos nil) "_")
-                                 (morph-to-ud morph)
+                                 (morph-to-ud morph :lemma lemma)
                                  parent
                                  (relation node))
                            nodes))))
@@ -1251,16 +1308,19 @@ Field number:	Field name:	Description:
         (format stream "# sent_id = ~a~%# text = ~a~%# text-transcription = ~a~%"
                 sentence-id text trans-text)
         (loop for (id form lemma cpostag postag feats head deprel) in nodes
-              do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	_~%"
+              do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	LMSeg:~a~%"
                          id
                          form
-                         lemma
+                         (strip-segmentation lemma form)
+                         ;;(if (equal lemma "а́кә-заа-ра") "а́кәзаара" lemma)
                          cpostag
                          postag
                          feats
                          head
                          #-orig(string-downcase deprel)
-                         #+prelim(string-downcase (subseq deprel 0 (position #\: deprel))))))
+                         #+prelim(string-downcase (subseq deprel 0 (position #\: deprel)))
+                         lemma
+                         )))
       (terpri stream))))
 
 
