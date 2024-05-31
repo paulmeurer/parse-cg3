@@ -59,7 +59,8 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
      	    >DET >QUAL >NEG >MODAL >REL >NAMEMOD >PRED >P >ADV >AUX >MWE >QUOTE >VOC
 	    >INTERJ
             <UnambGuess> <LMax> <WFMax>
-            guess rank VAR:rank VAR:guess ;
+            guess rank VAR:rank VAR:guess
+            <Sel> ;
 
 # ========== #
 # Variables  #
@@ -284,6 +285,8 @@ SET bareStem = (*) - (".*(·ი|\\])"r) ;
 # ======== #
   SECTION  #
 # ======== #
+
+SELECT <Sel> ; # select manually disambiguated reading
 
 # doesn’t work
 # SELECT (<guess=MAX>) IF (0 VAR:rank) ;
