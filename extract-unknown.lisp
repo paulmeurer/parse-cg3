@@ -760,12 +760,47 @@
       (write-line word stream))))
 
 #+test
+(with-open-file (stream "projects:gnc;data;tina;names-pers-unknown.txt"
+                        :direction :output :if-exists :supersede)
+  (let ((unknown ()))
+    (u:with-file-lines (word "projects:gnc;data;tina;names-pers.txt")
+      (let ((morph (lookup-morphology :kat word)))
+        (cond ((find-if (lambda (r)
+                           (and (search "N Prop" (cadr r))
+                                (not (search "Guess" (cadr r)))))
+                        morph)
+               (print morph)
+               )
+              (t
+               (pushnew word unknown :test #'equal )))))
+    (setf unknown (sort unknown (lambda (a b) (string< (reverse a) (reverse b)))))
+    (dolist (word unknown)
+      (write-line word stream))))
+
+#+test
+(with-open-file (stream "projects:gnc;data;tina;verbs-unknown.txt"
+                        :direction :output :if-exists :supersede)
+  (let ((unknown ()))
+    (u:with-file-lines (word "projects:gnc;data;tina;verbs.txt")
+      (let ((morph (lookup-morphology :kat word)))
+        (unless (find-if (lambda (r) (or (search "V " (cadr r))
+                                         (search "N " (cadr r))
+                                         (search "A " (cadr r))))
+                         morph)
+          (pushnew word unknown :test #'equal ))))
+    (setf unknown (sort unknown (lambda (a b) (string< (reverse a) (reverse b)))))
+    (dolist (word unknown)
+      (write-line word stream))))
+
+#+test
 (parse-kat-file "projects:gnc;data;tina;bioinformatics-ka.txt"
                 :format :tsv :write-xml-id nil :guess-scope :file)
 
 #+test
 (parse-kat-file "projects:gnc;data;tina;test.txt"
                 :format :tsv :write-xml-id nil :guess-scope :file)
+
+
 
 
 :eof
