@@ -495,7 +495,8 @@
 (defmethod process-text ((text parsed-text) (mode (eql :disambiguate))
                          &key (variety :og) (load-grammar t) mode
                            (sentence-end-strings vislcg3::*sentence-end-strings*)
-                           guess-scope guess-table cg3-variables &allow-other-keys)
+                           guess-scope guess-table cg3-variables (dependencies t)
+                           &allow-other-keys)
   (vislcg3::cg3-disambiguate-text text
                                   :variety variety
                                   :mode mode
@@ -505,31 +506,32 @@
                                   :guess-scope guess-scope
                                   :guess-table guess-table
                                   :variables cg3-variables)
-  (let ((token-array (text-array text))
-        (word-id-table (word-id-table text))
-        ;; (wid-table (wid-table text)) ;; what whas this supposed to be used for?
-        )
-    (loop for node across token-array
-          do (let* ((msa (getf node :morphology))
-                    (reading (or (find-if (lambda (reading)
-					    (and (not (find :discarded-cg reading))
-						 (search " >" (cadr reading) :from-end t)))
-					  msa)
-				 (find-if-not (lambda (r) (find :discarded-cg r)) msa)))
-		    (features (cadr reading))
-		    ;; (pos (subseq features 0 (position #\space features)))
-		    (rel-start (search " >" features :from-end t))
-		    (rel-end (when rel-start (position #\space features :start (+ 2 rel-start))))
-	            (relation (when rel-start (subseq features (+ 2 rel-start) rel-end)))
-                    )
-               (setf (getf (cddr node) :label) relation)))
-    ;; fix stored-parent
-    ;;(print :fix-stored-parent)
-    (loop for node across token-array ;; for i from 0
-          for p = (getf node :stored-parent)
-          when (and p (listp p)) ;; list ensures that this is done only once, but not on redisambiguation
-          do (setf (getf node :stored-parent)
-                   (getf (gethash (format nil "w~a" (car p)) word-id-table) :self)))))
+  (when dependencies
+    (let ((token-array (text-array text))
+          (word-id-table (word-id-table text))
+          ;; (wid-table (wid-table text)) ;; what whas this supposed to be used for?
+          )
+      (loop for node across token-array
+            do (let* ((msa (getf node :morphology))
+                      (reading (or (find-if (lambda (reading)
+					      (and (not (find :discarded-cg reading))
+						   (search " >" (cadr reading) :from-end t)))
+					    msa)
+				   (find-if-not (lambda (r) (find :discarded-cg r)) msa)))
+		      (features (cadr reading))
+		      ;; (pos (subseq features 0 (position #\space features)))
+		      (rel-start (search " >" features :from-end t))
+		      (rel-end (when rel-start (position #\space features :start (+ 2 rel-start))))
+	              (relation (when rel-start (subseq features (+ 2 rel-start) rel-end)))
+                      )
+                 (setf (getf (cddr node) :label) relation)))
+      ;; fix stored-parent
+      ;;(print :fix-stored-parent)
+      (loop for node across token-array ;; for i from 0
+            for p = (getf node :stored-parent)
+            when (and p (listp p)) ;; list ensures that this is done only once, but not on redisambiguation
+            do (setf (getf node :stored-parent)
+                     (getf (gethash (format nil "w~a" (car p)) word-id-table) :self))))))
 
 ;; kp::*text*
 
@@ -1015,7 +1017,7 @@
   (assert (not (null node-id)))
   (multiple-value-bind (token-table node-id diff)
       (get-token-table text :node-id node-id :stored stored)
-    (print (list stored :diff diff))
+    ;;(print (list stored :diff diff))
     (let ((node-table (make-hash-table :test #'equal)) ;; rehashed in display-dep-graph() below; populated where?
 	  (children-table (make-hash-table :test #'equal))
 	  (slash-nodes (make-hash-table :test #'equal))
@@ -1138,7 +1140,22 @@ Field number:	Field name:	Description:
 
 (defparameter *graph* nil)
 
-(defmethod write-dependencies-conll ((text parsed-text) stream &key (start 1) all &allow-other-keys)
+#+test
+(print (graph-is-complete *graph*))
+
+(defmethod graph-is-complete ((graph dep-node))
+  (labels ((find-last (node)
+             (cond ((node-children node)
+                    (find-last (car (last (node-children node)))))
+                   (t
+                    node))))
+    (let ((word (node-label (find-last graph))))
+      (not (find-if-not (lambda (c) (find c ".:!?»“”«)")) word)))))
+
+(defmethod write-dependencies-conll ((text parsed-text) stream
+                                     &key (start 1)
+                                       all ;; include also analyses that are not stored; used for on-the-fly parsing
+                                       &allow-other-keys)
   (let ((token-array (text-array text)))
     ;;(decf start)
     (loop for node across token-array
@@ -1150,11 +1167,10 @@ Field number:	Field name:	Description:
                                         :node-id (getf node :self)
                                         :stored (not all))))
             (setf *graph* graph)
-            ;;(debug graph)
-            ;;(debug (getf node :wid))
-            (write-dependency-conll graph stream
-                                    :sentence-id (getf node :wid)
-                                    :include-postag (not all))))))
+            (when (or all (graph-is-complete graph))
+              (write-dependency-conll graph stream
+                                      :sentence-id (getf node :wid)
+                                      :include-postag (not all)))))))
 
 #+test
 (write-dependency-conll *graph* *standard-output*)
@@ -1189,10 +1205,17 @@ Field number:	Field name:	Description:
     (when (equal pos "VN")
       (push "VerbForm=Vnoun" ud-features))
     (dolist (f features)
+      (when (equal f "Pred")
+        (push "Dyn=No" ud-features))
       (cond ((and (equal f "Sg") (equal pos "PP")) ;; not sure why нахы́с has PP Sg
              nil)
             ((and (equal f "Neg") (equal pos "Pron"))
              nil)
+            ;; "V Dyn Tr StatPass Fin Pres S:3 S:Ad"
+            ((equal f "StatPass")
+             (setf ud-features (delete "Dyn=Yes" ud-features :test #'string=))
+             (push "Dyn=No" ud-features)
+             (push "Voice=Pass" ud-features))
             ((and (equal f "Cop")
                   (not (equal lemma "а́кә-заа-ра"))
                   (find "Mood=Conj1" ud-features :test #'string=))
@@ -1216,6 +1239,10 @@ Field number:	Field name:	Description:
 (print (morph-to-ud "V Dyn Intr Fin Impf Neg S:Rec PO:1Pl"))
 
 #+test
+(print (morph-to-ud "Adj Sg Pred Fin Pres S:3"))
+
+
+#+test
 (print (morph-to-ud "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop"))
 #+test
 (print (morph-to-ud-pos "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop"))
@@ -1234,9 +1261,13 @@ Field number:	Field name:	Description:
 (print (morph-to-ud "V Stat Fin Pres S:3 IO:1Sg Cop"))
 
 #+test
-(print (morph-to-ud "VStat NonFin Pres Conj-I S:3 IO:3SgNH Cop" :lemma "а́кә-заа-ра"))
+(print (morph-to-ud "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop" :lemma "а́кә-заа-ра"))
 
-(defun morph-to-ud-pos (morph)
+#+test
+(print (morph-to-ud "V Dyn Tr StatPass Fin Pres S:3 S:Ad"))
+
+
+(defun morph-to-ud-pos (morph &optional relation)
   (let ((features (u:split morph #\space))
         (pos nil)
         (dyn nil))
@@ -1251,6 +1282,8 @@ Field number:	Field name:	Description:
                  (setf pos is-pos)))
               ((equal is-pos "AUX")
                (setf pos is-pos))
+              ((equal relation "AUX")
+               (setf pos "AUX"))
               ((not (eq is-pos t))
                (setf pos is-pos))
               #+ignore
@@ -1260,6 +1293,7 @@ Field number:	Field name:	Description:
               (ud
                (unless (and (equal ud "AUX") dyn)
                  (setf pos ud))))))
+    (debug pos)
     pos))
 
 (defun strip-segmentation (lemma word)
@@ -1272,7 +1306,6 @@ Field number:	Field name:	Description:
            (setf lemma (remove-if (lambda (c) (find c "-:·")) lemma :start (1+ hy-pos)))
            (remove-if (lambda (c) (find c "-:·")) lemma :start 3 :end hy-pos)))
         (t
-         (debug lemma)
          (remove-if (lambda (c) (find c "-:·")) lemma :start 3))))
 
 #+test
@@ -1294,7 +1327,7 @@ Field number:	Field name:	Description:
                      (push (list (node-id node)
                                  (node-label node)
                                  lemma
-                                 (morph-to-ud-pos morph)
+                                 (morph-to-ud-pos morph (relation node))
                                  (if include-postag (morph-to-postag morph :drop-pos nil) "_")
                                  (morph-to-ud morph :lemma lemma)
                                  parent
