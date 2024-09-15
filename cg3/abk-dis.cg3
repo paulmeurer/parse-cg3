@@ -126,6 +126,7 @@ STRICT-TAGS += Abbrev Abs Cnv Adhort
        >ADVCL:COMPAR
        >ADVCL:QUOTE
        >ADVCL:SEQ # preliminarily called sequential adverbial clause (of PastIndef and Aor)
+       >ACL:QUOTE
        >IOBJ
        >MARK
        >AMOD
@@ -271,7 +272,7 @@ SET PlNonHum = Noun - Hum + Pl | ("а́-р") ; # more!
 
 SET VERB = V | Pred | LHP ; # LHP because it’s there personal affixes are coded
 SET VerbVN = VERB | VN ;
-SET VMain = V + Fin | V + Opt | QUEST + Q | QWho
+SET VMain = V + Fin | V + Opt | QUEST + Q | QWho | QWhat
           | Cop - AsIf - ConjIPf - Conj-I | Pred + Fin | RHP + Fin | CopNounFin | Cop + Conj-I ;
 
 # remove this!
@@ -1118,7 +1119,7 @@ LIST TempAdv = "иаха́" "жәытәна́тә" "жәытә-на́тә" "ах
 
 LIST TempNoun = "а́амҭа" "а-мину́ҭ" "а́-шықәса" "а́-мш" "а́-шқәс" "а-саа́ҭ" "а́-мз" "а-шәы́мҭа" "а́амҭа"
      "а́-мчыбжьа" "а-шәы́шықәса" "а-жәа́мш" "а-жәа́шықәса" "а́-мчыбжь" "ха́ха-хымш" "а́-мшцәгьа" "а-зқьы́шықәса"
-     "а-секу́нд" "а́-ӡынра" "а-ҽны́" ;
+     "а-секу́нд" "а́-ӡынра" "а-ҽны́" "а́-хәылбыҽха" ;
 
 SELECT ("аахы́с") + PP + Poss:3SgNH
     IF (-1 TempAdv OR TempNoun) ;
@@ -3244,7 +3245,7 @@ REMOVE Subj ;
 REMOVE NumPfx - Indet ;
 REMOVE NumPfx + Det ;
 
-REMOVE <NoLex> - Adv - PP - Num - Prop - COP - ("а-кы́-заа-ра")  ;
+REMOVE <NoLex> - Adv - PP - Num - Prop - COP - ("а-кы́-заа-ра") - ("акы́заҵәк") ;
 
 # Cleft
 SELECT Rel IF (-1C Cop) ;
@@ -3315,6 +3316,25 @@ REMOVE StatPass IF (0 V - StatPass) ;
 LIST RELS = /^>/r ;
 
 SET N = NOUN - EPOSTP - Pred ;
+
+# hide quotes surrounding Noun
+WITH Quote + Left
+  IF (1 Noun)
+     (2 Quote + Right)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >PUNCT (*) ;
+  # REMCOHORT IGNORED WITHCHILD (*) (*) ;
+} ;
+
+WITH Quote + Right
+  IF (-1 Noun)
+     (-2 Quote + Left)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >PUNCT (*) ;
+   REMCOHORT IGNORED WITHCHILD (*) (*) ;
+} ;
 
 # ҽак зны
 WITH NOPARENT ("зны́") OR ("зны")
@@ -3454,6 +3474,12 @@ WITH NOPARENT Q + Neg
    REMCOHORT IGNORED WITHCHILD (*) (*) ;
 } ;
 
+WITH ("а-саа́ҭ") + Det - PP
+  IF (1 Num + Card)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;
+   MAP >OBL (*) ;
+} ;
 
 WITH Num + Mult
   IF (1 ("аихагы́ла") + Adj)
@@ -3554,7 +3580,9 @@ WITH NOPARENT PP + Poss:3Pl | ("нахы́с")
             Noun + NumPfx |
             PlNoun |
             Pron + Pers + 3Pl |
-            Pron + Dem)
+            Pron + Dem |
+            Pron + Pl # шьоукы́
+            )
         (NOT p (*)) {
    MAP >CASE (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -3564,6 +3592,14 @@ WITH NOPARENT PP + Poss:3Pl | ("нахы́с")
 WITH NOPARENT PP + Poss:3Pl
      IF (-1 Noun - Abs)
         (-2 Num + Card)
+        (NOT p (*)) {
+   MAP >CASE (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+# асааҭ 12 рынахыс
+WITH NOPARENT PP + Poss:3Pl
+     IF (-1 Num + Card)
         (NOT p (*)) {
    MAP >CASE (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -3650,7 +3686,7 @@ WITH NOPARENT PP + Poss:2Pl
 # attach Num to Noun!
 
 WITH NOPARENT Num + H + Indet + Card OR Num + H + Card + ("ҩы́џьа")
-  IF (1C Noun + H + Pl)
+  IF (1C Noun + H + Pl OR ("а-хша́ра"))
      (NOT p (*)) {
    MAP >NUMMOD (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -3691,6 +3727,16 @@ WITH NOPARENT Num + Ord
    MAP >AMOD (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
+
+# Ашәқәа ҩба ҿан, руакы ашьашьма иатәын, егьи аҽыкәабарҭа.
+WITH NOPARENT Num + Card
+  IF (-1C Noun + Pl - PP)
+     (NOT p (*)) {
+   MAP >NUMMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+   REMCOHORT IGNORED WITHCHILD (*) (*) ;
+} ;
+
 
 # attach Pron Dem to Noun
 
@@ -3841,7 +3887,7 @@ WITH Hum | Noun
 } ;
 
 # more!
-LIST Qual = "а-шәҟәыҩҩы́" "а-троцки́ст" "а́рҕьажәҩа" "а-ҩы́за" ;
+LIST Qual = "а-шәҟәыҩҩы́" "а-троцки́ст" "а́рҕьажәҩа" "а-ҩы́за" "а-ха́ҵа" "а-ҧҳа́" "а-ҧа́" "а-инспе́ктор" ;
 
 # has to be refined!
 # еицырдыруа аҧсуа шәҟәыҩҩцәа Анзор Мықәбеи Сарион Ҭаркьыли
@@ -3929,6 +3975,15 @@ WITH NOPARENT Pron + Dem + Pl | Noun + Pl | PlNoun | Noun + Coord | Adj + Coord
      SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
+WITH NOPARENT Noun
+     IF (1 Poss:3Pl)
+        (c >NUMMOD)
+        (NEGATE c >CASE)
+        (NOT p (*)) {
+     MAP >NMOD:POSS (*) ;
+     SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
 # зегьы уҳаиҕьушәа, иуцәажәашьоузеи?
 WITH NOPARENT Pron + Quant
      IF (1 Poss:1Pl)
@@ -3948,7 +4003,7 @@ WITH NOPARENT Pron + Quant
 
 # акәхеит
 # fixme: should distinguish between copula verb and necessitive
-WITH NOPARENT Pron + Pers + 3Sg | Pron + Dem + Sg | N - Pl
+WITH NOPARENT Pron + Pers + 3Sg | Pron + Dem + Sg | N - Pl | Pron + Indef + NH
   IF (1 IO:3SgNH + Cop - Conj-I - Conj-II)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
@@ -4045,6 +4100,14 @@ WITH ("а́-бна")
   SETPARENT SAFE (*) TO (jC1 (*)) ;
 } ;
 
+
+WITH ("а-ҧсшьа́ра")
+  IF (1 ("а́-мш"))
+     (NOT p (*)) {
+  MAP >COMPOUND (*) ;
+  SETPARENT SAFE (*) TO (jC1 (*)) ;
+} ;
+
 WITH ("а-ҳаи́р")
   IF (1 ("а-баҕәа́за") - Det)
      (NOT p (*)) {
@@ -4091,6 +4154,14 @@ WITH ("а-нырха́га")
   REMCOHORT IGNORED WITHCHILD (*) (*) ;
 } ;
 
+WITH ("ма́п")
+  IF (1 ("а-кы́шьа"))
+     (NOT p (*)) {
+  MAP >COMPOUND (*) ;
+  SETPARENT SAFE (*) TO (jC1 (*)) ;
+  REMCOHORT IGNORED WITHCHILD (*) (*) ;
+} ;
+
 # too general?
 #WITH Noun - EPOSTP
 #  IF (1 Noun - DET - Poss - Pred)
@@ -4110,7 +4181,9 @@ WITH Num + Pfx
 } ;
 
 
-WITH Pl
+# ??
+#WITH Pl
+WITH Rel
   IF (1 Pron + Indef)
      (NOT p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
@@ -4130,8 +4203,9 @@ WITH Prop + Place
 # testing: Abs forms that have adverbial function and cannot take local adverbials
 LIST AbsAdv = "а́-рацәаҩ-заа-ра" ;
 
+# the same further down without barrier
 # noun / adj / pron with local postposition
-WITH Noun | Pron | Adv
+WITH Noun | Pron | Adv | Num + Card
   IF (1* V - AbsAdv | Pred BARRIER Comma)
      (c PP | Adv + >CASE)
      (NOT p (*)) {
@@ -4214,7 +4288,8 @@ WITH NOPARENT Adv
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-WITH NOPARENT Adv
+# same for а́-мацара?
+WITH NOPARENT Adv - ("а-хаҭа́")
   IF (1* V | Pred | VN Barrier Comma | Colon)
      (NOT 1 ("ҳәа́"))
      (NOT p (*)) {
@@ -4298,7 +4373,7 @@ WITH NOPARENT Noun OR Adj OR Pron
 # Advb case as predicate
 
 WITH Advb
-  IF (1 ("а́-ҟа-заа-ра"))
+  IF (1 ("а́-ҟа-заа-ра") OR ("а́-ма-заа-ра"))
      (NOT p (*)) {
   MAP >XCOMP (*) ;
   SETPARENT (*) TO (jC1 (*)) ;
@@ -4316,7 +4391,7 @@ LIST VVNLO = "а-ҿы́-заа-ра" "а́-шьҭа-заа-ра" "а́-ла·г�
 # verbs that take NonFin Pres as LO
 LIST VNonFinPresLO = "а́-ла·га-ра" ;
 
-# check for subj greement for xcomp?
+# check for subj agreement for xcomp?
 WITH NOPARENT Purp
   IF (1 VPurpLO)
      (NOT p (*)) {
@@ -4472,7 +4547,7 @@ SET SgNoun = Noun - Pl - POSTP | Noun - Hum - POSTP ;
 SET SArg = SgNoun | Noun + Pl | Num + NH + Card | Pron + Pers + 3Sg | VN | Adj | Pron + Indef | Pron + Quant ;
 
 # NonHum or Pl
-WITH NOPARENT SArg - ConjIPf
+WITH NOPARENT SArg - ConjIPf - Pred
   IF (1w S:Ad - Adv - >XCOMP:LO LINK NONE c >NSUBJ OR >CSUBJ)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
@@ -4646,7 +4721,8 @@ WITH NOPARENT Pron + Pers + 3Sg |
               Adj - Pred |
               Num + Card | # акгьы
               Pron + Quant | # зегьы
-              Pron + Int
+              Pron + Int |
+              Pron + Dem
   IF (1 DO:Ad)
      (NEGATE c >CASE)
      (NOT p (*)) {
@@ -4777,7 +4853,7 @@ SETPARENT VN
         TO (1* ("а-ҟәы́·ҵ-ра") BARRIER CLBc) ;
 
 # ??
-WITH Noun + NH
+WITH Noun + NH OR Org
   IF (1*w Poss:3SgNH - PP BARRIER V | Noun | CLBc) # LINK NONE c >CASE OR >NMOD:POSS)
      (NONE c >NMOD:POSS)
      (NOT p (*)) {
@@ -4785,7 +4861,7 @@ WITH Noun + NH
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-WITH NOPARENT Noun + H - M
+WITH NOPARENT Noun + H - M OR Anthr + F
   IF (1*w Poss:3SgF - PP BARRIER V | CLBc) # LINK NOT c >CASE) # OR >NMOD:POSS)
      (NOT p (*)) {
    MAP >NMOD:POSS (*) ;
@@ -4813,7 +4889,7 @@ WITH ("џьара́")
      
 
 # Adj + Emph is prelim.
-WITH NOPARENT Adv OR Adj + Emph
+WITH NOPARENT Adv - ("а-хаҭа́") OR Adj + Emph
    IF (1* VERB | VN # was - Rel; not sure about Rel, cannot be easily decided
        BARRIER CLBc)
       (NOT p (*)) {
@@ -4832,14 +4908,14 @@ WITH NOPARENT Adv
 WITH NOPARENT Advb # - Det
   IF (1* VERB OR VN BARRIER CLBc)
      (NOT p (*)) {
-   MAP >OBL (*) ;
+   MAP >XCOMP (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
 WITH NOPARENT Advb # - Det
   IF (-1* VERB OR VN BARRIER CLBc)
      (NOT p (*)) {
-   MAP >OBL (*) ;
+   MAP >XCOMP (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
@@ -4861,7 +4937,7 @@ WITH NOPARENT Adv OR Adj + Emph
 } ;
 
 # see almost same rule above?!
-WITH NOPARENT Adv
+WITH NOPARENT Adv - ("а-хаҭа́")
    IF (1* VERB)
       (NOT 1 ("ҳәа́"))
       (NOT p (*)) {
@@ -4884,7 +4960,8 @@ WITH NOPARENT N + PlaceNoun
 # first try to attach to right adjacent
 
 # Intr
-WITH NOPARENT N - Hum - Pl | N + Pl | Pron + Pers + 3Sg | Pron + NH | Pron + Pers + 3Pl
+# Иарбан факультету бара бызҭоу? (Pron Int)
+WITH NOPARENT N - Hum - Pl | N + Pl | Pron + Pers + 3Sg | Pron + NH | Pron + Pers + 3Pl | Pron + Int
      IF (1w S:3 + S:Ad LINK NONE c >NSUBJ)
         (NEGATE c >NSUBJ)
         (NOT p (*)) {
@@ -4943,6 +5020,7 @@ WITH NOPARENT N - Hum - Pl
 } ;
 
 WITH NOPARENT N - Hum - Pl | Pron + Pers + 3SgNH | Pron + Pers + 3Sg |
+     Pron + Indef + NH |
      Num + NH # акы́
      IF (1w IO:3SgNH LINK NONE c >IOBJ)
         (NOT p (*)) {
@@ -5029,7 +5107,8 @@ WITH NOPARENT N + Hum - Pl + F | Pron + Pers + 3SgF
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-WITH NOPARENT N - Hum - Pl | Rel - QUEST
+WITH NOPARENT N - Hum - Pl | Rel - QUEST |
+              Pron + Indef + NH + Sg # руакы
      IF (1w LO:NonHum3Sg LINK NONE c >OBJ:LO)
         (NOT p (*)) {
    MAP >OBJ:LO (*) ;
@@ -5043,7 +5122,7 @@ WITH NOPARENT N + Hum - Pl - F | Pron + Pers + 3SgM | Pron + Pers + 3Sg | Pron +
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-WITH NOPARENT N + Hum - Pl + F | Pron + Pers + 3SgF | Pron + Pers + 3Sg
+WITH NOPARENT N + Hum - Pl + F | Pron + Pers + 3SgF | Pron + Pers + 3Sg | ("а-хаҭа́") + Adv + Poss:3SgF
      IF (1w PO:3SgF LINK NONE c >OBJ:PO)
         (NOT p (*)) {
    MAP >OBJ:PO (*) ;
@@ -5290,9 +5369,18 @@ WITH 1Pl
 WITH 1Pl
   IF (1* VERB + IO:1Pl BARRIER CLBc)
      (NOT p (*)) {
-   MAP >IOBJ (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
+   MAP >IOBJ (*) ;
 } ;
+
+# if none is found, try without barrier; TODO: do this for other args!
+WITH 1Pl
+  IF (1* VERB + IO:1Pl)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;
+   MAP >IOBJ (*) ;
+} ;
+
 
 WITH Pron + Pers + 2Pl
   IF (2*w VERB + Cop + IO:2Pl BARRIER CLBc LINK NONE c >NSUBJ)
@@ -5486,14 +5574,17 @@ WITH S3SgH - Pred
 WITH N + H - Pl - Coord - F | Pron + Pers + 3SgM | Pron + Indef + H |
      Pron + Pers + 3Sg | Prop + Anthr + M | LastName | Adj - PP
      IF (1**w S:3SgM - Abs BARRIER BOP LINK NONE c >NSUBJ)
+        (NOT 0 ("а́-ҧшәма") + Poss:3SgM) # then it is F
         (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
    MAP >NSUBJ (*) ;
 } ;
 
+# allow Abs
 WITH N + H - Pl - Coord - F | Pron + Pers + 3SgM | Pron + Indef + H |
      Pron + Pers + 3Sg | Prop + Anthr + M | LastName | Adj - PP
      IF (1**w S:3SgM BARRIER BOP LINK NONE c >NSUBJ)
+        (NOT 0 ("а́-ҧшәма") + Poss:3SgM) # then it is F
         (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
    MAP >NSUBJ (*) ;
@@ -5523,6 +5614,7 @@ SET S:3_ARGPP = N - H - Pl - Anthr |
               Pron + Pers + 3Pl |
               Pron + Dem + Sg |
               VN |
+              Pron + Indef + NH |
               Num + Card |
               Pron + Quant ;
 
@@ -5675,7 +5767,7 @@ WITH NOPARENT N + H - PP - Advb
   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-WITH NOPARENT N + H | Prop + F
+WITH NOPARENT N + H | Prop + F | ("а-хаҭа́") + Adv + Poss:3SgF
   IF (1**w PO:3SgF BARRIER BOP LINK NONE c >OBJ:PO)
      (NOT p (*)) {
   MAP >OBJ:PO (*) ;
@@ -5690,10 +5782,50 @@ WITH NOPARENT N + Pl OR N + Coord OR PlNoun - PP OR CollNoun - PP
   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
+# Cs
+
+WITH NOPARENT N - H - Pl - PP - Advb
+  IF (1**w Cs:3SgNH BARRIER BOP LINK NONE c >OBJ:CS)
+     (NOT p (*)) {
+  MAP >OBJ:CS (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+#WITH NOPARENT Rel - QUEST - PP - Advb
+#  IF (1**w Cs:3SgNH BARRIER BOP LINK NONE c >OBJ:CS)
+#     (NOT p (*)) {
+#  MAP >CCOMP:Cs (*) ;
+#  SETPARENT (*) TO (jC1 (*)) ;
+#} ;
+
+WITH NOPARENT N + H - PP - Advb
+  IF (1**w Cs:3SgM BARRIER BOP LINK NONE c >OBJ:CS)
+     (NOT p (*)) {
+  MAP >OBJ:CS (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT N + H | Prop + F | ("а-хаҭа́") + Adv + Poss:3SgF
+  IF (1**w Cs:3SgF BARRIER BOP LINK NONE c >OBJ:CS)
+     (NOT p (*)) {
+  MAP >OBJ:CS (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+# аҧшәма иҧсаса ирыцны
+WITH NOPARENT N + Pl OR N + Coord OR PlNoun - PP OR CollNoun - PP
+  IF (1**w Cs:3Pl BARRIER BOP LINK NONE c >OBJ:CS)
+     (NOT p (*)) {
+  MAP >OBJ:CS (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
 # IO
 
-WITH NOPARENT N - Hum - Pl | Pron + Pers + 3SgNH | Pron + Pers + 3Sg | Pron + Dem
-  IF (1**w IO:3SgNH BARRIER BOP LINK NONE c >IOBJ)
+# should be repeated later without Comma barrier
+WITH NOPARENT N - Hum - Pl | Pron + Pers + 3SgNH | Pron + Pers + 3Sg | Pron + Dem | Pron + Indef + NH
+  IF (1**w IO:3SgNH BARRIER BOP
+           LINK NONE c >IOBJ)
      (NOT p (*)) {
   MAP >IOBJ (*) ;
   SETPARENT (*) TO (jC1 (*)) ;
@@ -6393,6 +6525,16 @@ WITH N + Hum - Pl | Pron + Dem
    MAP >NSUBJ (*) IF (p (*)) ;
 } ;
 
+# noun / adj / pron with local postposition and comma, modifying main verb
+# Убри азын, иахьцалак амилициа ахь аҭел ҳасп.
+WITH Noun | Pron | Adv | Num + Card
+  IF (1* VMain - AbsAdv | Pred)
+     (2 Comma)
+     (c PP | Adv + >CASE)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;
+   MAP >OBL (*) ;
+} ;
 
 WITH EPOSTP
   IF (1* V)
@@ -6460,7 +6602,7 @@ WITH ("ҳәа́") + Quote
 } ;
 
 WITH ("ҳәа́") + Quote
-  IF (-1* VMain OR Conj-I OR Int)
+  IF (-1* VMain OR Conj-I OR Int BARRIER Comma)
      (NOT p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
   MAP >MARK (*) ;
@@ -6501,7 +6643,7 @@ WITH VMain
   SETCHILD  (*) TO (jC1 (*)) ;
 } ;
 
-MAP >MARK ("ҳәа́") ;
+# MAP >MARK ("ҳәа́") ;
 
 
 
@@ -6515,12 +6657,13 @@ WITH NOPARENT Where
    MAP >CSUBJ (*) ;
 };
 
-WITH NOPARENT Where - Q
-  IF (1 Noun - Anthr - LastName)
-     (NOT p (*)) {
-   MAP >ADVCL (*) ;
-   SETPARENT (*) TO (jC1 (*)) ;
-};
+# ??
+#WITH NOPARENT Where - Q
+#  IF (1 Noun - Anthr - LastName)
+#     (NOT p (*)) {
+#   MAP >ADVCL (*) ;
+#   SETPARENT (*) TO (jC1 (*)) ;
+#};
 
 # сҿамҳандаз ҳәа икылҧш-кылӡырҩуа
 WITH NOPARENT Opt
@@ -6564,6 +6707,13 @@ WITH VMain
   MAP >CCOMP:QUOTE (*) ;
 } ;
 
+WITH VMain
+  IF (1 ("ҳәа́") LINK 1 ("а́ҳәашьа"))
+     (NOT p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >ACL:QUOTE (*) ;
+} ;
+
 # ccomp:quote must be verb arg?!
 #WITH VMain
 #  IF (1 ("ҳәа́") LINK 1w VSayingAdvcl)
@@ -6605,6 +6755,13 @@ WITH NOPARENT CONJIPF
 # or as ADVCL, if not argument
 WITH NOPARENT CONJIPF
   IF (1 V - Abs)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;
+   MAP >ADVCL (*) ;
+} ;
+
+WITH NOPARENT Res - Cop
+  IF (1* V - Abs)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
    MAP >ADVCL (*) ;
@@ -6704,7 +6861,7 @@ WITH NOPARENT CONJIPF
 # or with comma
 
 WITH NOPARENT CONJIPF
-  IF (1* Comma OR Dash LINK 1* VMain - VSaying OR Conj-I + Cop)
+  IF (1* Comma OR Dash LINK 1* VMain - VSaying OR Conj-I + Cop BARRIER VSaying)
      (NOT p (*)) {
    MAP >ADVCL (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -6736,7 +6893,7 @@ WITH NOPARENT Abs
 
 # иаахҿаны амхы ласҵар,
 WITH NOPARENT Abs
-  IF (1* V - Abs - Rel - ConjIPf - Connect BARRIER CLB | Connect)
+  IF (1* V - Abs - Rel - ConjIPf - Connect BARRIER CLB | ("нас") | Connect)
      (NOT p (*)) {
    MAP >ADVCL:CONV (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -6791,8 +6948,8 @@ WITH NOPARENT ("а́-шқәс")
 WITH NOPARENT Cj + Coord | Cj + Sub
   IF (1* VMain)
      (NOT p (*)) {
-   MAP >CC (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
+   MAP >CC (*) ;
 } ;
 
 WITH NOPARENT Abs
@@ -6935,7 +7092,9 @@ WITH NOPARENT VMain + $$TENSE - VSaying
 LIST QuoteVerb = "а-ҵаа-ра́" "а́-быб-ра" "а-ш-ра́" "а́цәажәа-ра" "а́зҵаа-ра" "а́-қәшаҳаҭ·ха-ра"
                  "а-ҵаа-ра́" "а-хәы́ц-ра" "а́-хәаа-ра" "а́ила·цәажәа-ра" "а́-ҳәа-ра"
                  "а́а·ҧхьа-ра" "а-ҳәа-ра́" "а-гәы́рҕьа-ра" "а-ҟрым-ҿры́м-ра" "а-гәа́а-ра"
-                 "а́-қә·ҳәҳәа-ра" "а́-ҟа-заа-ра" "а-ҿа·ҧа-ра́" "а-бжьа́·ла-ра" "а-р:ҽхәа-ра́" ;
+                 "а́-қә·ҳәҳәа-ра" "а-цра́·ла-ра"
+                 # "а́-ҟа-заа-ра" treat this one differently!
+                 "а-ҿа·ҧа-ра́" "а-бжьа́·ла-ра" "а-р:ҽхәа-ра́" ;
 
 # heads of conjoined phrases may be main verbs, or Conj-I with auxiliary
 TEMPLATE ConjHead = (-1**w VMain - PastIndef - >AUX
@@ -6948,8 +7107,9 @@ TEMPLATE ConjHead = (-1**w VMain - PastIndef - >AUX
                     ;
 
 # conj if sentences are divided by comma (previous rule not needed then)
-WITH NOPARENT VMain - VSaying - PastIndef
+WITH NOPARENT VMain - PastIndef
   IF (T:ConjHead)
+     (NOT 0 VSaying - Neg) # negated quotation not probable
      (NONE c >XCOMP:LO + QuoteVerb)
      (NONE c >AUX)
      (NEGATE 0 ("а́-ҟа·ҵа-ра") LINK c >OBJ + ("а-ҭа́к"))
@@ -7155,7 +7315,7 @@ WITH ("ҳәа́") + Quote
 } ;
 
 WITH ("ҳәа́") + Quote
-  IF (-1* VMain)
+  IF (-1* VMain BARRIER Comma)
      (NOT p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
   MAP >MARK (*) ;
@@ -7261,6 +7421,7 @@ WITH VERB - VSaying - ("а́зҵаа-ра") - ("а-ҵаа-ра́") - ("а́ил�
   IF (-1* VMain - PastIndef # was -1 ! same below
       BARRIER Quote + Left | Colon | Semicolon | ExclPoint | IntMark) # don’t go out of quote
      (NOT -1 ("а́а·ҧхьа-ра")) # add similar verbs, type ааҧҳара даҿын
+     (NOT 0 Res - Cop)
      (NOT p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
   MAP >CONJ (*) IF (p (*)) ; # was >CONJ
@@ -7411,7 +7572,7 @@ SECTION
 
 # ҳәа, doesnt work when in VMain in PARENTHESES
 WITH ("ҳәа́") # Prt + Quote
-  IF (-1* VMain)
+  IF (-1* VMain BARRIER Comma)
      (NOT p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
   MAP >MARK (*) ;
@@ -7505,17 +7666,28 @@ WITH Dash
      (-1 Comma)
      (1 Prt + Quote)
      (NOT p (*)) {
-  MAP >PUNCT (*) ;
   SETPARENT (*) TO (jC1 (*)) ;
+  MAP >PUNCT (*) ;
 } ;
 
+# no intermediate is VSaying
 WITH Dash
-     IF (1 (*) - BOS LINK rrpp (*)) # LINK -1* VMain)
+  IF (1 (*) - VSaying - BOS LINK rrpp (*) - VSaying)
+     (NOT -1 Colon)
+     (NOT p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >PUNCT (*) IF (p (*)) ;
+} ;
+
+# special case: attach to adjacent word
+WITH Dash
+     IF (1 (*))
         (NOT -1 Colon)
         (NOT p (*)) {
      SETPARENT (*) TO (jC1 (*)) ;
      MAP >PUNCT (*) IF (p (*)) ;
 } ;
+
 
 # V » – ҳәа # doesnt work! « » is parenthesis!
 WITH Dash
@@ -7542,11 +7714,20 @@ WITH Comma
 } ;
 
 WITH Comma # rpp or rrpp?
-  IF (1 (*) LINK rpp (*) BARRIER >PUNCT) # attach to highest ancestor
+  IF (1 (*) LINK rrpp (*) BARRIER >PUNCT) # attach to highest ancestor
      (NOT p (*)) {
   MAP >PUNCT (*) ;
   SETPARENT (*) TO (jC1 (*)) ;
 } ;
+
+# or directly to the right
+WITH Comma # rpp or rrpp?
+  IF (1 (*))
+     (NOT p (*)) {
+  MAP >PUNCT (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
 
 WITH LQuote # | Dash
      IF (1 (*))
@@ -7577,7 +7758,7 @@ MAP >ROOT TARGET (*) - Punct
 
 # punctuation still without label, e.g. attached to noun
 # Акыр иаҧсоу ахәыҷқәа!
-MAP >PUNCT Punct ;
+#MAP >PUNCT Punct ;
 
 # Attach unattached nodes to >ROOT. They will get >ROOT label, difficult to change.
 # But these will have to be edited anyway.
@@ -7681,6 +7862,17 @@ SETCHILD >ADVCL:QUOTE OR >CCOMP:QUOTE
   # IF (NEGATE rc Punct)
   TO (rc* Dash) ;
 
+# move Period up to top VMain
+SETCHILD VMain
+  TO (rc* Period) ;
+
+# lift possessee up to verb (experimental)
+WITH Noun + M + >NMOD:POSS
+  IF (p >OBJ:LO LINK pw S:3SgM LINK NEGATE c >NSUBJ OR >CSUBJ) {
+  UNMAP (>NMOD:POSS) ;
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >NSUBJ (*) ;
+} ;
 
 
 END
