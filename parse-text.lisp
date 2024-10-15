@@ -53,7 +53,7 @@
 (defmethod parse-text ((text string) &key variety load-grammar (disambiguate t) corpus
                                        orthography
                                        unknown-tree ;; obsolete?
-                                       guess-scope guess-table
+                                       guess-scope guess-table interactive
                                        count cg3-variables &allow-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
@@ -83,7 +83,8 @@
                   :variety variety
                   :orthography (orthography parsed-text)
                   :guess-table guess-table
-                  :unknown-tree unknown-tree)
+                  :unknown-tree unknown-tree
+                  :interactive interactive)
     (when disambiguate
       (process-text parsed-text :disambiguate
                     :variety variety
@@ -93,13 +94,14 @@
                                               '("." "?" "!" "…"))
                     :guess-scope guess-scope
                     :guess-table guess-table
+                    :interactive interactive
                     :cg3-variables cg3-variables))
     parsed-text))
 
 ;; pre-tokenized text, given as list of tokens, where each token is (word . rest). rest is kept unchanged.
 (defmethod parse-text ((tokens list) &key variety load-grammar (disambiguate t)
                                        unknown-tree guess-scope guess-table
-                                       cg3-variables
+                                       cg3-variables interactive
                                        &allow-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
@@ -113,7 +115,8 @@
     (process-text parsed-text :analyze
                   :variety variety
                   :guess-table guess-table
-                  :unknown-tree unknown-tree)
+                  :unknown-tree unknown-tree
+                  :interactive interactive)
     (when disambiguate
       (process-text parsed-text :disambiguate
                     :variety variety
@@ -142,7 +145,7 @@
 
 (defmethod parse-text ((text parsed-text) &key variety mode load-grammar (disambiguate t)
                                             wid-table unknown-tree guess-scope cg3-variables
-                                            guess-table
+                                            guess-table interactive
                                             pos-only ;; menota: use only lemma and POS tag in :analyze
                                             &allow-other-keys)
   (declare (ignore guess-scope))
@@ -155,12 +158,14 @@
      (process-text text :normalize :variety variety))
     (otherwise
      (process-text text :analyze
+                   :interactive interactive
                    :variety variety
                    :unknown-tree unknown-tree
                    :guess-table guess-table
                    :pos-only pos-only)))
   (when disambiguate
     (process-text text :disambiguate
+                  :interactive interactive
                   :variety variety
                   :load-grammar load-grammar
                   :mode mode
@@ -259,6 +264,7 @@
                            ;; Therefore, some rules will have to be adapted
                            keep-non-mwe-readings
                            guess-table
+                           interactive
                            unknown-only-p &allow-other-keys)
   ;; (print (list :process-text :mode :analyze :variety variety))
   (setf (text-lexicon text) (dat:make-string-tree))
@@ -273,7 +279,8 @@
     ;;#+test ;; *text*
     ;; (describe lexicon)
     ;;(print :load-wid-table)
-    (load-wid-table text)
+    (unless interactive
+      (load-wid-table text))
     ;;(print :wid-table-loaded)
     (labels ((node-token (node)
 	       (let* ((word (cadr node))
