@@ -240,6 +240,15 @@
 #+test
 (setf *break* t)
 
+;; measure ambiguity
+(defparameter *ambiguity-array* (make-array 500 :initial-element 0))
+(defparameter *lemma-ambiguity-array* (make-array 500 :initial-element 0))
+
+#+test
+(loop for c across *ambiguity-array* do (format t "~a, " c))
+#+test
+(loop for c across *lemma-ambiguity-array* do (format t "~a, " c))
+
 ;; lexicon is stored in .lex file in save-all-new-words() (obsolete!)
 ;; it stores the values of :new-morphology
 (defmethod process-text ((text parsed-text) (mode (eql :analyze))
@@ -349,8 +358,8 @@
 			   (variety (find-if-not #'null lang-stack))
 			   (normalized-token (when token
 					       (cond ((and normalize (> (length token) 1))
-                                                      ;; did include / before!
-                                                      (remove-if (lambda (c) (find c "()[]\\")) token))
+                                                      ;; did include / before! fix this!
+                                                      (remove-if (lambda (c) (find c "()[]/\\")) token))
 						     (t
 						      token))))
 			   (readings (when token ;; TODO: use second value (norm)
@@ -368,6 +377,17 @@
 								 (char<= #\0 c #\9)))
 						 (cadr node))))
 			   (segments (unless readings (split-tmesis token))))
+                      (when (and (find-if-not (lambda (c) (find c ".:,;-+?!“”«»()[]1234567890")) token)
+                                 (< (aref *ambiguity-array* 0) 100000)
+                                 readings)
+                        (incf (aref *ambiguity-array* 0))
+                        (incf (aref *ambiguity-array* (length readings)))
+                        (incf (aref *lemma-ambiguity-array* 0))
+                        (incf (aref *lemma-ambiguity-array*
+                                    (let ((lemmas ()))
+                                      (dolist (r readings)
+                                        (pushnew (car r) lemmas :test #'string=))
+                                      (length lemmas)))))
                       (when (and (null readings) unknown-tree)
                         (incf (dat:string-tree-get unknown-tree normalized-token 0)))
 		      (let* ((mwe2-reading (when (and (car next-token+j2)
@@ -547,6 +567,7 @@
                               show-rules
                               rid ;; whether to show rid
                               manual ;; for manual disambiguation
+                              transliterate
                               &allow-other-keys)
   (let ((st-json:*output-literal-unicode* t)
         (left-context ())
@@ -574,7 +595,8 @@
                                                               :dependencies dependencies
                                                               :show-rules show-rules
                                                               :rid rid
-                                                              :manual manual)
+                                                              :manual manual
+                                                              :transliterate transliterate)
                                         (incf id)))
                                      (:start-element
                                       (st-json:jso "struct" (getf node :start-element)
@@ -631,6 +653,7 @@
 			       manual
 			       error
 			       (count t)
+                               transliterate
 			       no-morphology
 			       no-newlines)
   (declare (ignore tracep split-trace no-newlines error disambiguate))
@@ -647,7 +670,7 @@
          (declare (ignore tmesis-msa))
 	 (apply
 	  #'st-json::jso
-	  `("word" ,(or dipl word)
+	  `("word" ,(kp::transliterate (or dipl word) :standard transliterate)
 	    ,@(when dependencies 
 		    `("self" ,(or (unless (eql (getf node :self) 0) (getf node :self)) :null)
 		      "parent" ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)
@@ -677,7 +700,8 @@
 					      :suppress-discarded-p suppress-discarded-p
 					      :show-rules show-rules
 					      :rid rid
-					      :manual manual))
+					      :manual manual
+                                              :transliterate transliterate))
 			     #+ignore-yet
 			     (tmesis-msa
 			      (loop for ((segment . msa) . rest) on tmesis-msa
@@ -808,7 +832,8 @@
 				    (suppress-discarded-p t)
 				    rid
 				    manual
-				    show-rules)
+				    show-rules
+                                    transliterate)
   (let ((morphology (filter-morphology morphology :tagset :full-tagset #+orig *tagset*)))
     (u:collecting
       (loop for reading in morphology
@@ -818,6 +843,8 @@
 	      (unless (and suppress-discarded-p (eq flag :discarded-cg))
 		(u:collect (apply #'st-json::jso
 				  `(,@(when lemma `("lemma" ,l))
+				      ,@(when (and lemma transliterate)
+                                          `("trans_lemma" ,(kp::transliterate l :standard transliterate)))
 				      ,@(unless suppress-discarded-p
 						`("status" ,(string-downcase flag)))
 				      ,@(when features `("features" ,(u:split f #\Space)))
@@ -1211,9 +1238,12 @@ Field number:	Field name:	Description:
              nil)
             ((and (equal f "Neg") (equal pos "Pron"))
              nil)
+            ((and (equal f "Pl") (equal pos "Adv"))
+             nil)
             ;; "V Dyn Tr StatPass Fin Pres S:3 S:Ad"
             ((equal f "StatPass")
              (setf ud-features (delete "Dyn=Yes" ud-features :test #'string=))
+             (setf ud-features (delete "Voice=Cau" ud-features :test #'string=))
              (push "Dyn=No" ud-features)
              (push "Voice=Pass" ud-features))
             ((and (equal f "Cop")
@@ -1239,7 +1269,7 @@ Field number:	Field name:	Description:
 (print (morph-to-ud "V Dyn Intr Fin Impf Neg S:Rec PO:1Pl"))
 
 #+test
-(print (morph-to-ud "Adj Sg Pred Fin Pres S:3"))
+(print (morph-to-ud "Adv Pl Poss:3Pl"))
 
 
 #+test
@@ -1266,6 +1296,10 @@ Field number:	Field name:	Description:
 #+test
 (print (morph-to-ud "V Dyn Tr StatPass Fin Pres S:3 S:Ad"))
 
+#+test
+(print (morph-to-ud-pos "Pron Int H Pres Q:3Pl"))
+#+test
+(print (morph-to-ud "Pron Int H Pres Q:3Pl"))
 
 (defun morph-to-ud-pos (morph &optional relation)
   (let ((features (u:split morph #\space))
@@ -1293,7 +1327,6 @@ Field number:	Field name:	Description:
               (ud
                (unless (and (equal ud "AUX") dyn)
                  (setf pos ud))))))
-    (debug pos)
     pos))
 
 (defun strip-segmentation (lemma word)
@@ -1313,6 +1346,7 @@ Field number:	Field name:	Description:
 #+test
 (print (strip-segmentation "а-гыгшәы́г" "ҩ-гыгшәы́г"))
 
+#+orig
 (defmethod write-dependency-conll ((graph dep-node) stream
                                    &key text sentence-id (include-postag t) &allow-other-keys)
   (let ((nodes ()))
@@ -1341,6 +1375,103 @@ Field number:	Field name:	Description:
         (format stream "# sent_id = ~a~%# text = ~a~%# text-transcription = ~a~%"
                 sentence-id text trans-text)
         (loop for (id form lemma cpostag postag feats head deprel) in nodes
+              do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	LMSeg:~a~%"
+                         id
+                         form
+                         (strip-segmentation lemma form)
+                         ;;(if (equal lemma "а́кә-заа-ра") "а́кәзаара" lemma)
+                         cpostag
+                         postag
+                         feats
+                         head
+                         #-orig(string-downcase deprel)
+                         #+prelim(string-downcase (subseq deprel 0 (position #\: deprel)))
+                         lemma
+                         )))
+      (terpri stream))))
+
+(defun abk-split-clitics (word is-cop)
+  (cond ((not is-cop)
+         word)
+        ((< (length word) 4)
+         word)
+        ((or (string= "оуп" word :start2 (- (length word) 3))
+             (string= "ауп" word :start2 (- (length word) 3)))
+         (values (u:concat (subseq word 0 (- (length word) 3)) "а_")
+                 "_ауп"
+                 "а́кә-заа-ра"
+                 "V Stat Fin Pres S:3 IO:3SgNH Cop"
+                 ))
+        ((or (string= "оуп" word :start2 (- (length word) 3))
+             (string= "ауп" word :start2 (- (length word) 3)))
+         (values (u:concat (subseq word 0 (- (length word) 3)) "а_")
+                 "_аума"
+                 "а́кә-заа-ра"
+                 "V Stat NonFin Pres Q S:3 IO:3SgNH Cop"))
+        (t
+         word)))
+
+;; abk
+(defmethod write-dependency-conll ((graph dep-node) stream
+                                   &key text sentence-id (include-postag t) &allow-other-keys)
+  (let ((nodes ())
+        (cop-count 0)
+        (cop-nodes ())) ;; enclitic copula nodes
+    (labels ((walk (node)
+               (let ((atts (node-atts node))
+                     (parent (if (node-parents node)
+                                 (node-id (car (node-parents node)))
+                                 0)))
+                 (unless (zerop (node-id node))
+                   (let* ((morph (getf atts :|morph|))
+                          (lemma (getf atts :|lemma|))
+                          (word (node-label node)))
+                     (multiple-value-bind (word clit clit-lemma clit-morph)
+                         (abk-split-clitics word (if (and (search "Cop" morph)
+                                                          (not (equal lemma "а́кә-заа-ра")))
+                                                     t))
+                       (push (list (node-id node)
+                                   parent
+                                   (node-label node)
+                                   word
+                                   lemma
+                                   (morph-to-ud-pos morph (relation node))
+                                   (if include-postag (morph-to-postag morph :drop-pos nil) "_")
+                                   (morph-to-ud morph :lemma lemma)
+                                   (relation node))
+                             nodes)
+                       (when clit
+                         (push (node-id node) cop-nodes)
+                         (push (list (node-id node)
+                                     (node-id node)
+                                     nil
+                                     clit
+                                     clit-lemma
+                                     (morph-to-ud-pos clit-morph "cop")
+                                     (if include-postag (morph-to-postag clit-morph :drop-pos nil) "_")
+                                     (morph-to-ud clit-morph :lemma clit-lemma)
+                                     "cop")
+                               nodes))
+                       ))))
+               (mapc #'walk (node-children node))))
+      (walk graph)
+      (setf nodes (sort nodes #'< :key #'car))
+      (when cop-nodes
+        (loop for cop-pos in (sort cop-nodes #'>) 
+              do (loop for node in nodes
+                       when (or (> (car node) cop-pos)
+                                (and (= (car node) cop-pos)
+                                     (not (nth 2 node))))
+                       do (incf (car node))
+                       when (> (cadr node) cop-pos)
+                       do (incf (cadr node))))
+        (setf nodes (sort nodes #'< :key #'car)))
+      (let* ((orig-text (format nil "~{~a~^ ~}" (delete-if #'null (mapcar #'caddr nodes))))
+             (text (format nil "~{~a~^ ~}" (mapcar #'cadddr nodes)))
+             (trans-text (transliterate :abk text)))
+        (format stream "# sent_id = ~a~%# text = ~a~%# text-transcription = ~a~%"
+                sentence-id text trans-text)
+        (loop for (id head is-cop form lemma cpostag postag feats deprel cop) in nodes
               do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	LMSeg:~a~%"
                          id
                          form
