@@ -156,6 +156,7 @@
 		(35 "setrelation")
 		(50 "addcohort")
                 (45 "remcohort")
+                (47 "unmap")
                 (48 "copy")
                 (64 "with"))))
     (if line
