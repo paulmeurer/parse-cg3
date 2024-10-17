@@ -875,7 +875,9 @@ SELECT ("დღემდე" Adv)
 # suppress 175 -> 1-75 etc.
 REMOVE (Range) ;
 
-n-SELECT Meas IF (-1 Num) ;
+n-SELECT Meas + $$CASE
+      IF (-1 Num) 
+         (1 $$CASE) ;
 
 # Adv/Advb disambiguation
 # ------------------------
@@ -1378,6 +1380,9 @@ n-ADD (Anthr FirstName <Cand>) TARGET Prop + Guess - FirstName
 n-ADD (<Cand>) TARGET Prop + Guess + Anthr + FirstName - <Cand>
     IF (1C FirstNameQual) ;
 
+n-ADD (<Cand>) TARGET Prop + Erg + Guess + Anthr + FirstName - <Cand>
+    IF (0* <S:Erg>) ;
+
 n-ADD (Anthr FirstName <Cand>) TARGET Prop + $$CASE + Guess - FirstName
     IF (1C LastName + $$CASE) ;
 
@@ -1403,7 +1408,7 @@ LIST AnthrGenAttribute = "ნაშრომ·ი" "წიგნ·ი" "სტ�
 n-ADD (Anthr <Cand>) TARGET Prop + Gen + Guess - Anthr
     IF (1 AnthrGenAttribute);
 
-n-SELECT FirstName + $$CASE + (<lemma>0>)
+n-SELECT FirstName + $$CASE # + (<lemma>0>)
     IF (1C LastName + $$CASE);
 
 n-SELECT FirstName + $$CASE
@@ -1429,6 +1434,15 @@ om-SELECT Anthr + Abs
 
 om-SELECT Anthr + Abs
     IF (1 ("ოქროპირ·ი")) ;
+
+SELECT Guess + PP:თვის ;
+
+SELECT Guess + Erg
+    IF (0* <S:Erg> BARRIER CLB)
+       (NOT 0* Erg BARRIER CLB) ;
+
+#REMOVE Guess + Nom
+#    IF (0* Nom - Temp BARRIER CLB) ;
 
 LIST Coworker = "თანაავტორ·ი" "თანამშრომ[ე]ლ·ი" ;
 
@@ -1956,7 +1970,7 @@ SELECT Att + Gen
 
 SELECT Att + Gen - <OldPl>
     IF (NOT 1 ("და" Cj))
-       (1 Advb)
+       (1C Advb)
        (2C Gen) ;
 
 # can go wrong if 0 is Adv?
@@ -2157,7 +2171,7 @@ SELECT QUAL + Gen - ("დ[ა]")
 SELECT QUAL + Nom - ("დ[ა]")
     IF (1 Guess) ;
 
-SELECT QUAL + Dat - ("დ[ა]")
+SELECT QUAL + Dat - ("დ[ა]") - ("საკუთ[ა]რ·ი")
     IF (1 Guess) ;
 
 #SELECT QUAL
@@ -2536,13 +2550,19 @@ REMOVE (DVoc) IF (0 L) (1 Coord) ;
 REMOVE DNom
     IF (0 (Gen L) - Att)
        (1 COORD)
-       (2 Gen);
+       (2 Gen) ;
+
+REMOVE DNom
+    IF (0 (Gen L) - Att)
+       (1 COORD)
+       (2 Quote)
+       (3 Gen) ;
 
 REMOVE DNom
     IF (0 (Gen L) - Att)
        (1 COORD)
        (2 (Card Digits))
-       (3 Gen);
+       (3 Gen) ;
 
 REMOVE DNom
     IF (-1 ("გარდა") + Pp) ;
@@ -2550,6 +2570,11 @@ REMOVE DNom
 REMOVE DNom
     IF (-1 Gen)
        (-2 ("გარდა") + Pp) ;
+
+# 24 წლისა
+SELECT ("წ[ე]ლ·ი") + DNom
+    IF (-1 Num + Card)
+       (NOT 1 COORD) ;
 
 om-SELECT (Nom OldPl) IF (1 (DNom DOldPl)) ; # etc.
 
@@ -2610,8 +2635,6 @@ SELECT Part
     IF (0 Part + Pv - Pl)
        (0C Part OR NA)
        (NOT 0 NPart) ;
-
-SELECT N IF (0 Part) ;
 
 # REMOVE Part IF (0 (A));
 
@@ -3036,6 +3059,8 @@ n-REMOVE Gen
        (1 A + Advb + Sg)
        (0* DatArg3 BARRIER CLB) ;
 
+n-REMOVE Gen + Att IF (1 Pron + Poss) ;
+
 # improve! remove Dat if there is a Dat nearer to a verb wanting Dat
 n-REMOVE Dat + NProp - Att - Temp
     IF (NOT 1 POSTP + <Dat>)
@@ -3371,7 +3396,7 @@ o-SELECT Gen + OldPl
 n-SELECT ("და·კვრ[ა]/კრ" <S>) IF (0* PP:ზე BARRIER CLB) ;
 n-SELECT ("და·კვრ[ა]/კ[ა]რ" <S>) IF (0* PP:ზე BARRIER CLB) ;
 
-SELECT ("გარდა·ცვალებ[ა]/ცვალ") ;
+SELECT ("გარდა·ცვალებ[ა]/ცვალ" /<გარდა.*/r) ;
 
 # remove plain A reading of ordinals (TODO: remove from lexicon)
 SELECT (Ord Alpha) ;
@@ -3792,7 +3817,7 @@ SELECT $$TENSE
 #n-SELECT (<lemma=MAX>)
 #      IF (0C N) ;
 
-REMOVE Pass + S:12 ;
+#REMOVE Pass + S:12 ;
 
 REMOVE Prop + Advb + Att IF (NOT 1 Prop + Advb);
 REMOVE Prop + Inst + Att IF (NOT 1 Prop + Inst);
@@ -3831,7 +3856,7 @@ n-REMOVE S:3Sg IF (0C IO:2 OR IO:2Pl) ;
 n-SELECT Impv
       IF (0C Impv OR Aor) ;
 
-n-REMOVE Old - ("ჟამ·ი") ;
+#n-REMOVE Old - ("ჟამ·ი") ;
 
 REMOVE N
       IF (0 V)
@@ -3894,6 +3919,8 @@ n-SELECT (<lemma=MAX>)
       IF (0C N OR A OR V)
          (0 (VAR:rank))
          (0 Guess) ;
+
+SELECT N IF (0 Part) ;
 
 n-SELECT NewPl + Guess ; #- (<lemma=MAX>) ; # prefer treating -ებ as pl suffix, not part of stem
 
