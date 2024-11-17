@@ -50,7 +50,7 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
 	    <Gen> <IO:Dat> <IO:Gen> <Inst> <Null> <OldPl> <PP:გან> <PP:თან>
 	    <S-DO-IO> <S-DO> <S-IO> <S-OTh-Pred> <S:Dat> <S:Erg> <S:Nom> <S>
             <IO:Obl>
-	    Unrecognized Guess <Cand> @NC @CLB @ADDED [0] MWE <MWE> Coll
+	    Unrecognized Guess <Cand> @NC @CLB @ADDED @ADDED_PP [0] MWE <MWE> Coll
             GLastName # test
 	    # dependency relations
 	    >SUBJ >DO >IO >XOBJ >PRL
@@ -60,7 +60,32 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
 	    >INTERJ
             <UnambGuess> <LMax> <WFMax>
             guess rank VAR:rank VAR:guess
-            <Sel> ;
+            <Sel>
+            # UD
+            >AMOD
+            >ADVMOD
+            >NUMMOD
+            >PUNCT
+            >ROOT
+            >NSUBJ
+            >NSUBJ:PASS
+            >CSUBJ
+            >XCOMP
+            >NMOD
+            >ADVCL
+            >ACL
+            >NMOD:POSS
+            >CCOMP
+            >CONJ
+            >OBJ
+            >IOBJ
+            >CONJ
+            >AUX
+            >CC
+            >CASE
+            >ACL:RELCL
+            >MARK
+            ;
 
 # ========== #
 # Variables  #
@@ -129,7 +154,8 @@ LIST DatAdv = Dat Advb ;
 LIST DatGen = Dat Gen ;
 LIST NomGenInst = Nom Gen Inst ;
 
-SET NUMBER = Sg | OldPl | NewPl ;
+LIST NUMBER = Sg OldPl NewPl ;
+LIST NUM = Sg Pl ;
 
 LIST Aux = Encl:Aux ;
 
@@ -253,7 +279,8 @@ LIST AdvbVerb = "თვლ\\[.*"r
 	      <AuxIntr>
 	      Encl:Aux ;
 
-# defines COMPVerb; list has to be edited more! These are only DO-Comps
+# defines COMPVerb, verbs that can have a CCOMP;
+# list has to be edited more! These are only DO-Comps
 INCLUDE comp-verb.cg3 ;
 
 # Sets
@@ -295,10 +322,10 @@ SELECT (<WFMax>) IF (0 VAR:rank) ;
 
 
 # split off enclitic copula verb
-ADDCOHORT ("<_ა>" "ყოფნ[ა]/არ" [0] V MedPass Pres <S> <S:Nom> S:3Sg Encl)
-	  AFTER Aux IF (0C Aux) (NOT 1 (Encl)) ;
+#ADDCOHORT ("<_ა>" "ყოფნ[ა]/არ" [0] V MedPass Pres <S> <AuxIntr> <S:Nom> S:3Sg Encl)
+#	  AFTER Aux IF (0C Aux) (NOT 1 (Encl)) ;
 
-ADD (@ADDED) (*) IF (NOT 0 (@ADDED)) (1 (Encl)) ;
+#ADD (@ADDED) (*) IF (NOT 0 (@ADDED)) (1 (Encl)) ;
 
 # MWEs
 # … are now treated in the morphology
@@ -419,9 +446,16 @@ REMOVE ("<დიდი>" V) ;
 REMOVE ("ვ·ი") ; # ვით
 REMOVE ("<მუნ>" N) ;
 o-SELECT ("<თქუენ>" Pron) ; # not V (??)
-REMOVE Att + (Encl:IndSp3) ;
-REMOVE (Qual) + (Encl:IndSp3) ;
+REMOVE Att + Encl:IndSp3 ;
+REMOVE Qual + Encl:IndSp3 ;
+REMOVE ("ბე") + Encl:IndSp3 ; # ბესო
+REMOVE ("კო") + Encl:IndSp3 ;
+REMOVE ("კა") + Encl:IndSp3 ;
+REMOVE ("ნოტ·ი") + Encl:IndSp3 ;
+REMOVE ("რტო") + Encl:IndSp3 ;
+REMOVE ("თ[ე]") + Encl:IndSp3 ; # თითო
 SELECT ("<მეც>" Pron) ;
+REMOVE ("<უთო>") + Encl:IndSp3 ; 
 SELECT ("<ვინ>" Pron) ;
 o-SELECT ("<ესმა>" V) ;
 SELECT ("<უკუე>" Adv) ;
@@ -451,6 +485,8 @@ REMOVE ("საქართველო" <Der:სა-ო>) ;
 REMOVE ("ხევ·ი" Prop) ;
 
 SELECT ("წარმო·დგენ[ა]/დგენ" Pres) ; # not Fut
+
+SELECT ("ჩუმ·ი") + A + Advb ; # ჩუმად
 
 SELECT ("მოედ[ა]ნ·ი") ;
 REMOVE ("რამ·ი") ; # = ramie (Bœhmeria nivea)
@@ -531,7 +567,8 @@ REMOVE ("მამა" Gen) ;
 nm-REMOVE ("წყლ[ა]") ;
 om-REMOVE ("წყლ[ა]·ჲ") ;
 REMOVE ("<ცა>" V) ;
-SELECT ("<ვაშლი>" N) ;
+SELECT ("შავლეგო") ;
+SELECT ("<ვაშლი>" N) ; # ??
 SELECT ("<იგინი>" Pron) ;
 SELECT ("<ამის>" "ეს") ;
 SELECT ("დაკავშირებით" Pp) IF (-1 PP:თან) ;
@@ -686,6 +723,8 @@ SELECT ("ვიდრე" Pp) IF (1 PP:მდე) ;
 
 REMOVE ("თვალებ[ა]/თვალ") + N IF (0 ("თვალ·ი")) ;
 
+REMOVE ("მუხლ·ი") + Prop IF (1 Num + Ord) ;
+
 REMOVE ("ქალ[ა]") ; # ქალის
 REMOVE ("ქალა") ; # ქალების
 
@@ -752,6 +791,8 @@ SELECT ("აქ") IF (1 ("და")) ;
 SELECT ("ხევ·ი") IF (-1 Prop + Gen) ;
 
 SELECT ("მისიან·ი") ;
+
+REMOVE ("უბ[ა]ნ·ი") + Prop IF (-1 Prop + Gen) ;
 
 # check syntactic status of რაღაც
 # SELECT ("რაღაც") - Att ??
@@ -1659,7 +1700,7 @@ ADD @CLB Cj + Coord - @CLB - @NC
        (1C Nom) ;
 
 ADD @CLB Cj + Coord - @CLB - @NC
-    IF (-1*C V BARRIER CLB)
+    IF (-1*C V BARRIER CLB LINK NONE -1* Rel BARRIER CLB)
        (1*C V BARRIER CLB)
        (NEGATE -1 V LINK 1 ("თუ") LINK 1 Neg) # თუ არა
         ;
@@ -1746,6 +1787,8 @@ n-SELECT POSTP + <Gen> IF (-1 Pron + Dat) ; # but pronouns may be in Dat for Gen
 SELECT POSTP + <Dat/Gen> IF (-1C DatGen) ;
 SELECT POSTP + <Inst> IF (-1C Inst) ;
 SELECT POSTP + <Advb> IF (-1C Advb) ;
+
+om-SELECT ("მიმართ") + Pp IF (-1 Pron + Poss + Advb) ; # ჩუენდა მიმართო
 
 n-SELECT Pron + Dat IF (1 POSTP + <Gen>) ;
 
@@ -1857,8 +1900,8 @@ SELECT A + $$CASE + Sg
 SELECT A + $$CASE + Att
     IF (0C A)
        (1 Comma)
-       (2 Gen + Att)
-       (3 Gen)
+       (2C Gen + Att)
+       (3C Gen)
        (4 $$CASE + Att) ;
 
 SELECT A + $$CASE + Att
@@ -2205,8 +2248,9 @@ n-SELECT Org IF (-1 Quote) (-2 ("კომპანი[ა]")) ;
 SELECT A + Abs
     IF (1 ("ქმნ[ა]/ქ[ე]ნ") + Pass) ; 
 
+
 # remove reduced case if there is no following possible head
-REMOVE $$CASE + Att
+REMOVE $$CASE + Att - Erg
     IF (NOT 1 $$CASE)
        (NOT 1 Comma)
        (NOT 1 Foreign)
@@ -2218,6 +2262,14 @@ REMOVE $$CASE + Att
        (NEGATE 1 NA + Gen LINK 1 NA + Gen LINK 1 $$CASE)
        (NEGATE 1 NA + Gen LINK 1 NA + Gen LINK 1 NA + Gen LINK 1 $$CASE)
        (NEGATE 1 NA + Gen LINK 1 NA + Gen LINK 1 NA + Gen LINK 1 NA + Gen LINK 1 $$CASE) ;
+
+# special for Erg
+REMOVE Erg + Att
+    IF (NEGATE 1* NAProp + Erg BARRIER ("და") OR V OR CLB) ;
+
+REMOVE Erg - Att
+    IF (1* NAProp + Erg - Att BARRIER ("და") OR V OR CLB) ;
+
 
 # Because of prev. rule we know that the reduced reading has a head.
 # Should add condition on temporal expressions?
@@ -2254,6 +2306,7 @@ n-SELECT N + $$CASE
 
 n-SELECT N + $$CASE
     IF (-1 Pron + Poss + $$CASE)
+       (NOT 0 A)
        (NOT 0 ("<და>"))
        (NOT 0 ("თავ·ი")) ;
 
@@ -2264,6 +2317,10 @@ n-SELECT ("<და>") + N
 SELECT Coord
     IF (-1 Pron + Poss + $$CASE)
        (1 Pron + Poss + $$CASE) ;
+
+SELECT Voc
+    IF (-1 ("და"))
+       (-2C Voc) ;
 
 REMOVE Voc
     IF (-1 APart + Nom) ;
@@ -2433,7 +2490,7 @@ n-REMOVE Att
     IF (1 ("ყველა")) ;
 
 # could go wrong when Gen modifies a Nom. Elaborate!
-n-SELECT ADJ + Gen + Att - <OldPl> - Guess
+n-SELECT ADJ + Gen + Att - <OldPl> - Guess - ("ხელ·ი")
       IF (1C NAPropPart + Gen - Poss)
          (NOT 0 PP) ;
 
@@ -2615,6 +2672,8 @@ SELECT ("მასწავლებ[ე]ლ·ი" N) ; # not Part
 
 n-REMOVE Part IF (0C Pl) ;
 
+SELECT ("ამდენ·ი") + A - Part ;
+
 # participles that are probably nouns, TODO: add more!
 LIST NPart = "მდინარ[ე]" "მასწავლებ[ე]ლ·ი" "ჩამონათვალ·ი" ;
 
@@ -2624,15 +2683,18 @@ SELECT Part + $$CASE + Att
 
 SELECT Part
     IF (0 Advb + Sg) # purposive
-       (NOT 0 Adv) ;
+       (NOT 0 Adv)
+       (NOT 0 Encl:IndSp3) ;
 
 SELECT Part
     IF (0 FutPart OR NegPart)
        (0C A)
-       (NOT 0 Pl) ;
+       (NOT 0 Pl)
+       (NOT 0 Encl:IndSp3) ; # not საზოგადო
 
 SELECT Part
     IF (0 Part + Pv - Pl)
+       (NOT 0 ("ამდენ·ი"))
        (0C Part OR NA)
        (NOT 0 NPart) ;
 
@@ -2698,6 +2760,8 @@ SELECT (Pron Pers Dat 1 Sg) IF (0C* IO:Dat + IO:1Sg BARRIER CLB | V) ;
 SELECT (Pron Pers Dat 2 Sg) IF (0C* IO:Dat + IO:2Sg BARRIER CLB | V) ;
 o-SELECT (Pron Pers Dat 2 Sg) IF (0C* IO:Dat + IO:2Sg OR IO:Dat + IO:2 BARRIER CLB | V) ;
 SELECT (Pron Pers Dat 3 Pl) IF (0C* IO:Dat + IO:3 BARRIER CLB | V) ;
+
+SELECT (Pron Rel Hum Dat) IF (0C* IO:Dat + IO:3 BARRIER CLB | V) ;
 
 om-SELECT NOM + Pl
        IF (0C Nom)
@@ -3167,6 +3231,7 @@ REMOVE Att + $$CASE
        (NOT 1 Foreign)
        (NOT 1 Pron + Dem + $$CASE) # მთელი ეს ფიქრი
        (NOT 1 Pron + Poss + $$CASE) # დღევანდელი ჩვენი მწერლობის
+       (NOT 1 Pron + Refl + $$CASE) # ჩემს თავზე
        (NEGATE 1 COORD LINK 1 Att + $$CASE)
        (NEGATE 1 COORD LINK 1 Adv OR Advb LINK 1 Att + $$CASE)
        (NEGATE 1 Comma LINK 1 Att + Gen LINK 1 Gen LINK 1 Att + $$CASE)
@@ -3180,7 +3245,6 @@ SELECT (Pron Int Erg) IF (1 V + ("ცოდნა" Pres S:3Sg));
 
 SELECT ("მე") IF (1 POSTP);
 
-SELECT ("ჩემ-ი") IF (NOT 1 POSTP);
 SELECT ("ჩემ·ი") IF (NOT 1 POSTP);
 
 # Abs and ყოფა
@@ -3252,10 +3316,10 @@ n-REMOVE A + Gen - Att
 REMOVE A + NewPl + $$CASE
     IF (0 N + $$CASE) ;
 
-n-REMOVE Att
+n-REMOVE Att - Pron - Poss
     IF (1 Refl) ;
 
-n-SELECT Att - <OldPl> + $$CASE - ("დ[ა]") - Guess
+n-SELECT Att - <OldPl> + $$CASE - ("დ[ა]") - Guess - ("ხელ·ი")
     IF (NOT 0 Gen - Att)
        (NOT 0 PP)
        (1C $$CASE - <OldPl>) ;
@@ -3423,9 +3487,13 @@ REMOVE Voc OR DVoc
        (NOT -1 Voc) ;
 
 REMOVE N + Voc OR DVoc
-    IF (NOT 1 ExclPoint)
+    IF (NOT -1 Voc)
+       (NOT 1 ExclPoint)
        (NOT 1 IntMark)
        (NOT 1 Comma) ;
+
+SELECT N + Voc
+    IF (-1 A + Voc + Att) ;
 
 o-SELECT N + Voc
     IF (0C Voc OR (Abs Encl:IndSp3))
@@ -3821,6 +3889,7 @@ SELECT $$TENSE
 
 REMOVE Prop + Advb + Att IF (NOT 1 Prop + Advb);
 REMOVE Prop + Inst + Att IF (NOT 1 Prop + Inst);
+REMOVE Prop + Anthr + Advb ;
 
 REMOVE Prop + Pl ;
 
@@ -3933,6 +4002,7 @@ n-REMOVE Ext ;
 # Dependencies  #
 # ============= #
 
-INCLUDE geo-dep.cg3 ;
+# INCLUDE geo-dep.cg3 ;
+INCLUDE geo-dep-ud.cg3 ;
 
 END
