@@ -187,7 +187,7 @@
    "^([^\\/\\=\\+]+)/([^\\/\\=\\+]+)=([^\\/\\=\\+]+)/([^\\/\\=\\+]+)\\+(.*)$"))
 
 #+test
-(debug
+(debug  
  (cl-ppcre:scan
   *redup-scanner*
   "გა-ჭენება/ჭენ=გამო-ჭენებ[ა]/ჭენ+V+Act+Aor+Pv+Redup+<S-DO>+<S:Erg>+<DO:Nom>+S:3Sg+DO:3+NonStand"
@@ -707,14 +707,16 @@
 	 unless (or (null (getf token :parent)) (= (getf token :parent) -1))
 	 do (pushnew (getf token :self)
 		     (getf (aref (depid-array text)
-				 (getf token :parent)) :children))
+				 (getf token :parent))
+                           :children))
 	 when (getf token :subtoken)
 	 do (let ((subtoken (getf token :subtoken)))
 	      (setf (getf (aref (depid-array text) (getf subtoken :self)) :token) (- -1 i))
 	      (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
 		(pushnew (getf subtoken :self)
 			 (getf (aref (depid-array text)
-				     (getf subtoken :parent)) :children))))))
+				     (getf subtoken :parent))
+                               :children))))))
     (labels ((walk (node-id)
 	       (let* ((t-ch-list (aref (depid-array text) node-id))
 		      (token-id (getf t-ch-list :token))
@@ -806,7 +808,8 @@
                  (destructuring-bind (&optional type word &key dipl norm
                                                 morphology tmesis-msa subtoken
                                                 |xml:id| comment rest parent self
-                                                &allow-other-keys) node
+                                                &allow-other-keys)
+                     node
                    (declare (ignore dipl))
                    (when (eq type :word)
                      (when comment
@@ -1054,6 +1057,56 @@
         (debug unknown-count)))
     (print (car count))
     (print :done)))
+
+#+test
+(parse-text "ცაშია, მის იმედად ჩემი მტერი დადგეს." :stream *standard-output* :variety :ng)
+
+;; *root*
+
+#+move
+(defmethod process-text :after ((text gnc.text::gnc-text) (mode (eql :disambiguate))
+                                &key dependencies &allow-other-keys)
+  ;; *text*
+  (when dependencies
+    #-test
+    (initialize-depid-array
+     text
+     :subtoken-count (count-if (lambda (token) (getf token :subtoken)) (token-array text)))
+    #-test
+    (let ((depid-array (depid-array text)) ;; self -> id
+          (text-array (text-array text)))
+      (loop for token across text-array
+            when (and (equal (getf token :label) "XCOMP")
+                      )
+            do (let* ((self (getf token :self))
+                      (parent (getf token :parent))
+                      (parent-dep (when (> parent -1)
+                                    (aref depid-array parent)))
+                      (parent-id (getf parent-dep :token))
+                      (parent-token (cond ((null parent-dep)
+                                           nil)
+                                          ((< parent-id -1)
+                                           (getf (aref text-array (- -1 parent-id)) :subtoken))
+                                          (t
+                                           (aref text-array  parent-id)))))
+                 ;;(pprint (list self token parent parent-token))
+                 (when (and parent-dep
+                            (find-if (lambda (lemma)
+                                       (or (string= lemma "ყოფნ[ა]/ყ[ავ]")
+                                           (string= lemma "ყოფნ[ა]/არ")))
+                                     (getf parent-token :morphology)
+                                     :key #'car))
+                   (mapc (lambda (c)
+                           (let ((child (aref text-array (getf (aref depid-array c) :token))))
+                             (unless (= (getf child :parent) self) 
+                               (setf (getf child :parent) self))))
+                         (getf parent-dep :children))
+                   ;; swap parent and child
+                   (let ((tp (getf token :parent)))
+                     (setf (getf token :parent) (getf parent-token :parent)
+                           (getf token :label) (getf parent-token :label)
+                           (getf parent-token :parent) tp
+                           (getf parent-token :label) "COP"))))))))
 
 (process-run-function "init-gnc-transducers"
                       (lambda ()

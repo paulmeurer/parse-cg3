@@ -52,6 +52,7 @@
 
 (defmethod parse-text ((text string) &key variety load-grammar (disambiguate t) corpus
                                        orthography
+                                       dependencies
                                        unknown-tree ;; obsolete?
                                        guess-scope guess-table interactive
                                        count cg3-variables &allow-other-keys)
@@ -83,7 +84,7 @@
                   :variety variety
                   :orthography (orthography parsed-text)
                   :guess-table guess-table
-                  :unknown-tree unknown-tree
+                  ;;:unknown-tree unknown-tree
                   :interactive interactive)
     (when disambiguate
       (process-text parsed-text :disambiguate
@@ -95,12 +96,14 @@
                     :guess-scope guess-scope
                     :guess-table guess-table
                     :interactive interactive
+                    :dependencies dependencies
                     :cg3-variables cg3-variables))
     parsed-text))
 
 ;; pre-tokenized text, given as list of tokens, where each token is (word . rest). rest is kept unchanged.
 (defmethod parse-text ((tokens list) &key variety load-grammar (disambiguate t)
-                                       unknown-tree guess-scope guess-table
+                                       ;; unknown-tree
+                                       guess-scope guess-table
                                        cg3-variables interactive
                                        &allow-other-keys)
   (assert variety)
@@ -115,7 +118,7 @@
     (process-text parsed-text :analyze
                   :variety variety
                   :guess-table guess-table
-                  :unknown-tree unknown-tree
+                  ;; :unknown-tree unknown-tree
                   :interactive interactive)
     (when disambiguate
       (process-text parsed-text :disambiguate
@@ -144,8 +147,9 @@
 (defparameter *text* nil)
 
 (defmethod parse-text ((text parsed-text) &key variety mode load-grammar (disambiguate t)
-                                            wid-table unknown-tree guess-scope cg3-variables
-                                            guess-table interactive
+                                            wid-table ;; unknown-tree
+                                            guess-scope cg3-variables
+                                            guess-table interactive dependencies
                                             pos-only ;; menota: use only lemma and POS tag in :analyze
                                             &allow-other-keys)
   (declare (ignore guess-scope))
@@ -160,7 +164,8 @@
      (process-text text :analyze
                    :interactive interactive
                    :variety variety
-                   :unknown-tree unknown-tree
+                   :dependencies dependencies
+                   ;; :unknown-tree unknown-tree
                    :guess-table guess-table
                    :pos-only pos-only)))
   (when disambiguate
@@ -170,6 +175,7 @@
                   :load-grammar load-grammar
                   :mode mode
                   :cg3-variables cg3-variables
+                  :dependencies dependencies
                   :sentence-end-strings (if (eq variety :abk) ;; put this in to text object!
                                             '("." "?" "!" "…" ";")
                                             '("." "?" "!" "…"))))
@@ -258,7 +264,7 @@
 ;; it stores the values of :new-morphology
 (defmethod process-text ((text parsed-text) (mode (eql :analyze))
                          &key (variety :og)
-                           (normalize t) unknown-tree
+                           (normalize t) ;; unknown-tree
                            ;; experimental; keeps MWE and non-MWE readings;
                            ;; MWE second (third) word are accessible in CG
                            ;; Therefore, some rules will have to be adapted
@@ -271,11 +277,9 @@
   (let ((language (if (eq variety :abk) :abk :kat))
         (token-array (text-array text))
 	(norm-table (make-hash-table :test #'equal)) ;; calculated anew from .lex file
-	;;(lexicon (or lexicon (text-lexicon text)))
 	(lang-stack (list variety))
 	(lexicon (text-lexicon text))
-        (wid-table (wid-table text))
-        (extracted-table (make-hash-table :test #'equal))) ;; table of all words that have been treated
+        (wid-table (wid-table text)))
     ;;#+test ;; *text*
     ;; (describe lexicon)
     ;;(print :load-wid-table)
@@ -326,7 +330,7 @@
                                           (when atts
                                             (let ((start (search "xml:lang=\"" atts)))
                                               (when start
-                                                (print (list start atts))
+                                                ;;;(print (list start atts))
                                                 (subseq atts
                                                         (+ start 10)
                                                         (position #\" atts :start (+ start 11))))))))))
@@ -395,6 +399,7 @@
                                       (dolist (r readings)
                                         (pushnew (car r) lemmas :test #'string=))
                                       (length lemmas)))))
+                      #+ignore
                       (when (and (null readings) unknown-tree)
                         (incf (dat:string-tree-get unknown-tree normalized-token 0)))
 		      (let* ((mwe2-reading (when (and (car next-token+j2)
@@ -471,7 +476,8 @@
                                                (setf (getf (cddr node) :status) status))
                                              (when comment
                                                (setf (getf (cddr node) :comment) comment)
-                                               (debug node))
+                                               ;; (debug node)
+                                               )
                                              (when parent ;; preliminarily store wid here; has to be changed to node id
                                                ;; after disambiguation
                                                (setf (getf (cddr node) :stored-parent) (list parent)))
@@ -489,10 +495,6 @@
 							  language segment
 							  :tmesis-segment (if rest :infix :verb)
 							  :variety variety))))))
-		        (when (gethash word extracted-table)
-			  (setf (getf (dat:string-tree-get lexicon word) :extracted) t))
-		        ;; need to know which lexicon words have been corrected and are no longer in the text
-		        (setf (getf (dat:string-tree-get lexicon word) :in-text) t)
 		        (unless (and unknown-only-p
 				     (or readings segments))
 			  (cond (ignore
@@ -522,7 +524,7 @@
 (defmethod process-text ((text parsed-text) (mode (eql :disambiguate))
                          &key (variety :og) (load-grammar t) mode
                            (sentence-end-strings vislcg3::*sentence-end-strings*)
-                           guess-scope guess-table cg3-variables (dependencies t)
+                           guess-scope guess-table cg3-variables (dependencies t) remove-brackets
                            &allow-other-keys)
   (vislcg3::cg3-disambiguate-text text
                                   :variety variety
@@ -532,26 +534,30 @@
                                   :sentence-start-is-uppercase (eq variety :abk)
                                   :guess-scope guess-scope
                                   :guess-table guess-table
+                                  :remove-brackets remove-brackets
+                                  :dependencies dependencies
                                   :variables cg3-variables)
   (when dependencies
     (let ((token-array (text-array text))
           (word-id-table (word-id-table text))
           ;; (wid-table (wid-table text)) ;; what whas this supposed to be used for?
           )
-      (loop for node across token-array
-            do (let* ((msa (getf node :morphology))
-                      (reading (or (find-if (lambda (reading)
-					      (and (not (find :discarded-cg reading))
-						   (search " >" (cadr reading) :from-end t)))
-					    msa)
-				   (find-if-not (lambda (r) (find :discarded-cg r)) msa)))
-		      (features (cadr reading))
-		      ;; (pos (subseq features 0 (position #\space features)))
-		      (rel-start (search " >" features :from-end t))
-		      (rel-end (when rel-start (position #\space features :start (+ 2 rel-start))))
-	              (relation (when rel-start (subseq features (+ 2 rel-start) rel-end)))
-                      )
-                 (setf (getf (cddr node) :label) relation)))
+      (labels ((add-relation (node)
+                 (when node
+                   (let* ((msa (getf node :morphology))
+                          (reading (or (find-if (lambda (reading)
+					          (and (not (find :discarded-cg reading))
+						       (search " >" (cadr reading) :from-end t)))
+					        msa)
+				       (find-if-not (lambda (r) (find :discarded-cg r)) msa)))
+		          (features (cadr reading))
+		          (rel-start (search " >" features :from-end t))
+		          (rel-end (when rel-start (position #\space features :start (+ 2 rel-start))))
+	                  (relation (when rel-start (subseq features (+ 2 rel-start) rel-end))))
+                     (setf (getf (cddr node) :label) relation)))))
+        (loop for node across token-array
+              do (add-relation node)
+              (add-relation (getf node :subtoken))))
       ;; fix stored-parent
       ;;(print :fix-stored-parent)
       (loop for node across token-array ;; for i from 0
@@ -616,7 +622,24 @@
                                      (:empty-element
                                       (st-json:jso "struct" (getf node :empty-element)
                                                    "type" "empty-element"
-                                                   "atts" (or (getf node :atts) :null))))))
+                                                   "atts" (or (getf node :atts) :null)))))
+                   (when (getf node :subtoken)
+                     (u:collect-into tokens
+                                     (prog1 (write-word-json (getf node :subtoken)
+                                                             :id id
+                                                             :tracep tracep
+                                                             :split-trace split-trace
+                                                             :suppress-discarded-p suppress-discarded-p
+                                                             :lemma lemma
+                                                             :features features
+                                                             :disambiguate disambiguate
+                                                             :dependencies dependencies
+                                                             :show-rules show-rules
+                                                             :rid rid
+                                                             :manual manual
+                                                             :transliterate transliterate
+                                                             :subtoken t)
+                                       (incf id)))))
                   ((and start end (< (- start window) id start))
                    (ecase (car node)
                      (:word
@@ -662,7 +685,8 @@
 			       (count t)
                                transliterate
 			       no-morphology
-			       no-newlines)
+			       no-newlines
+                               subtoken)
   (declare (ignore tracep split-trace no-newlines error disambiguate))
   (ecase (car node)
     (:word
@@ -697,6 +721,7 @@
             "computed_facs" ,(if computed-facs :true :false)
 	    "id" ,id
             "wid" ,(or wid :null)
+            ,@(when subtoken `("subtoken" :true))
 	    ,@(when (and lemma features)
 		    `("msa"
 		      ,(cond (morphology
@@ -875,6 +900,10 @@
     (json "token" (parse::write-word-json token))))
 
 ;; *text*
+;; *root*
+
+#+test
+(parse-text "ეს ძალიან კარგია ჩემთვის." :stream *standard-output* :variety :ng)
 
 ;; todo: remove duplication of get-val here and in function below
 (defmethod initialize-depid-array ((text parsed-text) &key (diff (list nil)) stored (subtoken-count 0))
@@ -906,12 +935,16 @@
                               :children))
 	    when (getf token :subtoken)
 	    do (let ((subtoken (getf token :subtoken)))
+                 ;; (debug subtoken)
 	         (setf (getf (aref (depid-array text) (getf subtoken :self)) :token) (- -1 i))
-	         (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
-	           (pushnew (getf subtoken :self)
+                 (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
+                   (pushnew (getf subtoken :self)
 			    (getf (aref (depid-array text)
 				        (getf subtoken :parent))
                                   :children))))))))
+
+(defmethod prefix-token ((text parsed-text) word suffix)
+  (u:concat (subseq word 0 (- (length word) (1- (length suffix)))) "_"))
 
 (defmethod get-token-table ((text parsed-text) &key node-id stored &allow-other-keys)
   (assert node-id)
@@ -942,30 +975,7 @@
                           (setf (car diff) t)))
                       (getf token stored-att)))))
       (unless nil ;; (depid-table text) ;; maps dep node-ids to token-table ids
-        (initialize-depid-array text :diff diff :stored stored :subtoken-count subtoken-count) 
-        #+orig
-        (setf (depid-array text)
-	      (make-array (+ 1 (length token-array) subtoken-count) :initial-element ()))
-        #+orig
-        (loop for i from 0
-	      for token across token-array
-              for parent = (if stored
-                               (get-val token :parent :stored-parent)
-                               (getf token :parent))
-              when (and (eq (car token) :word) (getf token :self))
-	      do (setf (getf (aref (depid-array text) (getf token :self)) :token) i)
-	      unless (or (null parent) (= parent -1))
-	      do (pushnew (getf token :self)
-		          (getf (aref (depid-array text) parent)
-                                :children))
-	      when (getf token :subtoken)
-	      do (let ((subtoken (getf token :subtoken)))
-	           (setf (getf (aref (depid-array text) (getf subtoken :self)) :token) (- -1 i))
-	           (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
-		     (pushnew (getf subtoken :self)
-			      (getf (aref (depid-array text)
-				          (getf subtoken :parent))
-                                    :children))))))
+        (initialize-depid-array text :diff diff :stored stored :subtoken-count subtoken-count))
       (labels ((walk (node-id)
 	         (let* ((t-ch-list (aref (depid-array text) node-id))
 		        (token-id (getf t-ch-list :token))
@@ -1001,6 +1011,8 @@
                                           :word (cond (mwe
 						       (format nil "~a~{ ~a~}" word mwe))
 						      ((getf token :subtoken)
+                                                       (prefix-token text word (getf (getf token :subtoken) :word))
+                                                       #+old
 						       (subseq word 0 (1- (length word))))
 						      (t
 						       word))
@@ -1188,6 +1200,7 @@ Field number:	Field name:	Description:
 
 (defmethod write-dependencies-conll ((text parsed-text) stream
                                      &key (start 1)
+                                       document-id
                                        all ;; include also analyses that are not stored; used for on-the-fly parsing
                                        &allow-other-keys)
   (let ((token-array (text-array text)))
@@ -1203,7 +1216,9 @@ Field number:	Field name:	Description:
             (setf *graph* graph)
             (when (or all (graph-is-complete graph))
               (write-dependency-conll graph stream
-                                      :sentence-id (getf node :wid)
+                                      :sentence-id (if document-id
+                                                       (u:concat document-id "/" (getf node :wid))
+                                                       (getf node :wid))
                                       :include-postag (not all)))))))
 
 #+test
