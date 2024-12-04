@@ -111,9 +111,7 @@ STRICT-TAGS += Abbrev Abs Cnv Adhort
        >XCOMP:LO
        >CCOMP:LO
        >CCOMP:RO
-       >CCOMP:PO
-       >CCOMP:POSS
-       
+       >CCOMP:PO       
        >OBL
        >OBJ
        >OBJ:LO
@@ -2570,9 +2568,12 @@ LIST AgentTypeNoun = "а-па́ртиа" ; # add more
 REMOVE S_Anim_V + S:3SgNH - Pot + DO:12
     IF (NOT -1 AgentTypeNoun) ;
 
+# схы гәыбҕан насҭан
+SELECT ("а́-ҭа-ра") + DO:Ad
+    IF (-1 ("а-гәыбҕа́н")) ;
+
 # verbs that prefer an animate (human, animal) IO
 LIST IO_Anim_V = "а́у-ра" "а-ҳа-ра́" "а́игәырҕьа-ра" "а́-ҭа-ра" "а́иса-ра" ;
-
 
 REMOVE IO_Anim_V + IO:3SgNH ;
 
@@ -3574,6 +3575,7 @@ WITH NOPARENT PP + Poss:3SgF | ("нахы́с")
      IF (-1 Noun + Sg - Abs + F |
          Anthr + F - PP |
          Pron + Pers + 3SgF |
+         Pron + Pers + 3Sg |
          Pron + Dem)
         (NOT p (*)) {
    MAP >CASE (*) ;
@@ -4426,6 +4428,8 @@ WITH NOPARENT Conj-I
    MAP >XCOMP:OBJ (*) ;
 } ;
 
+# add алшара?
+# сажәақәа иаргьы илшоит ашьақәырҕәҕәара.
 WITH NOPARENT Conj-I
   IF (1 ("а-ҭах·ха-ра́") + S:Ad)
      (NEGATE p (*)) {
@@ -5059,7 +5063,7 @@ WITH NOPARENT N - Hum - Pl | Pron + Pers + 3SgNH | Pron + Pers + 3Sg |
 
 # hum argument
 
-WITH NOPARENT N + Hum - Pl - F | Pron + Pers + 3SgM | Pron + H
+WITH NOPARENT N + Hum - Pl - F | Pron + Pers + 3SgM | Pron + H | ("дасу́") + Pron + Quant + Sg
      IF (1w S:3SgM LINK NONE c >NSUBJ)
         (NOT p (*)) {
    MAP >NSUBJ (*) ;
@@ -7135,7 +7139,7 @@ WITH NOPARENT VMain + $$TENSE - VSaying
 LIST QuoteVerb = "а-ҵаа-ра́" "а́-быб-ра" "а-ш-ра́" "а́цәажәа-ра" "а́зҵаа-ра" "а́-қәшаҳаҭ·ха-ра"
                  "а-ҵаа-ра́" "а-хәы́ц-ра" "а́-хәаа-ра" "а́ила·цәажәа-ра" "а́-ҳәа-ра"
                  "а́а·ҧхьа-ра" "а-ҳәа-ра́" "а-гәы́рҕьа-ра" "а-ҟрым-ҿры́м-ра" "а-гәа́а-ра"
-                 "а́-қә·ҳәҳәа-ра" "а-цра́·ла-ра"
+                 "а́-қә·ҳәҳәа-ра" "а-цра́·ла-ра" "а-гәа́·хә-ра"
                  # "а́-ҟа-заа-ра" treat this one differently!
                  "а-ҿа·ҧа-ра́" "а-бжьа́·ла-ра" "а-р:ҽхәа-ра́" ;
 
