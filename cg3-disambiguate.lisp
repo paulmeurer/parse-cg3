@@ -243,13 +243,15 @@
 
 ;; todo: check if grammar has changed
 (defmethod cg3-disambiguate-text ((text parse::parsed-text)
-				  &key (variety :og) (tracep t) (load-grammar t) mode
+				  &key (variety :og) (tracep t) (load-grammar t) mode remove-brackets
 				    (sentence-end-strings *sentence-end-strings*)
                                     ;; if true sentence is not ended if lowercase follows
                                     variables
+                                    dependencies
                                     sentence-start-is-uppercase
                                     guess-scope guess-table)
   (setf *text* text) ;; debug
+  (debug sentence-end-strings)
   (unless guess-scope (setf guess-table nil))
   (with-process-lock (+disambiguate-lock+)
     (load-grammar variety :force load-grammar)
@@ -271,7 +273,6 @@
 	   (token-array (parse::text-array text))
 	   (name-type nil))
       (cg3-applicator-setflags applicator (if tracep (ash 1 7) 0))
-      ;;(print (length token-array))
       (unwind-protect
 	   (loop with mwe-length = 0
 	      while (< prev-pos (length token-array))
@@ -313,16 +314,20 @@
 				  (destructuring-bind (&key word dipl facs norm morphology tmesis-msa mwe
 							    &allow-other-keys)
                                       token
-                                    ;;(debug word)
-				    #+debug(push word word-list)
+                                    #+debug(push word word-list)
 				    (when mwe (setf mwe-length mwe))
 				    (let ((wordform
-					   (or word
-					       (let ((str ""))
-						 (dolist (elt (or dipl facs norm))
-						   (when (eq (car elt) :characters)
-						     (setf str (u:concat str (cadr elt)))))
-						 (delete-if (lambda (c) (find c "{}[]|/\\‹›")) str)))))
+                                           (cond ((and word remove-brackets)
+                                                  (delete-if (lambda (c) (find c "{}[]|/\\‹›")) word))
+                                                 (word
+                                                  word)
+                                                 (t
+					          (let ((str ""))
+						    (dolist (elt (or dipl facs norm))
+						      (when (eq (car elt) :characters)
+						        (setf str (u:concat str (cadr elt)))))
+						    (delete-if (lambda (c) (find c "{}[]|/\\‹›")) str))))))
+                                      ;; (debug wordform)
 				      (setf word-seen (if mwe nil wordform))
 				      (cond (tmesis-msa ;; each tmesis element is a separate cohort
 					     (loop for (segment . msa) in tmesis-msa
@@ -379,9 +384,11 @@
                                                        ;; features
                                                        (let ((tags (u:split (cadr l.f) #\space nil nil t)))
                                                          (when (eq mode :redisambiguate)
-                                                           ;; remove syntactic tags if redisambiguating
+                                                           ;; remove syntactic and subtoken tags if redisambiguating
                                                            (setf tags (delete-if 
-                                                                       (lambda (tag) (char= (char tag 0) #\>))
+                                                                       (lambda (tag)
+                                                                         (or (char= (char tag 0) #\>)
+                                                                             (char= (char tag 0) #\$)))
                                                                        tags)
                                                                  (cadr l.f) (format nil "~{~a~^ ~}" tags)))
                                                          (dolist (tag tags)
@@ -414,7 +421,6 @@
                                                        (and sentence-start-is-uppercase
                                                             (loop for id from (1+ i) below (length token-array)
                                                                for (type word) = (aref token-array id)
-                                                               ;; do (print (list type word))
                                                                when (and (eq type :word)
                                                                          (not (find word '("”" "»" "–" ")" "]" "!" "?")
                                                                                     :test #'string=)))
@@ -429,17 +435,17 @@
                                                                    :test #'string=))))))))))
 		     #+debug(format t "~{~a ~}~%" (nreverse word-list))
 		     (cg3-sentence-runrules applicator sentence)
-                     (loop with coh = 0 and mwe-count = 0 and added = nil
+                     (loop with coh = 0 and mwe-count = 0 and added = nil and added-count = 0
 			for i from prev-pos to pos ;; the sentence range
 			for token = (aref token-array i)
 			while (< coh (cg3-sentence-numcohorts sentence))
-			;; when added
-			;; do (setf added nil)
 			when (eq (car token) :word)
 			do (cond ((> mwe-count 1)
 				  (decf mwe-count))
 				 (added
-				  (setf added nil)
+                                  (if (zerop (decf added-count))
+				      (setf added nil)
+                                      (decf i))
 				  (let* ((cohort (cg3-sentence-getcohort sentence coh))
 					 (tag (cg3-cohort-getwordform cohort))
 					 (word (cg3-tag-gettext-u8 tag))
@@ -449,39 +455,51 @@
 					 (reading (cg3-cohort-getreading cohort 0))
 					 (word (cg3-tag-gettext-u8
 						(cg3-reading-gettag reading 0)))
-					 (word (subseq word 2 (- (length word) 2))))
+					 (word (subseq word 2 (- (length word) 2)))
+                                         (wid (getf token :wid))
+                                         )
+                                    ;;(debug wid)
 				    #+ccl(cg3-cohort-getdependency cohort self parent)
-				    (setf (getf (cddr token) :subtoken)
-					  (list :word word 
-						#+ccl :parent #+ccl(ccl:%get-signed-long parent)
-						#+ccl :self #+ccl(ccl:%get-signed-long self)
-						:morphology
-						(list
-						 (let* (;;(rid (cg3-reading-gettag reading 2))
-							(traces (cg3-reading-numtraces reading))
-							(lemma (cg3-tag-gettext-u8 (cg3-reading-gettag reading 1)))
-							(tags
-							 (format nil "~{~a~^ ~}"
-								 (loop for i from 3 below (cg3-reading-numtags reading)
-								       for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i))
-								       collect tag))))
-						   (list (subseq lemma 1 (1- (length lemma)))
-							 tags
-							 nil
-							 (u:collecting
-							   (dotimes (tr traces)
-							     (let ((trace (cg3-reading-gettrace reading tr))
-								   (ruletype (cg3-reading-gettrace-ruletype
-                                                                              reading tr)))
-							       (u:collect (rule-name ruletype trace)))))
-							 nil))))))
+                                    (setf (getf (cddr token) :subtokens)
+                                          (append (getf (cddr token) :subtokens)
+                                                  (list
+                                                   (list :word word
+						         #+ccl :parent #+ccl(ccl:%get-signed-long parent)
+						         #+ccl :self #+ccl(ccl:%get-signed-long self)
+						         :morphology
+						         (list
+						          (let* ((traces (cg3-reading-numtraces reading))
+							         (lemma (cg3-tag-gettext-u8 (cg3-reading-gettag reading 1)))
+							         (tags
+							          (format nil "~{~a~^ ~}"
+								          (loop for i from 3 below (cg3-reading-numtags reading)
+								                for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i))
+								                collect tag))))
+						            (list (subseq lemma 1 (1- (length lemma)))
+							          tags
+							          nil
+							          (u:collecting
+							            (dotimes (tr traces)
+							              (let ((trace (cg3-reading-gettrace reading tr))
+								            (ruletype (cg3-reading-gettrace-ruletype
+                                                                                       reading tr)))
+							                (u:collect (rule-name ruletype trace)))))
+							          nil)))
+                                                         :wid (when wid
+                                                                (format nil "w~a"
+                                                                        (+ (parse-integer wid :start 1)
+                                                                           (1+ (length (getf (cddr token) :subtokens))))))
+                                                         ;; we assume that stored-parent
+                                                         ;; always coincide with parent
+                                                         :stored-parent nil;; #+ccl(ccl:%get-signed-long parent)
+                                                         :stored-label nil)))))
 				  (incf coh))
 				 (t
-				  (setf mwe-count (getf token :mwe 0)) 
+                                  (setf mwe-count (getf token :mwe 0)) 
 				  (let* ((cohort (cg3-sentence-getcohort sentence coh))
 					 (tag (cg3-cohort-getwordform cohort))
 					 (word (cg3-tag-gettext-u8 tag)))
-				    (when (string= word ">>>")
+                                    (when (string= word ">>>")
 				      (incf coh)
 				      (setf cohort (cg3-sentence-getcohort sentence coh)
 					    tag (cg3-cohort-getwordform cohort)
@@ -491,7 +509,6 @@
 				      (setf cohort (cg3-sentence-getcohort sentence coh)
 					    tag (cg3-cohort-getwordform cohort)
 					    word (cg3-tag-gettext-u8 tag)))
-                                    ;;(print (list coh word tag))
                                     ;; lemma + features
 				    (destructuring-bind (&key morphology tmesis-msa &allow-other-keys) token
 				      (cond (tmesis-msa
@@ -504,24 +521,47 @@
 						         tag (cg3-cohort-getwordform cohort)
 						         word (cg3-tag-gettext-u8 tag))))
 					    (t
-					     (setf added (msa-set-disambiguation
-                                                          word cohort morphology language guess-table)))))
+                                             (multiple-value-setq (added added-count)
+					       (msa-set-disambiguation
+                                                word cohort morphology language guess-table)))))
 				    ;; dependencies
 				    #+ccl
-				    (let ((self (ccl::%new-gcable-ptr 4 t))
-					  (parent (ccl::%new-gcable-ptr 4 t)))
-				      (cg3-cohort-getdependency cohort self parent)
-				      (setf (getf (cddr token) :self)
-					    (ccl:%get-signed-long self)
-					    (getf (cddr token) :parent)
-					    (ccl:%get-signed-long parent)))
+                                    (when dependencies
+                                      (let ((self (ccl::%new-gcable-ptr 4 t))
+					    (parent (ccl::%new-gcable-ptr 4 t)))
+				        (cg3-cohort-getdependency cohort self parent)
+				        (setf (getf (cddr token) :self)
+					      (ccl:%get-signed-long self)
+					      (getf (cddr token) :parent)
+					      (ccl:%get-signed-long parent))))
 				    (incf coh)
-				    (when added ;; same token again, take care of added cohort
+                                    (when added ;; same token again, take care of added cohort
 				      (decf i)))))))
 		(cg3-sentence-free sentence))
 	      (setf prev-pos (1+ pos)))
 	(cg3-applicator-free applicator))
       ;; adjust dependency ids for addcohort
+      (let ((ids (collecting
+                   (loop for token across token-array
+		         for id = (getf token :self)
+		         for subtokens = (getf token :subtokens)
+		         when id
+		         do (collect id)
+		         (dolist (subtoken subtokens)
+                           (collect (getf subtoken :self)))))))
+	(loop for token across token-array
+	      for self = (getf token :self)
+	      for parent = (getf token :parent)
+	      for subtokens = (getf token :subtokens)
+	      when self
+	      do (setf (getf token :self) (1+ (or (position self ids) -1))) ;; or … -1 can only happen if token has been deleted
+	      when parent
+	      do (setf (getf token :parent) (1+ (or (position parent ids) -2)))
+	      (dolist (subtoken subtokens)
+	        (setf (getf subtoken :self) (1+ (or (position (getf subtoken :self) ids) -1)))
+	        (when (getf subtoken :parent)
+	          (setf (getf subtoken :parent) (1+ (or (position (getf subtoken :parent) ids) -2)))))))
+      #+old
       (let ((ids (loop for token across token-array
 		    for id = (getf token :self)
 		    for subtoken = (getf token :subtoken)
@@ -545,6 +585,7 @@
 
 (defun msa-set-disambiguation (word cohort morphology language guess-table)
   (let* ((added nil)
+         (added-count 0)
 	 (reading-count (length morphology))
          (set-tags-from-cg-output (eq language :kat))
          (numreadings (cg3-cohort-numreadings cohort))
@@ -575,22 +616,26 @@
 				  collect tag))
 		     (dependency-labels
 		      (loop for i from 1 below (cg3-reading-numtags reading)
-			 for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i))
-			 when (find (char tag 0) ">@")
-			 collect tag
-			 when (equal tag "@ADDED")
-			    do (setf added t))))
+			    for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i))
+			    when (find (char tag 0) ">@")
+			    collect tag
+			    when (or (equal tag "$ADDED")
+                                     (equal tag "$ADDED_PP"))
+			    do (setf added t)
+                            ;; incf only for first reading!
+                            (when (zerop re) (incf added-count)))))
                 (if set-tags-from-cg-output
                     (let ((rlist (nth reading-id morphology))
                           (guessed nil))
-		      (setf (cadr rlist)
-			    (format nil "~{~a~^ ~}"
-                                    (loop for i from 4 ;; 3 ;; 4
-                                          below (cg3-reading-numtags reading)
-                                          for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i)) 
-		                          collect tag
-                                          when (and guess-table (string= tag "Guess"))
-                                          do (setf guessed t))))
+                      (when rlist ;; NIL should not happen!
+		        (setf (cadr rlist)
+			      (format nil "~{~a~^ ~}"
+                                      (loop for i from 4 ;; 3 ;; 4
+                                            below (cg3-reading-numtags reading)
+                                            for tag = (cg3-tag-gettext-u8 (cg3-reading-gettag reading i)) 
+		                            collect tag
+                                            when (and guess-table (string= tag "Guess"))
+                                            do (setf guessed t)))))
                       (when (and guess-table guessed)
                         
                         (let* ((word (subseq word 2 (- (length word) 2)))
@@ -673,7 +718,7 @@
 		(t
 		 (setf (caddr reading) :discarded-cg
 		       (cadddr reading) (cdr disc)))))
-    added))
+    (values added added-count)))
 
 ;; frequency-based disambiguation
 
