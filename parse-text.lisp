@@ -84,6 +84,7 @@
                   :variety variety
                   :orthography (orthography parsed-text)
                   :guess-table guess-table
+                  :dependencies dependencies
                   ;;:unknown-tree unknown-tree
                   :interactive interactive)
     (when disambiguate
@@ -91,8 +92,8 @@
                     :variety variety
                     :load-grammar load-grammar
                     :sentence-end-strings (if (eq variety :abk)
-                                              '("." "?" "!" "…" ";")
-                                              '("." "?" "!" "…"))
+                                              '("." "?" "!" "…" ";" ":")
+                                              '("." "?" "!" "…" ";" ":"))
                     :guess-scope guess-scope
                     :guess-table guess-table
                     :interactive interactive
@@ -104,7 +105,7 @@
 (defmethod parse-text ((tokens list) &key variety load-grammar (disambiguate t)
                                        ;; unknown-tree
                                        guess-scope guess-table
-                                       cg3-variables interactive
+                                       cg3-variables interactive dependencies
                                        &allow-other-keys)
   (assert variety)
   (when (eq variety :kat) (setf variety :ng))
@@ -119,6 +120,7 @@
                   :variety variety
                   :guess-table guess-table
                   ;; :unknown-tree unknown-tree
+                  :dependencies dependencies
                   :interactive interactive)
     (when disambiguate
       (process-text parsed-text :disambiguate
@@ -127,9 +129,10 @@
                     :guess-scope guess-scope
                     :guess-table guess-table
                     :cg3-variables cg3-variables
+                    :dependencies dependencies
                     :sentence-end-strings (if (eq variety :abk)
-                                              '("." "?" "!" "…" ";")
-                                              '("." "?" "!" "…"))))
+                                              '("." "?" "!" "…" ";" ":")
+                                              '("." "?" "!" "…" ";" ":"))))
     parsed-text))
 
 (defun normalize-token (token)
@@ -157,7 +160,8 @@
   (setf *text* text)
   (case mode
     (:redisambiguate
-     nil)
+     (loop for token across (text-array text)
+           do (setf (getf token :subtokens) ())))
     (:renormalize
      (process-text text :normalize :variety variety))
     (otherwise
@@ -177,8 +181,8 @@
                   :cg3-variables cg3-variables
                   :dependencies dependencies
                   :sentence-end-strings (if (eq variety :abk) ;; put this in to text object!
-                                            '("." "?" "!" "…" ";")
-                                            '("." "?" "!" "…"))))
+                                            '("." "?" "!" "…" ";" ":")
+                                            '("." "?" "!" "…" ";" ":"))))
   text)
 
 ;; remove subsumption:
@@ -349,10 +353,12 @@
 			        (t
 				 (intern (string-upcase lang) :keyword))))
                         lang-stack)
+                  (print (list :pushed (cadr node) lang-stack))
                   (setf start-seen t))
 		 (:end-element
-                  (when start-seen
-		    (pop lang-stack)))
+                  (when (and start-seen (cdr lang-stack)) ;; have to avoid popping away the top lang
+                    ;; this could happen when we start deeper in the tree than the level we have reached now
+                    (pop lang-stack)))
 		 (:word
 		  (multiple-value-bind (token word lex-norm) (node-token node)
 		    (declare (ignore lex-norm))
@@ -475,9 +481,7 @@
                                              (when status
                                                (setf (getf (cddr node) :status) status))
                                              (when comment
-                                               (setf (getf (cddr node) :comment) comment)
-                                               ;; (debug node)
-                                               )
+                                               (setf (getf (cddr node) :comment) comment))
                                              (when parent ;; preliminarily store wid here; has to be changed to node id
                                                ;; after disambiguation
                                                (setf (getf (cddr node) :stored-parent) (list parent)))
@@ -495,7 +499,7 @@
 							  language segment
 							  :tmesis-segment (if rest :infix :verb)
 							  :variety variety))))))
-		        (unless (and unknown-only-p
+                        (unless (and unknown-only-p
 				     (or readings segments))
 			  (cond (ignore
 				 nil)
@@ -526,6 +530,7 @@
                            (sentence-end-strings vislcg3::*sentence-end-strings*)
                            guess-scope guess-table cg3-variables (dependencies t) remove-brackets
                            &allow-other-keys)
+  (print :cg3)
   (vislcg3::cg3-disambiguate-text text
                                   :variety variety
                                   :mode mode
@@ -537,11 +542,11 @@
                                   :remove-brackets remove-brackets
                                   :dependencies dependencies
                                   :variables cg3-variables)
+  (print :cg3-done)
   (when dependencies
     (let ((token-array (text-array text))
           (word-id-table (word-id-table text))
-          ;; (wid-table (wid-table text)) ;; what whas this supposed to be used for?
-          )
+          (wid-table (wid-table text)))
       (labels ((add-relation (node)
                  (when node
                    (let* ((msa (getf node :morphology))
@@ -557,14 +562,23 @@
                      (setf (getf (cddr node) :label) relation)))))
         (loop for node across token-array
               do (add-relation node)
-              (add-relation (getf node :subtoken))))
-      ;; fix stored-parent
-      ;;(print :fix-stored-parent)
+              (mapc #'add-relation (getf node :subtokens))))
+      ;; fix stored-parent and subtokens
       (loop for node across token-array ;; for i from 0
             for p = (getf node :stored-parent)
+            for l = (getf node :stored-label)
             when (and p (listp p)) ;; list ensures that this is done only once, but not on redisambiguation
             do (setf (getf node :stored-parent)
-                     (getf (gethash (format nil "w~a" (car p)) word-id-table) :self))))))
+                     (getf (gethash (format nil "w~a" (car p)) word-id-table) :self))
+            when (or (and p (listp p)) (and (null p) l))
+            do
+            (dolist (subnode (getf node :subtokens))
+              (let ((wid-list (gethash (parse-integer (getf subnode :wid) :start 1) wid-table)))
+                ;;(debug wid-list)
+                (setf (getf subnode :stored-parent)
+                      (getf (gethash (format nil "w~a" (nth 4 wid-list)) word-id-table) :self)
+                      (getf subnode :stored-label)
+                      (nth 3 wid-list))))))))
 
 ;; kp::*text*
 
@@ -587,12 +601,11 @@
         (right-context ())
         (window 20))
     (u:collecting-into (left tokens right)
-      (loop with id = 0
+      (loop with id = 0 and sub-count = 0
          for node across (text-array text)
-         ;; for id from 0
-	 for cpos = (getf node :cpos)
+         for cpos = (getf node :cpos)
 	 do (cond ((if (and start end)
-                       (<= start id end)
+                       (<= start id (+ end sub-count))
                        t)
       	           (u:collect-into tokens
                                    (ecase (car node)
@@ -623,9 +636,9 @@
                                       (st-json:jso "struct" (getf node :empty-element)
                                                    "type" "empty-element"
                                                    "atts" (or (getf node :atts) :null)))))
-                   (when (getf node :subtoken)
+                   (dolist (subtoken (getf node :subtokens))
                      (u:collect-into tokens
-                                     (prog1 (write-word-json (getf node :subtoken)
+                                     (prog1 (write-word-json subtoken
                                                              :id id
                                                              :tracep tracep
                                                              :split-trace split-trace
@@ -639,8 +652,9 @@
                                                              :manual manual
                                                              :transliterate transliterate
                                                              :subtoken t)
-                                       (incf id)))))
-                  ((and start end (< (- start window) id start))
+                                       (incf id)))
+                     (incf sub-count)))
+                  ((and start end (<= (- start window) id start))
                    (ecase (car node)
                      (:word
                       (u:collect-into left (cadr node))
@@ -651,7 +665,7 @@
                       (u:collect-into left (u:concat "‹/" (cadr node) "›")))
                      (:empty-element
                       (u:collect-into left (u:concat "‹" (cadr node) "/›")))))
-                  ((and start end (< end id (+ end window)))
+                  ((and start end (< end id (+ end window sub-count)))
                    (ecase (car node)
                      (:word
                       (u:collect-into right (cadr node))
@@ -903,7 +917,8 @@
 ;; *root*
 
 #+test
-(parse-text "ეს ძალიან კარგია ჩემთვის." :stream *standard-output* :variety :ng)
+(parse-text "გაიშვირა მაგიდისკენ, რომელიც ეს იყო დატოვა: გატაცებაა"
+            :stream *standard-output* :variety :ng :dependencies t)
 
 ;; todo: remove duplication of get-val here and in function below
 (defmethod initialize-depid-array ((text parsed-text) &key (diff (list nil)) stored (subtoken-count 0))
@@ -931,20 +946,25 @@
 	    do (setf (getf (aref (depid-array text) (getf token :self)) :token) i)
 	    unless (or (null parent) (= parent -1))
 	    do (pushnew (getf token :self)
-		        (getf (aref (depid-array text) parent)
-                              :children))
-	    when (getf token :subtoken)
-	    do (let ((subtoken (getf token :subtoken)))
-                 ;; (debug subtoken)
-	         (setf (getf (aref (depid-array text) (getf subtoken :self)) :token) (- -1 i))
-                 (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
-                   (pushnew (getf subtoken :self)
-			    (getf (aref (depid-array text)
-				        (getf subtoken :parent))
-                                  :children))))))))
+		        (getf (aref (depid-array text) parent) :children))
+	    do (loop for subtoken in (getf token :subtokens)
+                     for sid from 1
+	             do (setf (getf (aref (depid-array text) (getf subtoken :self)) :token)
+                              (+ i (ash sid 32)))
+                     (unless (or (null (getf subtoken :parent)) (= (getf subtoken :parent) -1))
+                       (pushnew (getf subtoken :self)
+			        (getf (aref (depid-array text)
+				            (getf subtoken :parent))
+                                      :children))))))))
 
-(defmethod prefix-token ((text parsed-text) word suffix)
-  (u:concat (subseq word 0 (- (length word) (1- (length suffix)))) "_"))
+(defmethod prefix-token ((text parsed-text) word subtokens)
+  (u:concat (subseq word 0 (- (length word)
+                              (reduce #'+ subtokens
+                                 :key (lambda (token) (1- (length (getf token :word))))
+                                 :initial-value 0)))
+            "_"))
+
+(defparameter *token-table* nil)
 
 (defmethod get-token-table ((text parsed-text) &key node-id stored &allow-other-keys)
   (assert node-id)
@@ -956,11 +976,10 @@
 	 (token-array (token-array text))
 	 (parents ())
          (diff (list nil))
-	 (subtoken-count (count-if (lambda (token) (getf token :subtoken)) token-array))
-	 (pre-subtoken-ids (loop for token across token-array
-			      when (getf token :subtoken)
-			      collect (cons (getf token :self)
-					    (getf (getf token :subtoken) :self)))))
+	 ;; (subtoken-count (count-if (lambda (token) (getf token :subtoken)) token-array))
+	 (subtoken-count (reduce #'+ token-array
+                                 :key (lambda (token) (length (getf token :subtokens)))
+                                 :initial-value 0)))
     (declare (ignore id-table))
     (labels ((get-val (token att stored-att &optional reg)
                (cond ((not stored)
@@ -979,9 +998,16 @@
       (labels ((walk (node-id)
 	         (let* ((t-ch-list (aref (depid-array text) node-id))
 		        (token-id (getf t-ch-list :token))
-		        (token (if (< token-id 0)
-				   (getf (aref token-array (- -1 token-id)) :subtoken)
-				   (aref token-array token-id)))
+                        (subtoken-pos (ash token-id -32))
+                        (tid (logand token-id (- (ash 1 32) 1)))
+                        (base-token (aref token-array tid))
+		        (token (if (zerop subtoken-pos)
+				   base-token
+				   (nth (1- subtoken-pos) (getf (aref token-array tid) :subtokens))))
+                        (base-wid (getf base-token :wid))
+                        (wid (if (zerop subtoken-pos) ;; not subtoken
+                                 base-wid
+                                 (format nil "w~a" (+ (parse-integer base-wid :start 1) subtoken-pos))))
 		        (children (getf t-ch-list :children))
 		        (parent (if stored
                                     (get-val token :parent :stored-parent t)
@@ -1004,14 +1030,14 @@
 				     for token = (aref token-array id)
 				     while (equal "<MWE>" (cadar (getf token :morphology)))
 				     collect (getf token :word)))))
-		   (setf (gethash node-id token-table)
+                   (setf (gethash node-id token-table)
 		         (make-token-list :terminal-p t
 					  :id node-id
-                                          :wid (getf token :wid)
+                                          :wid wid
                                           :word (cond (mwe
 						       (format nil "~a~{ ~a~}" word mwe))
-						      ((getf token :subtoken)
-                                                       (prefix-token text word (getf (getf token :subtoken) :word))
+						      ((getf token :subtokens)
+                                                       (prefix-token text word (getf token :subtokens))
                                                        #+old
 						       (subseq word 0 (1- (length word))))
 						      (t
@@ -1027,7 +1053,7 @@
 				  (u:collect (token-list-id tl)))
 				token-table))
 		     #'<)))
-      ;;(setf *token-table* token-table)
+      (setf *token-table* token-table)
       (maphash (lambda (id tl)
 		 (declare (ignore id))
 		 (let ((pos (position (token-list-id tl) ids)))
@@ -1182,7 +1208,7 @@ Field number:	Field name:	Description:
 ;; *text*
 
 #+test
-(write-dependencies-conll *text* *standard-output*)
+(write-dependencies-conll *text* *standard-output* :language :kat)
 
 (defparameter *graph* nil)
 
@@ -1200,7 +1226,7 @@ Field number:	Field name:	Description:
 
 (defmethod write-dependencies-conll ((text parsed-text) stream
                                      &key (start 1)
-                                       document-id
+                                       document-id language
                                        all ;; include also analyses that are not stored; used for on-the-fly parsing
                                        &allow-other-keys)
   (let ((token-array (text-array text)))
@@ -1209,7 +1235,7 @@ Field number:	Field name:	Description:
           when (or (and all (= -1 (getf node :parent)))
                    (and (getf node :stored-label)
                         (not (getf node :stored-parent))))
-          do ;; (debug node)
+          do
           (let ((graph (build-dep-graph text
                                         :node-id (getf node :self)
                                         :stored (not all))))
@@ -1217,25 +1243,19 @@ Field number:	Field name:	Description:
             (when (or all (graph-is-complete graph))
               (write-dependency-conll graph stream
                                       :sentence-id (if document-id
-                                                       (u:concat document-id "/" (getf node :wid))
+                                                       (let ((slash-pos (position #\/ document-id :from-end t)))
+                                                         (u:concat (if slash-pos
+                                                                       (subseq document-id (1+ slash-pos))
+                                                                       document-id)
+                                                                   "+" (getf node :wid)))
                                                        (getf node :wid))
-                                      :include-postag (not all)))))))
+                                      :include-postag (not all)
+                                      :language language))))))
 
 #+test
-(write-dependency-conll *graph* *standard-output*)
+(write-dependency-conll *graph* *standard-output* :language :kat)
 
 ;; abk only
-
-(defparameter *abnc-to-ud-features* (make-hash-table :test #'equal))
-
-(progn
-  (clrhash *abnc-to-ud-features*)
-  (u:with-file-fields ((&optional abnc-feature ud-features pos &rest rest)
-                       "projects:abnc;feature-names.tsv" :empty-to-nil t :comment #\#)
-    (declare (ignore rest))
-    (when (or ud-features pos)
-      (setf (gethash abnc-feature *abnc-to-ud-features*)
-            (list ud-features (if (equal pos "x") t pos))))))
 
 ;; fine-grained postag, which is simply the bag of features, except auxiliary features
 (defun morph-to-postag (morph &key drop-pos)
@@ -1244,201 +1264,12 @@ Field number:	Field name:	Description:
     (when drop-pos (pop features))
     (format nil "~{~a~^_~}" features)))
 
-(defun morph-to-ud (morph &key drop-pos lemma)
-  (let ((features (u:split morph #\space))
-        (ud-features ())
-        (pos nil))
-    (setf features (delete-if (lambda (f) (find #\> f)) features))
-    (setf pos (car features))
-    (when drop-pos (pop features))
-    (when (equal pos "VN")
-      (push "VerbForm=Vnoun" ud-features))
-    (dolist (f features)
-      (when (equal f "Pred")
-        (push "Dyn=No" ud-features))
-      (cond ((and (equal f "Sg") (equal pos "PP")) ;; not sure why нахы́с has PP Sg
-             nil)
-            ((and (equal f "Neg") (equal pos "Pron"))
-             nil)
-            ((and (equal f "Pl") (equal pos "Adv"))
-             nil)
-            ;; "V Dyn Tr StatPass Fin Pres S:3 S:Ad"
-            ((equal f "StatPass")
-             (setf ud-features (delete "Dyn=Yes" ud-features :test #'string=))
-             (setf ud-features (delete "Voice=Cau" ud-features :test #'string=))
-             (push "Dyn=No" ud-features)
-             (push "Voice=Pass" ud-features))
-            ((and (equal f "Cop")
-                  (not (equal lemma "а́кә-заа-ра"))
-                  (find "Mood=Conj1" ud-features :test #'string=))
-             (setf ud-features (delete "Mood=Conj1" ud-features :test #'string=))
-             (setf ud-features (delete "VerbForm=NonFin" ud-features :test #'string=))
-             (push "Mood=Nec" ud-features)
-             (push "VerbForm=Fin" ud-features))
-            (t
-             (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
-               (when (and ud (not is-pos))
-                 (dolist (f (u:split ud #\|))
-                   (when (equal f "Number=Card")
-                     (setf ud-features (delete "Number=Sing" ud-features :test #'string=)))
-                   (pushnew f ud-features :test #'string=
-                            :key (lambda (fv) (subseq fv 0 (position #\= fv))))))))))
-    (if ud-features
-        (format nil "~{~a~^|~}" (sort ud-features #'string-lessp))
-        "_")))
-
-#+test ;; ҳзеибадыруамызт wrong analysis ;; V Dyn Tr Fin Impf Neg S:Rec DO:1Pl
-(print (morph-to-ud "V Dyn Intr Fin Impf Neg S:Rec PO:1Pl"))
-
-#+test
-(print (morph-to-ud "Adv Pl Poss:3Pl"))
-
-
-#+test
-(print (morph-to-ud "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop"))
-#+test
-(print (morph-to-ud-pos "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop"))
-
-#+test
-(print (morph-to-ud-pos "Noun Prop Hydr"))
-#+test
-(print (morph-to-ud-pos "Noun Prop Name <Lemma> >NSUBJ"))
-#+test
-(print (morph-to-ud-pos "V Stat Fin Pres S:3 IO:1Sg Cop"))
-#+test
-(print (morph-to-ud-pos "V Dyn Fin Pres S:3 IO:1Sg Cop"))
-#+test
-(print (morph-to-ud-pos "Noun NH Sg NumPfx Cop"))
-#+test
-(print (morph-to-ud "V Stat Fin Pres S:3 IO:1Sg Cop"))
-
-#+test
-(print (morph-to-ud "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop" :lemma "а́кә-заа-ра"))
-
-#+test
-(print (morph-to-ud "V Dyn Tr StatPass Fin Pres S:3 S:Ad"))
-
-#+test
-(print (morph-to-ud-pos "Pron Int H Pres Q:3Pl"))
-#+test
-(print (morph-to-ud "Pron Int H Pres Q:3Pl"))
-
-(defun morph-to-ud-pos (morph &optional relation)
-  (let ((features (u:split morph #\space))
-        (pos nil)
-        (dyn nil))
-    (dolist (f features)
-      (when (equal f "Dyn")
-        (setf dyn t))
-      (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
-        (cond ((null is-pos)
-               nil)
-              ((equal is-pos "CCONJ")
-               (unless pos
-                 (setf pos is-pos)))
-              ((equal is-pos "AUX")
-               (setf pos is-pos))
-              ((equal relation "AUX")
-               (setf pos "AUX"))
-              ((not (eq is-pos t))
-               (setf pos is-pos))
-              #+ignore
-              ((and (equal pos "AUX") ;; а́кә-ха-ра
-                    (equal f "Dyn"))
-               (setf pos "VERB"))
-              (ud
-               (unless (and (equal ud "AUX") dyn)
-                 (setf pos ud))))))
-    pos))
-
-(defun strip-segmentation (lemma word)
-  (cond ((< (length lemma) 5)
-         lemma)
-        ((and (> (length word) 4)
-              (find #\- word :start 4))
-         ;;(debug word)
-         (let ((hy-pos (position #\- lemma :from-end t :end (- (length lemma) 4))))
-           (setf lemma (remove-if (lambda (c) (find c "-:·")) lemma :start (1+ hy-pos)))
-           (remove-if (lambda (c) (find c "-:·")) lemma :start 3 :end hy-pos)))
-        (t
-         (remove-if (lambda (c) (find c "-:·")) lemma :start 3))))
-
-#+test
-(print (strip-segmentation "а-ҟрым-ҿры́м-ра" "аҟрым-ҿры́мра"))
-#+test
-(print (strip-segmentation "а-гыгшәы́г" "ҩ-гыгшәы́г"))
-
-#+orig
 (defmethod write-dependency-conll ((graph dep-node) stream
-                                   &key text sentence-id (include-postag t) &allow-other-keys)
-  (let ((nodes ()))
-    (labels ((walk (node)
-               (let ((atts (node-atts node))
-                     (parent (if (node-parents node)
-                                 (node-id (car (node-parents node)))
-                                 0)))
-                 (unless (zerop (node-id node))
-                   (let ((morph (getf atts :|morph|))
-                         (lemma (getf atts :|lemma|)))
-                     (push (list (node-id node)
-                                 (node-label node)
-                                 lemma
-                                 (morph-to-ud-pos morph (relation node))
-                                 (if include-postag (morph-to-postag morph :drop-pos nil) "_")
-                                 (morph-to-ud morph :lemma lemma)
-                                 parent
-                                 (relation node))
-                           nodes))))
-               (mapc #'walk (node-children node))))
-      (walk graph)
-      (setf nodes (sort nodes #'< :key #'car))
-      (let* ((text (format nil "~{~a~^ ~}" (mapcar #'cadr nodes)))
-             (trans-text (transliterate :abk text)))
-        (format stream "# sent_id = ~a~%# text = ~a~%# text-transcription = ~a~%"
-                sentence-id text trans-text)
-        (loop for (id form lemma cpostag postag feats head deprel) in nodes
-              do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	LMSeg:~a~%"
-                         id
-                         form
-                         (strip-segmentation lemma form)
-                         ;;(if (equal lemma "а́кә-заа-ра") "а́кәзаара" lemma)
-                         cpostag
-                         postag
-                         feats
-                         head
-                         #-orig(string-downcase deprel)
-                         #+prelim(string-downcase (subseq deprel 0 (position #\: deprel)))
-                         lemma
-                         )))
-      (terpri stream))))
-
-(defun abk-split-clitics (word is-cop)
-  (cond ((not is-cop)
-         word)
-        ((< (length word) 4)
-         word)
-        ((or (string= "оуп" word :start2 (- (length word) 3))
-             (string= "ауп" word :start2 (- (length word) 3)))
-         (values (u:concat (subseq word 0 (- (length word) 3)) "а_")
-                 "_ауп"
-                 "а́кә-заа-ра"
-                 "V Stat Fin Pres S:3 IO:3SgNH Cop"
-                 ))
-        ((or (string= "оуп" word :start2 (- (length word) 3))
-             (string= "ауп" word :start2 (- (length word) 3)))
-         (values (u:concat (subseq word 0 (- (length word) 3)) "а_")
-                 "_аума"
-                 "а́кә-заа-ра"
-                 "V Stat NonFin Pres Q S:3 IO:3SgNH Cop"))
-        (t
-         word)))
-
-;; abk
-(defmethod write-dependency-conll ((graph dep-node) stream
-                                   &key text sentence-id (include-postag t) &allow-other-keys)
+                                   &key text sentence-id (include-postag t) language &allow-other-keys)
   (let ((nodes ())
         (cop-count 0)
         (cop-nodes ())) ;; enclitic copula nodes
+    (debug language)
     (labels ((walk (node)
                (let ((atts (node-atts node))
                      (parent (if (node-parents node)
@@ -1449,17 +1280,19 @@ Field number:	Field name:	Description:
                           (lemma (getf atts :|lemma|))
                           (word (node-label node)))
                      (multiple-value-bind (word clit clit-lemma clit-morph)
-                         (abk-split-clitics word (if (and (search "Cop" morph)
-                                                          (not (equal lemma "а́кә-заа-ра")))
-                                                     t))
+                         (if (eq language :abk)
+                             (abk-split-clitics word (if (and (search "Cop" morph)
+                                                              (not (equal lemma "а́кә-заа-ра")))
+                                                         t))
+                             word)
                        (push (list (node-id node)
                                    parent
                                    (node-label node)
                                    word
                                    lemma
-                                   (morph-to-ud-pos morph (relation node))
+                                   (morph-to-ud-pos language morph (relation node))
                                    (if include-postag (morph-to-postag morph :drop-pos nil) "_")
-                                   (morph-to-ud morph :lemma lemma)
+                                   (morph-to-ud language morph :lemma lemma)
                                    (relation node))
                              nodes)
                        (when clit
@@ -1469,9 +1302,9 @@ Field number:	Field name:	Description:
                                      nil
                                      clit
                                      clit-lemma
-                                     (morph-to-ud-pos clit-morph "cop")
+                                     (morph-to-ud-pos language clit-morph "cop")
                                      (if include-postag (morph-to-postag clit-morph :drop-pos nil) "_")
-                                     (morph-to-ud clit-morph :lemma clit-lemma)
+                                     (morph-to-ud language clit-morph :lemma clit-lemma)
                                      "cop")
                                nodes))
                        ))))
@@ -1489,15 +1322,17 @@ Field number:	Field name:	Description:
                        do (incf (cadr node))))
         (setf nodes (sort nodes #'< :key #'car)))
       (let* ((orig-text (format nil "~{~a~^ ~}" (delete-if #'null (mapcar #'caddr nodes))))
-             (text (format nil "~{~a~^ ~}" (mapcar #'cadddr nodes)))
-             (trans-text (transliterate :abk text)))
+             (text (u:subst-substrings (format nil "~{~a~^ ~}" (mapcar #'cadddr nodes))
+                                       '("_ _" "" " _" "" " ," "," " ." "." " !" "!" " ?" "?" " ;" ";" " :" ":")))
+             (trans-text (transliterate language text)))
         (format stream "# sent_id = ~a~%# text = ~a~%# text-transcription = ~a~%"
                 sentence-id text trans-text)
-        (loop for (id head is-cop form lemma cpostag postag feats deprel cop) in nodes
-              do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	LMSeg:~a~%"
+        (loop for ((id head is-cop form lemma cpostag postag feats deprel cop) next) on nodes
+              for next-lemma = (nth 4 next)
+              do (format stream "~a	~a	~a	~a	~a	~a	~a	~a	_	LMSeg:~a~a~%"
                          id
                          form
-                         (strip-segmentation lemma form)
+                         (strip-segmentation language lemma form)
                          ;;(if (equal lemma "а́кә-заа-ра") "а́кәзаара" lemma)
                          cpostag
                          postag
@@ -1506,7 +1341,9 @@ Field number:	Field name:	Description:
                          #-orig(string-downcase deprel)
                          #+prelim(string-downcase (subseq deprel 0 (position #\: deprel)))
                          lemma
-                         )))
+                         (if (and (debug next-lemma)
+                                  (find (char next-lemma 0) ".:,;?!_"))
+                             "|SpaceAfter=No" ""))))
       (terpri stream))))
 
 

@@ -397,6 +397,164 @@
 
 (defvar *tagset*)
 
+(defparameter *abnc-to-ud-features* (make-hash-table :test #'equal))
+
+(progn
+  (clrhash *abnc-to-ud-features*)
+  (u:with-file-fields ((&optional abnc-feature ud-features pos &rest rest)
+                       "projects:abnc;feature-names.tsv" :empty-to-nil t :comment #\#)
+    (declare (ignore rest))
+    (when (or ud-features pos)
+      (setf (gethash abnc-feature *abnc-to-ud-features*)
+            (list ud-features (if (equal pos "x") t pos))))))
+
+(defmethod strip-segmentation ((language (eql :abk)) lemma word)
+  (cond ((< (length lemma) 5)
+         lemma)
+        ((and (> (length word) 4)
+              (find #\- word :start 4))
+         ;;(debug word)
+         (let ((hy-pos (position #\- lemma :from-end t :end (- (length lemma) 4))))
+           (setf lemma (remove-if (lambda (c) (find c "-:·")) lemma :start (1+ hy-pos)))
+           (remove-if (lambda (c) (find c "-:·")) lemma :start 3 :end hy-pos)))
+        (t
+         (remove-if (lambda (c) (find c "-:·")) lemma :start 3))))
+
+#+test
+(print (strip-segmentation :abk "а-ҟрым-ҿры́м-ра" "аҟрым-ҿры́мра"))
+#+test
+(print (strip-segmentation :abk "а-гыгшәы́г" "ҩ-гыгшәы́г"))
+
+(defmethod morph-to-ud ((language (eql :abk)) morph &key drop-pos lemma)
+  (let ((features (u:split morph #\space))
+        (ud-features ())
+        (pos nil))
+    (setf features (delete-if (lambda (f) (find #\> f)) features))
+    (setf pos (car features))
+    (when drop-pos (pop features))
+    (when (equal pos "VN")
+      (push "VerbForm=Vnoun" ud-features))
+    (dolist (f features)
+      (when (equal f "Pred")
+        (push "Dyn=No" ud-features))
+      (cond ((and (equal f "Sg") (equal pos "PP")) ;; not sure why нахы́с has PP Sg
+             nil)
+            ((and (equal f "Neg") (equal pos "Pron"))
+             nil)
+            ((and (equal f "Pl") (equal pos "Adv"))
+             nil)
+            ;; "V Dyn Tr StatPass Fin Pres S:3 S:Ad"
+            ((equal f "StatPass")
+             (setf ud-features (delete "Dyn=Yes" ud-features :test #'string=))
+             (setf ud-features (delete "Voice=Cau" ud-features :test #'string=))
+             (push "Dyn=No" ud-features)
+             (push "Voice=Pass" ud-features))
+            ((and (equal f "Cop")
+                  (not (equal lemma "а́кә-заа-ра"))
+                  (find "Mood=Conj1" ud-features :test #'string=))
+             (setf ud-features (delete "Mood=Conj1" ud-features :test #'string=))
+             (setf ud-features (delete "VerbForm=NonFin" ud-features :test #'string=))
+             (push "Mood=Nec" ud-features)
+             (push "VerbForm=Fin" ud-features))
+            (t
+             (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
+               (when (and ud (not is-pos))
+                 (dolist (f (u:split ud #\|))
+                   (when (equal f "Number=Card")
+                     (setf ud-features (delete "Number=Sing" ud-features :test #'string=)))
+                   (pushnew f ud-features :test #'string=
+                            :key (lambda (fv) (subseq fv 0 (position #\= fv))))))))))
+    (if ud-features
+        (format nil "~{~a~^|~}" (sort ud-features #'string-lessp))
+        "_")))
+
+#+test ;; ҳзеибадыруамызт wrong analysis ;; V Dyn Tr Fin Impf Neg S:Rec DO:1Pl
+(print (morph-to-ud :abk "V Dyn Intr Fin Impf Neg S:Rec PO:1Pl"))
+
+#+test
+(print (morph-to-ud "Adv Pl Poss:3Pl"))
+
+
+#+test
+(print (morph-to-ud "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop"))
+#+test
+(print (morph-to-ud-pos "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop"))
+
+#+test
+(print (morph-to-ud-pos "Noun Prop Hydr"))
+#+test
+(print (morph-to-ud-pos "Noun Prop Name <Lemma> >NSUBJ"))
+#+test
+(print (morph-to-ud-pos "V Stat Fin Pres S:3 IO:1Sg Cop"))
+#+test
+(print (morph-to-ud-pos "V Dyn Fin Pres S:3 IO:1Sg Cop"))
+#+test
+(print (morph-to-ud-pos "Noun NH Sg NumPfx Cop"))
+#+test
+(print (morph-to-ud "V Stat Fin Pres S:3 IO:1Sg Cop"))
+
+#+test
+(print (morph-to-ud "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop" :lemma "а́кә-заа-ра"))
+
+#+test
+(print (morph-to-ud "V Dyn Tr StatPass Fin Pres S:3 S:Ad"))
+
+#+test
+(print (morph-to-ud-pos :abk "Pron Int H Pres Q:3Pl"))
+#+test
+(print (morph-to-ud "Pron Int H Pres Q:3Pl"))
+
+(defmethod morph-to-ud-pos ((language (eql :abk)) morph &optional relation)
+  (let ((features (u:split morph #\space))
+        (pos nil)
+        (dyn nil))
+    (dolist (f features)
+      (when (equal f "Dyn")
+        (setf dyn t))
+      (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
+        (cond ((null is-pos)
+               nil)
+              ((equal is-pos "CCONJ")
+               (unless pos
+                 (setf pos is-pos)))
+              ((equal is-pos "AUX")
+               (setf pos is-pos))
+              ((equal relation "AUX")
+               (setf pos "AUX"))
+              ((not (eq is-pos t))
+               (setf pos is-pos))
+              #+ignore
+              ((and (equal pos "AUX") ;; а́кә-ха-ра
+                    (equal f "Dyn"))
+               (setf pos "VERB"))
+              (ud
+               (unless (and (equal ud "AUX") dyn)
+                 (setf pos ud))))))
+    pos))
+
+(defun abk-split-clitics (word is-cop)
+  (cond ((not is-cop)
+         word)
+        ((< (length word) 4)
+         word)
+        ((or (string= "оуп" word :start2 (- (length word) 3))
+             (string= "ауп" word :start2 (- (length word) 3)))
+         (values (u:concat (subseq word 0 (- (length word) 3)) "а_")
+                 "_ауп"
+                 "а́кә-заа-ра"
+                 "V Stat Fin Pres S:3 IO:3SgNH Cop"
+                 ))
+        ((or (string= "оуп" word :start2 (- (length word) 3))
+             (string= "ауп" word :start2 (- (length word) 3)))
+         (values (u:concat (subseq word 0 (- (length word) 3)) "а_")
+                 "_аума"
+                 "а́кә-заа-ра"
+                 "V Stat NonFin Pres Q S:3 IO:3SgNH Cop"))
+        (t
+         word)))
+
+
+
 (process-run-function "init-abk-transducers"
                       (lambda ()
                         (init-transducers :abk)))

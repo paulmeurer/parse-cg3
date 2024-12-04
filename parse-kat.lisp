@@ -258,60 +258,100 @@
                                                                :guess-table guess-table))))))))))
     lemmas+features))
 
+#+test
+(print (lookup-morphology :kat "მაგრამ"))
+
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) guess-table tmesis-segment mwe
                                 &allow-other-keys)
-  (let ((lemmas+features ())
-        (stripped-word
-	 (remove-if (lambda (c) 
-		      (find c "ՙ‹›{}\\|")) ;; #\Armenian_Modifier_Letter_Left_Half_Ring in numbers
-		    word))
-	(analyzer (case variety
-		    (:og *og-analyzer*)
-		    (:xm *xm-analyzer*)
-		    (:hm *hm-analyzer*) ;; redundant?
-		    (:mg *mg-analyzer*)
-		    (:ng *ng-analyzer*)
-		    (:jg *ng-analyzer*) ;; ?
-		    (otherwise nil)
-		    )))
-    (cond (analyzer
-           (fst-lookup
-            analyzer
-            stripped-word
-            (lambda (w l+f net)
-              (declare (ignore w))
-              ;; strip some markers and features
-              (let* ((readings (u:split l+f #\newline nil nil t))
-                     (prev "")
-                     (og-readings
-                      (when (find variety '(:xm :hm))
-                        (block og
-                          (fst-lookup *og-analyzer*
-                                      stripped-word
-                                      (lambda (w l+f net)
-                                        (declare (ignore w net))
-                                        (return-from og l+f)))))))
-                (multiple-value-setq (lemmas+features prev)
-                  (append-readings lemmas+features stripped-word readings
-                                   :variety variety
-                                   :og-readings og-readings
-                                   :tmesis-segment tmesis-segment
-                                   :net net
-                                   :prev prev
-                                   :guess-table guess-table)))))
-           (when (and (eq variety :ng)
-                      (not (find #\space stripped-word))
-                      (or (null lemmas+features)
-                          (search "Guess" (cadar lemmas+features))))
-             (setf lemmas+features
-                   (append lemmas+features
-                           (guess-ng-verb-morphology stripped-word guess-table)))))
-          (mwe ;; don’t recognize foreign stuff as mwe
-	   nil)
-	  (t
-	   (setf lemmas+features (list (list "-" (format nil "Foreign ~a" variety) nil nil)))))
-    (values lemmas+features stripped-word)))
+  (cond ((string= word "და")
+         (list  (list "და" "Cj Coord @NC" NIL NIL)
+                (list "და" "Cj Coord @CLB" NIL NIL)
+                (list "დ[ა]" "N Hum Voc Sg" NIL NIL)
+                (list "დ[ა]" "N Hum Qual Nom Att" NIL NIL)
+                (list "დ[ა]" "N Hum Qual Inst Att" NIL NIL)
+                (list "დ[ა]" "N Hum Qual Gen Att" NIL NIL)
+                (list "დ[ა]" "N Hum Qual Erg Att" NIL NIL)
+                (list "დ[ა]" "N Hum Qual Dat Att" NIL NIL)
+                (list "დ[ა]" "N Hum Qual Advb Att" NIL NIL)
+                (list "დ[ა]" "N Hum Nom Sg" NIL NIL)))
+        ((string= word "თუ")
+         (list  (list "თუ" "Cj Coord @NC" NIL NIL)
+                (list "თუ" "Cj Coord @CLB" NIL NIL)
+                (list "თუ" "Cj Sub" NIL NIL)
+                (list "თუ" "Adv" NIL NIL)))
+        ((string= word ",")
+         (list  (list "," "Punct Comma @NC" NIL NIL)
+                (list "," "Punct Comma @CLB" NIL NIL)))
+        ((string= word "ან")
+         (list  (list "ან" "Cj Coord @NC" NIL NIL)
+                (list "ან" "Cj Coord @CLB" NIL NIL)))
+        ((string= word "ანუ")
+         (list  (list "ანუ" "Cj Coord @NC" NIL NIL)
+                (list "ანუ" "Cj Coord @CLB" NIL NIL)))
+        ((string= word "ხოლო")
+         (list  (list "ხოლო" "Cj Coord @NC" NIL NIL)
+                (list "ხოლო" "Cj Coord @CLB" NIL NIL)
+                (list "ხოლ·ი" "N Voc Sg NonStand" NIL NIL)))
+        ((string= word "მაგრამ")
+         (list  (list "მაგრამ" "Cj Coord @CLB" NIL NIL)
+                (list "მაგრამ" "Cj Coord @NC" NIL NIL)))
+        ((string= word "წიწასწარ") ;; remove!
+         (list  (list "წინასწარ" "Adv" NIL NIL)))
+        ((string= word "ნინააღმდეგ") ;; remove!
+         (list  (list "წინააღმეგ" "Pp <Gen>" NIL NIL)))
+        (t
+         (let ((lemmas+features ())
+               (stripped-word
+	        (remove-if (lambda (c) 
+		             (find c "ՙ‹›{}\\|")) ;; #\Armenian_Modifier_Letter_Left_Half_Ring in numbers
+		           word))
+	       (analyzer (case variety
+		           (:og *og-analyzer*)
+		           (:xm *xm-analyzer*)
+		           (:hm *hm-analyzer*) ;; redundant?
+		           (:mg *mg-analyzer*)
+		           (:ng *ng-analyzer*)
+		           (:jg *ng-analyzer*) ;; ?
+		           (otherwise nil)
+		           )))
+           (cond (analyzer
+                  (fst-lookup
+                   analyzer
+                   stripped-word
+                   (lambda (w l+f net)
+                     (declare (ignore w))
+                     ;; strip some markers and features
+                     (let* ((readings (u:split l+f #\newline nil nil t))
+                            (prev "")
+                            (og-readings
+                             (when (find variety '(:xm :hm))
+                               (block og
+                                 (fst-lookup *og-analyzer*
+                                             stripped-word
+                                             (lambda (w l+f net)
+                                               (declare (ignore w net))
+                                               (return-from og l+f)))))))
+                       (multiple-value-setq (lemmas+features prev)
+                         (append-readings lemmas+features stripped-word readings
+                                          :variety variety
+                                          :og-readings og-readings
+                                          :tmesis-segment tmesis-segment
+                                          :net net
+                                          :prev prev
+                                          :guess-table guess-table)))))
+                  (when (and (eq variety :ng)
+                             (not (find #\space stripped-word))
+                             (or (null lemmas+features)
+                                 (search "Guess" (cadar lemmas+features))))
+                    (setf lemmas+features
+                          (append lemmas+features
+                                  (guess-ng-verb-morphology stripped-word guess-table)))))
+                 (mwe ;; don’t recognize foreign stuff as mwe
+	          nil)
+	         (t
+	          (setf lemmas+features (list (list "-" (format nil "Foreign ~a" variety) nil nil)))))
+           (values lemmas+features stripped-word)))))
 
 (defun append-readings (lemmas+features stripped-word readings
                         &key (variety :ng) og-readings tmesis-segment net guess-table prev)
@@ -411,8 +451,13 @@
 (defconstant +mkhedruli+ "აბგდევზჱთიკლმნჲოპჟრსტჳუფქღყშჩცძწჭხჴჯჰჵ")
 (defconstant +mtavruli+ "ᲐᲑᲒᲓᲔᲕᲖᲱᲗᲘᲙᲚᲛᲜᲲᲝᲞᲟᲠᲡᲢᲳᲣᲤᲥᲦᲧᲨᲩᲪᲫᲬᲭᲮᲴᲯᲰᲵ")
 
+#+old
 (defmethod transliterate ((language (eql :kat)) str)
   (transliterate-to-mkhedruli str))
+
+(defmethod transliterate ((language (eql :kat)) str)
+  str
+  (kp::transliterate str :standard :scientific))
 
 (defun transliterate-to-mkhedruli (str)
   (loop for c across str for i from 0
@@ -1059,25 +1104,33 @@
     (print :done)))
 
 #+test
-(parse-text "ცაშია, მის იმედად ჩემი მტერი დადგეს." :stream *standard-output* :variety :ng)
+(parse-text "ცაშია, მის იმედად ჩემი მტერი დადგეს." :stream *standard-output* :variety :ng :dependencies t)
 
 ;; *root*
 
-#+move
+#+ignore
 (defmethod process-text :after ((text gnc.text::gnc-text) (mode (eql :disambiguate))
+                                &key dependencies &allow-other-keys)
+  nil)
+#+move
+(defmethod process-text :after ((text kp::gnc-text) (mode (eql :disambiguate))
                                 &key dependencies &allow-other-keys)
   ;; *text*
   (when dependencies
     #-test
     (initialize-depid-array
      text
-     :subtoken-count (count-if (lambda (token) (getf token :subtoken)) (token-array text)))
+     :subtoken-count  (reduce #'+ (token-array text)
+                              :key (lambda (token) (length (getf token :subtokens)))
+                              :initial-value 0))
     #-test
     (let ((depid-array (depid-array text)) ;; self -> id
           (text-array (text-array text)))
       (loop for token across text-array
-            when (and (equal (getf token :label) "XCOMP")
-                      )
+            for xcomp = (equal (getf token :label) "XCOMP")
+            for xcomp-aux = (equal (getf token :label) "XCOMP:AUX")
+            for ccomp-aux = (equal (getf token :label) "CCOMP")
+            when (or xcomp xcomp-aux ccomp-aux)
             do (let* ((self (getf token :self))
                       (parent (getf token :parent))
                       (parent-dep (when (> parent -1)
@@ -1085,20 +1138,37 @@
                       (parent-id (getf parent-dep :token))
                       (parent-token (cond ((null parent-dep)
                                            nil)
-                                          ((< parent-id -1)
+                                          ((> (ash parent-id -32) 0)
+                                           (nth (1- (ash parent-id -32))
+                                                (getf (aref text-array (logand parent-id (- (ash 1 32) 1))) :subtokens))
+                                           #+old
                                            (getf (aref text-array (- -1 parent-id)) :subtoken))
                                           (t
-                                           (aref text-array  parent-id)))))
-                 ;;(pprint (list self token parent parent-token))
+                                           (aref text-array parent-id)))))
+                 ;;(print (list xcomp-aux (getf parent-token :morphology)))
                  (when (and parent-dep
-                            (find-if (lambda (lemma)
+                            (find-if (lambda (lemma) (debug lemma)
                                        (or (string= lemma "ყოფნ[ა]/ყ[ავ]")
-                                           (string= lemma "ყოფნ[ა]/არ")))
+                                           (string= lemma "ყოფნ[ა]/არ")
+                                           (string= lemma "ყოფნ[ა]/ქნ")
+                                           (and xcomp-aux
+                                                (or (string= lemma "ქონ[ა]/ქვ")
+                                                    (string= lemma "ქონ[ა]/ქონ")))
+                                           (and ccomp-aux
+                                                (or (string= lemma "შე·ძლებ[ა]/ძლ")
+                                                    (string= lemma "ნებ[ა]/ნებ")))))
                                      (getf parent-token :morphology)
                                      :key #'car))
                    (mapc (lambda (c)
-                           (let ((child (aref text-array (getf (aref depid-array c) :token))))
-                             (unless (= (getf child :parent) self) 
+                           (debug c)
+                           (let* ((child-id (getf (aref depid-array c) :token))
+                                  (child
+                                   (cond ((> (ash child-id -32) 0)
+                                          (nth (1- (ash child-id -32))
+                                               (getf (aref text-array (logand child-id (- (ash 1 32) 1))) :subtokens)))
+                                         (t
+                                          (aref text-array child-id)))))
+                             (unless (= (getf child :parent) self)
                                (setf (getf child :parent) self))))
                          (getf parent-dep :children))
                    ;; swap parent and child
@@ -1106,7 +1176,108 @@
                      (setf (getf token :parent) (getf parent-token :parent)
                            (getf token :label) (getf parent-token :label)
                            (getf parent-token :parent) tp
-                           (getf parent-token :label) "COP"))))))))
+                           (getf parent-token :label)
+                           (if xcomp "COP" "AUX")))))))))
+
+(defmethod strip-segmentation ((language (eql :kat)) lemma word)
+  (if (or (< (length lemma) 4)
+	  (not (find-if (lambda (c) (find c "[]/{}-·*")) lemma)))
+      lemma
+      (let* ((slash-pos (position #\/ lemma))
+	     (lemma (subseq lemma 0 slash-pos))
+	     (lemma (if (< (length lemma) 3)
+			lemma
+			(delete-if (lambda (c) (find c "[]{}·*"))
+				   lemma)))
+	     (ei-pos (search "ეჲ" lemma)))
+	(if (eql ei-pos (- (length lemma) 2)) ;; ეჲ -> ჱ
+	    (u:concat (subseq lemma 0 (- (length lemma) 2)) "ჱ")
+	    lemma))))
+
+(defparameter *gnc-to-ud-features* (make-hash-table :test #'equal))
+
+(progn
+  (clrhash *gnc-to-ud-features*)
+  (u:with-file-fields ((&optional gnc-feature ud-features pos &rest rest)
+                       "projects:gnc;feature-names.tsv" :empty-to-nil t :comment #\#)
+    (declare (ignore rest))
+    (when (or ud-features pos)
+      (setf (gethash gnc-feature *gnc-to-ud-features*)
+            (list ud-features (if (equal pos "x") t pos))))))
+
+(defmethod morph-to-ud ((language (eql :kat)) morph &key drop-pos lemma)
+  (let ((features (u:split morph #\space))
+        (ud-features ())
+        (pos nil))
+    (setf features (delete-if (lambda (f) (find #\> f)) features))
+    (setf pos (car features))
+    (when drop-pos (pop features))
+    (when (equal pos "VN")
+      (push "VerbForm=Vnoun" ud-features))
+    (dolist (f features)
+      (when (equal f "Pred")
+        (push "Dyn=No" ud-features))
+      (cond ((and (equal f "Sg") (equal pos "PP"))
+             nil)
+            ((and (equal f "Neg") (equal pos "Pron"))
+             nil)
+            ((and (equal f "Pl") (equal pos "Adv"))
+             nil)
+            ;; "V Dyn Tr StatPass Fin Pres S:3 S:Ad"
+            ((equal f "StatPass")
+             (setf ud-features (delete "Dyn=Yes" ud-features :test #'string=))
+             (setf ud-features (delete "Voice=Cau" ud-features :test #'string=))
+             (push "Dyn=No" ud-features)
+             (push "Voice=Pass" ud-features))
+            ((and (equal f "Cop")
+                  (not (equal lemma "а́кә-заа-ра"))
+                  (find "Mood=Conj1" ud-features :test #'string=))
+             (setf ud-features (delete "Mood=Conj1" ud-features :test #'string=))
+             (setf ud-features (delete "VerbForm=NonFin" ud-features :test #'string=))
+             (push "Mood=Nec" ud-features)
+             (push "VerbForm=Fin" ud-features))
+            (t
+             (destructuring-bind (&optional ud is-pos) (gethash f *gnc-to-ud-features*)
+               (when (and ud (not is-pos))
+                 (dolist (f (u:split ud #\|))
+                   (when (equal f "Number=Card")
+                     (setf ud-features (delete "Number=Sing" ud-features :test #'string=)))
+                   (pushnew f ud-features :test #'string=
+                            :key (lambda (fv) (subseq fv 0 (position #\= fv))))))))))
+    (if ud-features
+        (format nil "~{~a~^|~}" (sort ud-features #'string-lessp))
+        "_")))
+
+(defmethod morph-to-ud-pos ((language (eql :kat)) morph &optional relation)
+  (let ((features (u:split morph #\space))
+        (pos nil)
+        (dyn nil))
+    (dolist (f features)
+      (destructuring-bind (&optional ud is-pos) (gethash f *gnc-to-ud-features*)
+        (cond ((null is-pos)
+               nil)
+              ((equal is-pos "CCONJ")
+               (unless pos
+                 (setf pos is-pos)))
+              ((equal is-pos "CCONJ")
+               (unless pos
+                 (setf pos is-pos)))
+              ((equal is-pos "AUX")
+               (setf pos is-pos))
+              ((equal relation "AUX")
+               (setf pos "AUX"))
+              ((not (eq is-pos t))
+               (setf pos is-pos))
+              #+ignore
+              ((and (equal pos "AUX") ;; а́кә-ха-ра
+                    (equal f "Dyn"))
+               (setf pos "VERB"))
+              ((and pos (equal ud "ADP"))
+               nil)
+              (ud
+               (unless (and (equal ud "AUX") dyn)
+                 (setf pos ud))))))
+    pos))
 
 (process-run-function "init-gnc-transducers"
                       (lambda ()
