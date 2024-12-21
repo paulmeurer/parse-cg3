@@ -464,8 +464,8 @@
                                           (append (getf (cddr token) :subtokens)
                                                   (list
                                                    (list :word word
-						         #+ccl :parent #+ccl(ccl:%get-signed-long parent)
-						         #+ccl :self #+ccl(ccl:%get-signed-long self)
+						         :parent (ccl:%get-signed-long parent)
+						         :self (ccl:%get-signed-long self)
 						         :morphology
 						         (list
 						          (let* ((traces (cg3-reading-numtraces reading))
@@ -491,8 +491,10 @@
                                                                            (1+ (length (getf (cddr token) :subtokens))))))
                                                          ;; we assume that stored-parent
                                                          ;; always coincide with parent
-                                                         :stored-parent nil;; #+ccl(ccl:%get-signed-long parent)
-                                                         :stored-label nil)))))
+                                                         ;; :stored-parent (ccl:%get-signed-long parent)
+						         :stored-parent nil;; #+ccl(ccl:%get-signed-long parent)
+                                                         :stored-label nil
+                                                         :parent-token token)))))
 				  (incf coh))
 				 (t
                                   (setf mwe-count (getf token :mwe 0)) 
