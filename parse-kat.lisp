@@ -259,7 +259,7 @@
     lemmas+features))
 
 #+test
-(print (lookup-morphology :kat "მაგრამ"))
+(print (lookup-morphology :kat "რაღააა"))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) guess-table tmesis-segment mwe
@@ -296,10 +296,43 @@
         ((string= word "მაგრამ")
          (list  (list "მაგრამ" "Cj Coord @CLB" NIL NIL)
                 (list "მაგრამ" "Cj Coord @NC" NIL NIL)))
+        ((string= word "არადა")
+         (list  (list "არადა" "Cj Coord @CLB" NIL NIL)))
+        ((string= word "რაც")
+         (list (list "რაც" "Adv" NIL NIL) ;; ?? was Cj Sub
+               (list "რაც" "Cj Sub" NIL NIL) ;; რაც თავი ახსოვდა, …
+               (list "რ[ა]" "Pron Rel Nonhum Nom Rel:ც" NIL NIL)
+               (list "რ[ა]" "Pron Int Nonhum Nom Rel:ც" NIL NIL)))
+        ((string= word "რის")
+         (list (list "რის·ი" "Pron Poss Rel Nonhum Dat Att" NIL NIL)
+               (list "რის·ი" "Pron Poss Rel Nonhum Advb Att" NIL NIL)
+               (list "რის·ი" "Pron Poss Int Nonhum Dat Att" NIL NIL)
+               (list "რის·ი" "Pron Poss Int Nonhum Advb Att" NIL NIL)
+               (list "რ[ე]" "N Rare Gen Sg" NIL NIL)
+               (list "რ[ა]" "Pron Int Nonhum Gen" NIL NIL)
+               (list "რ[ა]" "Pron Rel Nonhum Gen" NIL NIL))) ;; added
+        #+test
+        ((string= word "იქნა")
+         ((list "ქმნ[ა]/ქ[ე]ნ" "V Pass Opt <S> <S:Nom> S:2Sg" NIL NIL)
+          (list "ქმნ[ა]/ქ[ე]ნ" "V Pass Aor <S> <S:Nom> S:3Sg" NIL NIL)))
+        ((string= word "როდია")
+         (list (list "როდი" "Adv Neg Encl:Aux" NIL NIL)))
         ((string= word "წიწასწარ") ;; remove!
-         (list  (list "წინასწარ" "Adv" NIL NIL)))
+         (list (list "წინასწარ" "Adv" NIL NIL)))
         ((string= word "ნინააღმდეგ") ;; remove!
-         (list  (list "წინააღმეგ" "Pp <Gen>" NIL NIL)))
+         (list (list "წინააღმეგ" "Pp <Gen>" NIL NIL)))
+        ((string= word "რომელ")
+         (list (list "რომ[ე]ლ·ი" "Pron Rel Gen Att <OldPl>" NIL NIL)
+               (list "რომ[ე]ლ·ი" "Pron Int Gen Att <OldPl>" NIL NIL)
+               (list "რომ[ე]ლ·ი" "Pron Rel Dat Att" NIL NIL)
+               (list "რომ[ე]ლ·ი" "Pron Int Dat Att" NIL NIL)
+               (list "რომ[ე]ლ·ი" "Pron Rel Advb Att" NIL NIL)
+               (list "რომ[ე]ლ·ი" "Pron Int Advb Att" NIL NIL)))
+        ((string= word "იმაზე")
+         (list (list "ის" "Pron Pers 3 Dat Sg PP PP:ზე" NIL NIL)
+               (list "ის" "Pron Dem Dat Sg PP PP:ზე" NIL NIL)))
+        ((string= word "რაღაა")
+         (list (list "რაღ[ა]" "Pron Int Nonhum Nom L Encl:Aux" NIL NIL)))
         (t
          (let ((lemmas+features ())
                (stripped-word
@@ -320,6 +353,7 @@
                    analyzer
                    stripped-word
                    (lambda (w l+f net)
+                     ;;(print (list w l+f))
                      (declare (ignore w))
                      ;; strip some markers and features
                      (let* ((readings (u:split l+f #\newline nil nil t))
@@ -508,223 +542,11 @@
 
 ;; *text*
 
-#+obsolete
-(defmethod write-gnc-text-json ((text parsed-text) stream
-				&key tracep split-trace
-				  (suppress-discarded-p t)
-				  (lemma t)
-				  (features t)
-				  (disambiguate t)
-				  (dependencies nil)
-				  show-rules
-				  rid ;; whether to show rid
-				  manual ;; for manual disambiguation
-				  &allow-other-keys)
-  ;;(debug (list :disambiguate disambiguate :dependencies dependencies :rid rid))
-  (let ((start-cpos nil)
-	(end-cpos nil))
-    (json
-     `("tokens"
-       ,(loop for node across (text-array text)
-              for id from 0
-              for cpos = (getf node :cpos)
-              when (eq (car node) :word)
-              collect (progn
-                        (setf end-cpos cpos)
-                        (unless start-cpos (setf start-cpos cpos))
-                        (write-word-json node
-                                         :id id
-                                         :tracep tracep
-                                         :split-trace split-trace
-                                         :suppress-discarded-p suppress-discarded-p
-                                         :lemma lemma
-                                         :features features
-                                         :disambiguate disambiguate
-                                         :dependencies dependencies
-                                         :show-rules show-rules
-                                         :rid rid
-                                         :manual manual)))
-       ,@(when start-cpos `("startCpos" start-cpos)) ;; not needed?
-       ,@(when start-cpos `("endCpos" end-cpos)) ;; not needed?
-       ))))
-
-#+obsolete ;; see parse-text.lisp
-(defun write-word-json (node &key id
-			       tracep ;; traces in view mode?
-			       split-trace
-			       suppress-discarded-p
-			       (lemma t)
-			       (features t)
-			       (disambiguate t)
-			       (dependencies nil)
-			       show-rules
-			       rid
-			       manual
-			       error
-			       (count t)
-			       no-morphology
-			       no-newlines)
-  (declare (ignore tracep split-trace no-newlines error disambiguate))
-  (ecase (car node)
-    (:word
-     (destructuring-bind (&key word morphology facs dipl norm |id| cpos comment
-			       &allow-other-keys)
-         node
-       (declare (ignore morphology comment |id| norm dipl facs))
-       ;;(debug node)
-       (let* ((morphology (unless no-morphology (getf (cddr node) :morphology)))
-	      (tmesis-msa (unless no-morphology (getf (cddr node) :tmesis-msa))))
-         (declare (ignore tmesis-msa))
-	 (apply
-	  #'st-json::jso
-	  `("word"
-	    ,word
-	    ,@(when dependencies 
-		    `("self" ,(unless (eql (getf node :self) 0) (getf node :self))
-		      "parent" ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)
-                      "label" ,(or (getf node :label) :null)
-                      "stored_parent" ,(or (getf node :stored-parent) :null)
-                      "stored_label" ,(or (getf node :stored-label) :null)))
-	    ,@(when count `("count" ,(length morphology)))
-	    ,@(when cpos `("cpos" ,cpos))
-	    "id" ,id
-	    ,@(when (and lemma features)
-		    `("msa"
-		      ,(cond (morphology
-			      (write-msa-json morphology
-					      :node node
-					      :lemma lemma
-					      :features features
-					      :suppress-discarded-p suppress-discarded-p
-					      :show-rules show-rules
-					      :rid rid
-					      :manual manual))
-			     #+ignore-yet
-			     (tmesis-msa
-			      (loop for ((segment . msa) . rest) on tmesis-msa
-				 do (write-msa-xml
-				     msa stream
-				     :node node
-				     :mode mode
-				     :no-newlines no-newlines
-				     :suppress-discarded-p suppress-discarded-p
-				     :tracep tracep
-				     :split-trace split-trace)
-				 when rest
-				 do #m(gnc:tmesis/)))))))))))))
-
-#+moved
-(defun gnc-to-ud-features (features)
-  (format nil "~{~a~^ ~}"
-	  (loop for f in (u:split features #\space)
-	     for ud = (car (gethash f *feature-name-table*))
-	     when (and ud (not (equal ud "-")))
-	     collect (string-left-trim "*" ud))))
-
-#+moved
-(defun remove-dep-edge-features (features)
-  (format nil "~{~a~^ ~}"
-	  (loop for f in (u:split features #\space)
-	     unless (find (char f 0) ">@")
-	     collect f)))
-
-#+moved
-(defun load-suppressed-features (&optional file)
-  (setf *suppressed-features*
-	(u:collecting
-	  (u:with-file-lines (line (or file "projects:gnc;text-tool;static;suppressed-features.txt"))
-	    (let ((f (string-trim '(#\space #\tab) line)))
-	      (unless (or (string= f "")
-			  (char= (char f 0) #\#))
-		(u:collect f)))))))
-
 (defvar *tagset*)
 
 #+moved
 (when (probe-file "projects:gnc;text-tool;static;suppressed-features.txt")
   (load-suppressed-features))
-
-#+moved
-(defun pos2 (features)
-  (let* ((flist (u:split features #\Space))
-	 (filtered-list
-	  (cons (car flist)
-		(delete-if (lambda (f)
-			     (or (find f *suppressed-features* :test #'string=)
-				 (eq (string< "PP:" f) 3)
-				 ))
-			   (cdr flist)))))
-    (format nil "~{~a~^ ~}" filtered-list)))
-
-#+moved
-(defun filter-morphology (readings &key tagset)
-  (case tagset
-    (:reduced-tagset
-     (let ((freadings ()))
-       (loop for (lemma features flag trace ids trans) in readings
-	  for pos2 = (pos2 features)
-	  for id from 0
-	  do (let ((freading (find-if (lambda (fr)
-					(and (equal (car fr) lemma)
-					     (equal (cadr fr) pos2)))
-				      freadings)))
-	       (cond (freading
-		      (when (find flag '(:selected :selected-cg))
-			(setf (caddr freading) flag))
-		      (push id (caddr (cddr freading)))
-		      (dolist (rule trace)
-			(pushnew rule (cadddr freading) :test #'equal)))
-		     (t
-		      (push (list lemma pos2 flag trace (list id)) freadings)))))
-       freadings))
-    (:pos
-     (let ((freadings ()))
-       (loop for (lemma features flag trace) in readings
-	  for pos2 = (car (u:split features #\Space))
-	  for id from 0
-	  do (let ((freading (find-if (lambda (fr)
-					(and (equal (car fr) lemma)
-					     (equal (cadr fr) pos2)))
-				      freadings)))
-	       (cond (freading
-		      (when (find flag '(:selected :selected-cg))
-			(setf (caddr freading) flag))
-		      (push id (caddr (cddr freading)))
-		      (dolist (rule trace)
-			(pushnew rule (cadddr freading) :test #'equal)))
-		     (t
-		      (push (list lemma pos2 flag trace (list id)) freadings)))))
-       freadings))
-    (:pos1 ;; first feature
-     (loop for (lemma features flag trace ids trans) in readings
-	for pos = (car (u:split features #\Space nil nil t))
-	when (find flag '(:selected :selected-cg))
-	collect (list lemma pos flag trace ids trans)))
-    (:pos2 ;; first, evtl. second feature
-     (loop for (lemma features flag trace ids trans) in readings
-	for f-list = (u:split features #\Space nil nil t)
-	for pos = (car f-list)
-	for pos2 = (find-if (lambda (f)
-			      (find f '("Prop" "Tr" "Intr" "Caus" "Stat" "StatPass")
-				    :test #'string=))
-			    f-list :from-end t) ;; want Caus > Stat
-	when (find flag '(:selected :selected-cg))
-	collect (list lemma (if pos2 (u:concat pos " " pos2) pos)
-		      flag trace ids trans)))
-    (:ud
-     (loop for (lemma features flag trace ids trans) in readings
-	for id from 0
-	collect (list lemma (gnc-to-ud-features features) flag trace ids trans)))
-    (:msa ;; i.e., no dependency edge labels
-     (loop for (lemma features flag trace ids trans) in readings
-	for id from 0
-	   collect (list lemma (remove-dep-edge-features features) flag trace ids trans)))
-    (:full-tagset
-     (loop for (lemma features flag trace ids trans) in readings
-	for id from 0
-	   collect (list lemma (u:split features #\+) flag trace ids trans)))
-    (otherwise
-     readings)))
 
 #+obsolete? ;; see parse-text.lisp
 (defmethod get-token-table ((text parsed-text) &key node-id &allow-other-keys)
@@ -1114,9 +936,9 @@
   nil)
 #+move
 (defmethod process-text :after ((text kp::gnc-text) (mode (eql :disambiguate))
-                                &key dependencies &allow-other-keys)
+                                &key dependencies no-postprocessing &allow-other-keys)
   ;; *text*
-  (when dependencies
+  (when (and dependencies (not no-postprocessing))
     #-test
     (initialize-depid-array
      text
@@ -1147,20 +969,26 @@
                                            (aref text-array parent-id)))))
                  ;;(print (list xcomp-aux (getf parent-token :morphology)))
                  (when (and parent-dep
-                            (find-if (lambda (lemma) (debug lemma)
+                            (find-if (lambda (lemma)
                                        (or (string= lemma "ყოფნ[ა]/ყ[ავ]")
                                            (string= lemma "ყოფნ[ა]/არ")
                                            (string= lemma "ყოფნ[ა]/ქნ")
+                                           (string= lemma "ყოფნ[ა]/ყოფ")
                                            (and xcomp-aux
                                                 (or (string= lemma "ქონ[ა]/ქვ")
-                                                    (string= lemma "ქონ[ა]/ქონ")))
+                                                    (string= lemma "ქონ[ა]/ქონ")
+                                                    (string= lemma "ქმნ[ა]/ქ[ე]ნ")
+                                                    (string= lemma "ქმნ[ა]/ქმ[ე]ნ")
+                                                    (string= lemma "ნდომ[ა]/ნ")
+                                                    ))
                                            (and ccomp-aux
                                                 (or (string= lemma "შე·ძლებ[ა]/ძლ")
-                                                    (string= lemma "ნებ[ა]/ნებ")))))
+                                                    (string= lemma "ნებ[ა]/ნებ")
+                                                    ;;(string= lemma "ნდომ[ა]/ნდ")
+                                                    ))))
                                      (getf parent-token :morphology)
                                      :key #'car))
                    (mapc (lambda (c)
-                           (debug c)
                            (let* ((child-id (getf (aref depid-array c) :token))
                                   (child
                                    (cond ((> (ash child-id -32) 0)
@@ -1180,19 +1008,22 @@
                            (if xcomp "COP" "AUX")))))))))
 
 (defmethod strip-segmentation ((language (eql :kat)) lemma word)
-  (if (or (< (length lemma) 4)
-	  (not (find-if (lambda (c) (find c "[]/{}-·*")) lemma)))
-      lemma
-      (let* ((slash-pos (position #\/ lemma))
-	     (lemma (subseq lemma 0 slash-pos))
-	     (lemma (if (< (length lemma) 3)
-			lemma
-			(delete-if (lambda (c) (find c "[]{}·*"))
-				   lemma)))
-	     (ei-pos (search "ეჲ" lemma)))
-	(if (eql ei-pos (- (length lemma) 2)) ;; ეჲ -> ჱ
-	    (u:concat (subseq lemma 0 (- (length lemma) 2)) "ჱ")
-	    lemma))))
+  (cond ((find lemma '("ყოფნ[ა]/არ" "ყოფნ[ა]/ყ[ავ]" "ყოფნ[ა]/ქნ") :test #'string=)
+         "არის") ;; prelim.
+        ((or (< (length lemma) 4)
+	     (not (find-if (lambda (c) (find c "[]/{}-·*")) lemma)))
+         lemma)
+        (t
+         (let* ((slash-pos (position #\/ lemma))
+	        (lemma (subseq lemma 0 slash-pos))
+	        (lemma (if (< (length lemma) 3)
+			   lemma
+			   (delete-if (lambda (c) (find c "[]{}·*"))
+				      lemma)))
+	        (ei-pos (search "ეჲ" lemma)))
+	   (if (eql ei-pos (- (length lemma) 2)) ;; ეჲ -> ჱ
+	       (u:concat (subseq lemma 0 (- (length lemma) 2)) "ჱ")
+	       lemma)))))
 
 (defparameter *gnc-to-ud-features* (make-hash-table :test #'equal))
 
@@ -1206,14 +1037,25 @@
             (list ud-features (if (equal pos "x") t pos))))))
 
 (defmethod morph-to-ud ((language (eql :kat)) morph &key drop-pos lemma)
-  (let ((features (u:split morph #\space))
-        (ud-features ())
-        (pos nil))
-    (setf features (delete-if (lambda (f) (find #\> f)) features))
+  (let* ((full-features (u:split morph #\space))
+         (ud-features ())
+         (pos nil)
+         (features (remove-if (lambda (f) (find #\> f)) full-features)))
     (setf pos (car features))
     (when drop-pos (pop features))
     (when (equal pos "VN")
       (push "VerbForm=Vnoun" ud-features))
+    (Print (list lemma pos full-features))
+    (when (and (equal pos "A")
+               (find ">XCOMP:AUX" full-features :test #'string=))
+      (push "VerbForm=Part" ud-features)
+      (cond ((find "PastPart" features :test #'string=)
+             (push "Tense=Past" ud-features))
+            ((find "PresPart" features :test #'string=)
+             (push "Tense=Pres" ud-features))
+            ((find "FutPart" features :test #'string=)
+             (push "Tense=Fut" ud-features))
+            ))
     (dolist (f features)
       (when (equal f "Pred")
         (push "Dyn=No" ud-features))
@@ -1254,6 +1096,7 @@
         (dyn nil))
     (dolist (f features)
       (destructuring-bind (&optional ud is-pos) (gethash f *gnc-to-ud-features*)
+        (print (list pos ud is-pos f))
         (cond ((null is-pos)
                nil)
               ((equal is-pos "CCONJ")
@@ -1266,17 +1109,21 @@
                (setf pos is-pos))
               ((equal relation "AUX")
                (setf pos "AUX"))
+              ((equal relation "COP")
+               (setf pos "AUX"))
               ((not (eq is-pos t))
                (setf pos is-pos))
-              #+ignore
-              ((and (equal pos "AUX") ;; а́кә-ха-ра
-                    (equal f "Dyn"))
-               (setf pos "VERB"))
+              ((and (equal pos "ADJ")
+                    (equal f "Quant"))
+               (setf pos "DET"))
               ((and pos (equal ud "ADP"))
+               nil)
+              ((and pos (equal ud "NUM"))
                nil)
               (ud
                (unless (and (equal ud "AUX") dyn)
                  (setf pos ud))))))
+    (debug pos)
     pos))
 
 (process-run-function "init-gnc-transducers"
