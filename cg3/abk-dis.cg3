@@ -583,6 +583,8 @@ REMOVE ("мӡа́кәа") ; # prefer V
 
 REMOVE ("а́-жәтә" "<.+ытә>"r) ;
 
+REMOVE ("а-мари́") IF (0 ("а́-мариа")) ;
+
 SELECT ("а́ӡынтәи") ;
 
 SELECT ("а́-рацәаны") ;
@@ -3376,11 +3378,21 @@ WITH NOPARENT LastName
      (NOT p (*)) {
    MAP >FLAT:NAME (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
-   REMCOHORT IGNORED WITHCHILD (*) (*) ;   
+   REMCOHORT IGNORED WITHCHILD (*) (*) ;   # buggy?
+} ;
+
+# attaches to wrong head:
+# Никита Хрушьчов Иосиф Сталин иҭыҧан днеит.
+WITH NOPARENT LastName
+  IF (-2 Anthr + MF)
+     (NOT p (*)) {
+   MAP >FLAT:NAME (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+   REMCOHORT IGNORED WITHCHILD (*) (*) ;   # buggy?
 } ;
 
 WITH NOPARENT Anthr + MF
-  IF (-1 LastName)
+  IF (-1 LastName - >FLAT:NAME)
      (NOT p (*)) {
    MAP >FLAT:NAME (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -4206,6 +4218,14 @@ WITH Prop + Place
    SETPARENT SAFE (*) TO (jC1 (*)) ;
 } ;
 
+# баҭлыкак ашампанҩы
+WITH ("а-баҭлы́ка") # more!
+  IF (1 Noun)
+     (NOT p (*)) {
+   MAP >NMOD (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
 # Асааҭ еиԥш акәын еиқәшәаны аус шауаз.
 WITH NOPARENT Noun
   IF (2 ("а́кә-заа-ра") + Cop)
@@ -4469,8 +4489,15 @@ WITH NOPARENT NonFin | How
 WITH NOPARENT NonFin | How
      IF (1 ("а-ды́р-ра") + S:Ad + Pot OR ("а-ҩа́шьа-ра") + S:Ad OR ("а-ха́·шҭ-ра") + S:Ad OR ("а-гәа́ла·шәа-ра") + S:Ad)
         (NOT p (*)) {
-   MAP >CSUBJ (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
+   MAP >CSUBJ (*) ;
+} ;
+
+WITH NOPARENT NonFin | How
+     IF (-1*w ("а-ды́р-ра") - S:Ad + Pot OR ("а-ҩа́шьа-ра") - S:Ad OR ("а-ха́·шҭ-ра") - S:Ad OR ("а-гәа́ла·шәа-ра") - S:Ad BARRIER V)
+        (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;
+   MAP >CSUBJ (*) ;
 } ;
 
 WITH NOPARENT NonFin | How | When
