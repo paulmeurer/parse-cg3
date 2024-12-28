@@ -10,6 +10,26 @@
 (defparameter *mg-analyzer* nil)
 (defparameter *ng-analyzer* nil)
 
+#+disabled
+(if (eq +fst+ :fst)
+    ;; Initialize the transducers
+    (init-transducers :kat)
+    ;; if you are interested in Modern Georgian only use this instead:
+    (init-transducers :kat :ng-only t))
+
+(defparameter *gnc-to-ud-features* (make-hash-table :test #'equal))
+
+(progn
+  (clrhash *gnc-to-ud-features*)
+  (u:with-file-fields ((&optional gnc-feature ud-features pos used-with &rest rest)
+                       "projects:gnc;feature-names.tsv" :empty-to-nil t :comment #\#)
+    (declare (ignore rest))
+    (when used-with
+      (setf used-with (u:split used-with #\space)))
+    (when (or ud-features pos)
+      (setf (gethash gnc-feature *gnc-to-ud-features*)
+            (list ud-features (if (equal pos "x") t pos) used-with)))))
+
 (defparameter *ng-guess-verb-analyzer*
   (make-instance 'fst-net
 		 :file "projects:georgian-morph;regex;guessed-verb.fst"
@@ -259,7 +279,7 @@
     lemmas+features))
 
 #+test
-(print (lookup-morphology :kat "რაღააა"))
+(print (lookup-morphology :kat "მათ"))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) guess-table tmesis-segment mwe
@@ -333,6 +353,20 @@
                (list "ის" "Pron Dem Dat Sg PP PP:ზე" NIL NIL)))
         ((string= word "რაღაა")
          (list (list "რაღ[ა]" "Pron Int Nonhum Nom L Encl:Aux" NIL NIL)))
+        ((string= word "ეს")
+         (list (list "ეს" "Pron Dem Nom Sg" NIL NIL)
+               (list "ეს" "Pron Dem Nom Att" NIL NIL)
+               (list "ეს" "Adv Sent" NIL NIL)))
+        ((string= word "მას")
+         (list (list "ის" "Pron Pers 3 Dat Sg" NIL NIL)))
+        ((string= word "მათ")
+         (list (list "მათ·ი" "Pron Poss Poss3Pl Gen Att <OldPl>" NIL NIL)
+               (list "მათ·ი" "Pron Poss Poss3Pl Dat Att" NIL NIL)
+               (list "მათ·ი" "Pron Poss Poss3Pl Advb Att" NIL NIL)
+               (list "მად" "Adv Mann Dialect" NIL NIL)
+               (list "ის" "Pron Pers 3 Gen Pl" NIL NIL)
+               (list "ის" "Pron Pers 3 Erg Pl" NIL NIL)
+               (list "ის" "Pron Pers 3 Dat Pl" NIL NIL)))
         (t
          (let ((lemmas+features ())
                (stripped-word
@@ -780,13 +814,6 @@
   slash-relations
   atts)
 
-#+disabled
-(if (eq +fst+ :fst)
-    ;; Initialize the transducers
-    (init-transducers :kat)
-    ;; if you are interested in Modern Georgian only use this instead:
-    (init-transducers :kat :ng-only t))
-
 ;; Takes a txt file as input and outputs a json array.
 ;; Make sure there are no line breaks in sentences.
 ;; Each element in the array is a parsed sentence.
@@ -1025,16 +1052,6 @@
 	       (u:concat (subseq lemma 0 (- (length lemma) 2)) "ჱ")
 	       lemma)))))
 
-(defparameter *gnc-to-ud-features* (make-hash-table :test #'equal))
-
-(progn
-  (clrhash *gnc-to-ud-features*)
-  (u:with-file-fields ((&optional gnc-feature ud-features pos &rest rest)
-                       "projects:gnc;feature-names.tsv" :empty-to-nil t :comment #\#)
-    (declare (ignore rest))
-    (when (or ud-features pos)
-      (setf (gethash gnc-feature *gnc-to-ud-features*)
-            (list ud-features (if (equal pos "x") t pos))))))
 
 (defmethod morph-to-ud ((language (eql :kat)) morph &key drop-pos lemma)
   (let* ((full-features (u:split morph #\space))
@@ -1043,9 +1060,13 @@
          (features (remove-if (lambda (f) (find #\> f)) full-features)))
     (setf pos (car features))
     (when drop-pos (pop features))
-    (when (equal pos "VN")
+    (print (list lemma :pos pos :ff full-features))
+    #+ignore
+    (when ext-pos
+      (push (u:concat "ExtPos=" ext-pos) ud-features))
+    (when (and (find "VN" features :test #'string=)
+               (find "$VERB" features :test #'string=))
       (push "VerbForm=Vnoun" ud-features))
-    (Print (list lemma pos full-features))
     (when (and (equal pos "A")
                (find ">XCOMP:AUX" full-features :test #'string=))
       (push "VerbForm=Part" ud-features)
@@ -1079,13 +1100,15 @@
              (push "Mood=Nec" ud-features)
              (push "VerbForm=Fin" ud-features))
             (t
-             (destructuring-bind (&optional ud is-pos) (gethash f *gnc-to-ud-features*)
-               (when (and ud (not is-pos))
+             (destructuring-bind (&optional ud is-pos used-with) (gethash f *gnc-to-ud-features*)
+               (when (and ud (not (eql is-pos t)) (find pos used-with :test #'string=))
                  (dolist (f (u:split ud #\|))
                    (when (equal f "Number=Card")
                      (setf ud-features (delete "Number=Sing" ud-features :test #'string=)))
                    (pushnew f ud-features :test #'string=
                             :key (lambda (fv) (subseq fv 0 (position #\= fv))))))))))
+    (when (find "$ADV" features :test #'equal)
+      (setf ud-features nil))
     (if ud-features
         (format nil "~{~a~^|~}" (sort ud-features #'string-lessp))
         "_")))
@@ -1095,8 +1118,8 @@
         (pos nil)
         (dyn nil))
     (dolist (f features)
-      (destructuring-bind (&optional ud is-pos) (gethash f *gnc-to-ud-features*)
-        (print (list pos ud is-pos f))
+      (destructuring-bind (&optional ud is-pos used-with) (gethash f *gnc-to-ud-features*)
+        (print (list pos ud is-pos f relation))
         (cond ((null is-pos)
                nil)
               ((equal is-pos "CCONJ")
@@ -1105,6 +1128,14 @@
               ((equal is-pos "CCONJ")
                (unless pos
                  (setf pos is-pos)))
+              #+ignore
+              ((and (equal f "VN") 
+                    (equal relation "OBL"))
+               (setf pos "NOUN"))
+              ((equal f "$ADV")
+               (setf pos "ADV"))
+              ((equal f "$VERB")
+               (setf pos "VERB"))
               ((equal is-pos "AUX")
                (setf pos is-pos))
               ((equal relation "AUX")
@@ -1123,8 +1154,13 @@
               (ud
                (unless (and (equal ud "AUX") dyn)
                  (setf pos ud))))))
-    (debug pos)
     pos))
+
+(defmethod normalize-lemma ((language (eql :kat)) lemma &key morph word)
+  (cond ((search "$ADV" morph)
+         word)
+        (t
+         lemma)))
 
 (process-run-function "init-gnc-transducers"
                       (lambda ()
