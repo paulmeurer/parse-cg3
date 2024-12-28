@@ -69,11 +69,14 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
             $PAREN
             $SCONJ
             $VERB
+            $ADV
+            $NA # used to inhibit $ADV rule
             >AMOD
             >ADVMOD
             >NUMMOD
             >DET
             >DET:POSS
+            >DET:ARG
             >PUNCT
             >ROOT
             >NSUBJ
@@ -89,6 +92,7 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
             >NMOD
             >NMOD:NAME
             >NMOD:AGENT
+            >NMOD:ARG
             >OBL:AGENT
             >ADVCL
             >ACL
@@ -338,6 +342,7 @@ SET Head = NAProp - Att - PP
 	 | Pron + Indef - PP
 	 | Pron + SIndef - PP
          | Pron + Dem - PP
+         | Pron + Poss - Att - PP
          | Num - PP
          | Pron + Refl
          | $Prop ;
@@ -476,6 +481,8 @@ REMOVE ("უკანა") + Voc ;
 REMOVE ("პოვნ[ა]/პოვ") + MedAct IF (0 ("პოვნ[ა]/პოვ") + Act) ;
 
 REMOVE ("დარბაზ·ი") + Prop ;
+REMOVE ("კავშირ·ი") + Prop ;
+REMOVE ("საღამო") + Prop ;
 
 REMOVE ("მხატვ[ა]რ·ი") + Prop ;
 
@@ -487,6 +494,7 @@ REMOVE ("იღ·ი") OR ("იღ[ა]") ; # იღებს
 REMOVE Att - ("სხვ[ა]") IF (1 Quant) ;
 
 REMOVE Encl:ღა + Foc + Rel:ც ;
+REMOVE ("კარზე") + Adv ;
 
 SELECT ("თავისთავად") + Adv ;
 SELECT ("ზამთრობით") + Adv ;
@@ -570,6 +578,8 @@ SELECT ("ჭერ·ი") ;
 SELECT ("ალბათ" Adv) ;
 
 SELECT ("ზოგ·ი" A) ;
+
+# SELECT ("რამდენ·ი") + Rel ;
 
 REMOVE ("მიკროსკოპ·ი") + Prop ;
 REMOVE ("განათლება") + Prop ;
@@ -1084,6 +1094,8 @@ n-SELECT Dem + $$CASE
 n-SELECT ("დრო") + N + $$CASE IF (-1 Dem + $$CASE) ;
 
 # Reflexives
+
+REMOVE ("თავ·ი") + Refl + Att ;
 
 om-SELECT ("თავ·ი" Pron) + $$CASE IF (1 ("თჳს·ი" Refl) + $$CASE) ; 
 om-SELECT ("თჳს·ი" Refl) + $$CASE IF (-1 ("თავ·ი" Pron) + $$CASE) ; 
@@ -1698,6 +1710,11 @@ SELECT Rel IF (0 SIndef) ;
 n-SELECT Rel
       IF (1 Rel:ც) ;
 
+# ისეთი მივლენები,… რომელთა შორის
+n-SELECT Rel
+      IF (1 Pp)
+         (-1 Comma);# LINK -1* Pron + Indef BARRIER @CLB OR CLB) ;
+
 n-SELECT Int - Rel:ც
       IF (NOT 1 Rel:ც) ;
 
@@ -2044,7 +2061,7 @@ SELECT Modal IF (1* OPT BARRIER CLB) ;
 SELECT Modal IF (1 Neg) (2 OPT) ;
 SELECT Modal IF (-1 OPT) ;
 
-SELECT OPT IF (-1* MODAL BARRIER CLB) ;
+# SELECT OPT IF (-1* MODAL BARRIER CLB) ;
 # SELECT OPT IF (-1* Modal BARRIER CLB) ;
 # select OPT IF (-1 Modal) ;
 SELECT VN IF (1 Modal) ;
@@ -3553,7 +3570,7 @@ REMOVE A + NewPl + $$CASE
 n-REMOVE Att - Pron - Poss
     IF (1 Refl - Att) ;
 
-n-SELECT Att - <OldPl> + $$CASE - ("დ[ა]") - Guess - ("ხელ·ი")
+n-SELECT Att - <OldPl> + $$CASE - ("დ[ა]") - Guess - ("ხელ·ი") - Refl
     IF (NOT 0 Gen - Att)
        (NOT 0 PP)
        (1C $$CASE - <OldPl>) ;
