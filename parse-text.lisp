@@ -595,11 +595,11 @@
             ;;         (and (null p) l))
             do ;; just copy :parent and :label to :stored-parent and :stored-label (??)
             (dolist (subnode (getf node :subtokens))
-              ;;(debug subnode)
               (let* ((sub-wid (getf subnode :wid))
                      (wid-list (when sub-wid (gethash (parse-integer sub-wid :start 1) wid-table))))
+                #-ignore
                 (when (null wid-list)
-                  (print (list :no-wid-list subnode)))
+                  (print (list :no-wid-list (if (listp p) (car p) p))))
                 (when wid-list
                   (setf (gethash sub-wid word-id-table)
                         subnode
@@ -1323,12 +1323,15 @@ Field number:	Field name:	Description:
     (when drop-pos (pop features))
     (format nil "~{~a~^_~}" features)))
 
+(defmethod normalize-lemma ((language t) lemma &key morph word)
+  (declare (ignore morph word))
+  lemma)
+
 (defmethod write-dependency-conll ((graph dep-node) stream
                                    &key text sentence-id (include-postag t) language &allow-other-keys)
   (let ((nodes ())
         (cop-count 0)
         (cop-nodes ())) ;; enclitic copula nodes
-    ;;(debug graph)
     (labels ((walk (node)
                (let ((atts (node-atts node))
                      (parent (if (node-parents node)
@@ -1336,8 +1339,11 @@ Field number:	Field name:	Description:
                                  0)))
                  (unless (zerop (node-id node))
                    (let* ((morph (getf atts :|morph|))
-                          (lemma (getf atts :|lemma|))
-                          (word (node-label node)))
+                          (word (node-label node))
+                          (lemma (normalize-lemma language (getf atts :|lemma|) :morph morph :word word))
+                          (ext-pos nil))
+                     (when (search " udMWE" morph)
+                       (setf lemma (subseq lemma 0 (position #\space lemma))))
                      (multiple-value-bind (word clit clit-lemma clit-morph)
                          (if (eq language :abk)
                              (abk-split-clitics word (if (and (search "Cop" morph)
