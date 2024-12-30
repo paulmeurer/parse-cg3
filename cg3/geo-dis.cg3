@@ -115,6 +115,7 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
             >FIXED
             >APPOS
             >DISCOURSE
+            >ARG
             FALSE
             ;
 
@@ -168,6 +169,8 @@ SET APart = A | Part ;
 SET NAPart = N | A | Part ;
 SET INDEF = (Pron SIndef) | (Pron Indef) ;
 
+LIST IndSp = Encl:IndSp1 Encl:IndSp2 Encl:IndSp3 ;
+
 om-SET PREP = ("<წინაშე>" Pp) | ("<შორის>" Pp) | ("<შემდგომად>" Pp)
        	    | ("<ვიდრე>" Pp) | ("<მიერ>" Pp <Inst>) | ("<შემდგომად>" Pp)
 	    | ("<ნაცვლად>" Pp) | ("თანახმად") + Pp ;
@@ -187,6 +190,8 @@ LIST CASEnoAdvb = Nom Erg Dat Gen Inst Voc Abs Ben Dir ;
 LIST DatAdv = Dat Advb ;
 LIST DatGen = Dat Gen ;
 LIST NomGenInst = Nom Gen Inst ;
+LIST DCASE = DNom DErg DDat DGen DAdvb DInst DVoc ;
+LIST DDCASE = DDNom DDErg DDDat DDGen DDAdvb DDInst DDVoc ;
 
 LIST NUMBER = Sg OldPl NewPl ;
 LIST NUM = Sg Pl ;
@@ -347,9 +352,9 @@ SET Head = NAProp - Att - PP
          | Pron + Refl
          | $Prop ;
 
-SET NomHead = Head + Nom ;
-SET DatHead = Head + Dat ;
-SET ErgHead = Head + Erg OR Head + DErg OR Head + DDErg;
+SET NomHead = Head + Nom OR Head + DNom ;
+SET DatHead = Head + Dat OR Head + DDat ;
+SET ErgHead = Head + Erg OR Head + DErg OR Head + DDErg ;
 
 LIST NomStem = ".*(ი|ა|ე|ო|უ|].*)"r ;
 SET bareStem = (*) - (".*(·ი|\\])"r) ;
@@ -573,6 +578,8 @@ REMOVE ("ოქრო") + Prop ;
 
 REMOVE ("ოთხ·ი") + N ;
 
+SELECT ("შენისთანა") ;
+
 SELECT ("ჭერ·ი") ;
 
 SELECT ("ალბათ" Adv) ;
@@ -603,6 +610,9 @@ SELECT ("საიმედო") + A ;
 
 REMOVE ("დილა") ; # keep დილ[ა]
 
+SELECT ("უაღრეს·ი") + A + Elat + Advb IF (1 A) ;
+
+SELECT ("მოგვიანებით") + Adv ;
 SELECT ("მოედ[ა]ნ·ი") ;
 REMOVE ("რამ·ი") ; # = ramie (Bœhmeria nivea)
 REMOVE ("რამ[ა]") ; # = med † conjunctivitis
@@ -799,6 +809,8 @@ SELECT ("ნაშუაღამევს" Adv) IF (NOT -1 A + Dat + Att) ;
 SELECT ("არყ·ი") IF (1 ("ხ[ე]")) ; # not არაყი
 SELECT ("ლარ·ი") ;
 SELECT ("მკვეთრ·ი") ; # remove this!
+
+SELECT Dat + PP:ვით ;
 
 SELECT ("მისტერი[ა]") ; # not მისტერ-ი
 
@@ -1089,7 +1101,8 @@ om-SELECT Dem + $$CASE + $$NUMBER
 
 # too general?
 n-SELECT Dem + $$CASE
-      IF (1 $$CASE) ;
+      IF (1 $$CASE)
+         (NOT 1 Pron + Int) ;
 
 n-SELECT ("დრო") + N + $$CASE IF (-1 Dem + $$CASE) ;
 
@@ -1659,7 +1672,7 @@ REMOVE ("პატარა" Adv) IF (NOT 1 V) ;
 SET CommaDot = Comma | (".") ;
 SET CommaDa = Comma | ("<და>") ;
 
-# SELECT ("კი" Adv) IF (1 CommaDot) ;
+SELECT ("კი") + Adv + Root IF (-1 BOS OR Dash) ;
 SELECT ("კი" Disc) IF (1 ("არა")) ;
 SELECT ("კი" Disc) IF (-1 N) ;
 SELECT ("კი" Disc) IF (NOT 1 CommaDot) ;
@@ -1850,6 +1863,9 @@ SELECT @NC
 #ADD @NC ("და" Cj) - @NC
 #      IF (-1 Gen + L)
 #	 (1 Gen) ;
+
+SELECT Comma + @NC
+    IF (-3 ("რ[ა]") LINK 1 ("თქმ[ა]/თქმ") LINK 1 ("უნდა")) ;
 
 SELECT @NC
     IF (-1 Dat + L)
@@ -2224,10 +2240,11 @@ REMOVE Att
 
 REMOVE Att IF (1C V) ;
 
-REMOVE Att IF (1 Punct) ;
+REMOVE Att + $$CASE IF (1 Punct LINK NOT 1 Att + $$CASE) ;
 
 SELECT Att + Erg
-    IF (1C Erg) ;
+    IF (0C Att)
+       (1C Erg) ;
 
 #SELECT Att + Gen
 #    IF (1C Gen)
@@ -2949,140 +2966,140 @@ om-SELECT ("<იყო>" Pass) IF (NOT 0* Erg BARRIER CLB) ;
 
 # Pron Pers
 
-SELECT (Pron Pers Erg 1 Sg) if (0C* S:Erg + S:1Sg BARRIER CLB | V) ;
-SELECT (Pron Pers Nom 1 Sg) if (0C* S:Nom + S:1Sg BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 1 Sg) if (0C* S:Dat + S:1Sg BARRIER CLB | V) ;
+SELECT (Pron Pers Erg 1 Sg) if (0C* S:Erg + S:1Sg BARRIER CLB OR V) ;
+SELECT (Pron Pers Nom 1 Sg) if (0C* S:Nom + S:1Sg BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 1 Sg) if (0C* S:Dat + S:1Sg BARRIER CLB OR V) ;
 
-SELECT (Pron Pers Erg 2 Sg) IF (0C* S:Erg + S:2Sg BARRIER CLB | V) ;
-SELECT (Pron Pers Nom 2 Sg) IF (0C* S:Nom + S:2Sg BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 2 Sg) IF (0C* S:Dat + S:2Sg BARRIER CLB | V) ;
+SELECT (Pron Pers Erg 2 Sg) IF (0C* S:Erg + S:2Sg BARRIER CLB OR V) ;
+SELECT (Pron Pers Nom 2 Sg) IF (0C* S:Nom + S:2Sg BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 2 Sg) IF (0C* S:Dat + S:2Sg BARRIER CLB OR V) ;
 
-SELECT (Pron Pers Erg 1 Pl) IF (0C* S:Erg + S:1Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Nom 1 Pl) IF (0C* S:Nom + S:1Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 1 Pl) IF (0C* S:Dat + S:1Pl BARRIER CLB | V) ;
+SELECT (Pron Pers Erg 1 Pl) IF (0C* S:Erg + S:1Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Nom 1 Pl) IF (0C* S:Nom + S:1Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 1 Pl) IF (0C* S:Dat + S:1Pl BARRIER CLB OR V) ;
 
-SELECT (Pron Pers Erg 2 Pl) IF (0C* S:Erg + S:2Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Nom 2 Pl) IF (0C* S:Nom + S:2Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 2 Pl) IF (0C* S:Dat + S:2Pl BARRIER CLB | V) ;
+SELECT (Pron Pers Erg 2 Pl) IF (0C* S:Erg + S:2Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Nom 2 Pl) IF (0C* S:Nom + S:2Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 2 Pl) IF (0C* S:Dat + S:2Pl BARRIER CLB OR V) ;
 
-SELECT (Pron Pers Erg 3 Pl) IF (0C* S:Erg + S:3Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 3 Pl) IF (0C* S:Dat + S:3Pl BARRIER CLB | V) ;
+SELECT (Pron Pers Erg 3 Pl) IF (0C* S:Erg + S:3Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 3 Pl) IF (0C* S:Dat + S:3Pl BARRIER CLB OR V) ;
 
-SELECT (Pron Pers Erg 1 Sg) if (0C* DO:Erg + DO:1Sg BARRIER CLB | V) ;
-SELECT (Pron Pers Nom 1 Sg) if (0C* DO:Nom + DO:1Sg BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 1 Sg) if (0C* DO:Dat + DO:1Sg BARRIER CLB | V) ;
+SELECT (Pron Pers Erg 1 Sg) if (0C* DO:Erg + DO:1Sg BARRIER CLB OR V) ;
+SELECT (Pron Pers Nom 1 Sg) if (0C* DO:Nom + DO:1Sg BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 1 Sg) if (0C* DO:Dat + DO:1Sg BARRIER CLB OR V) ;
 
-SELECT (Pron Pers Erg 2 Sg) IF (0C* DO:Erg + DO:2Sg BARRIER CLB | V) ;
-SELECT (Pron Pers Nom 2 Sg) IF (0C* DO:Nom + DO:2Sg BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 2 Sg) IF (0C* DO:Dat + DO:2Sg BARRIER CLB | V) ;
-o-SELECT (Pron Pers Dat 2 Sg) IF (0C* DO:Dat + DO:2Sg OR DO:Dat + DO:2 BARRIER CLB | V) ;
-o-SELECT (Pron Pers Nom 2 Sg) IF (0C* DO:Nom + DO:2Sg OR DO:Nom + DO:2 BARRIER CLB | V) ;
+SELECT (Pron Pers Erg 2 Sg) IF (0C* DO:Erg + DO:2Sg BARRIER CLB OR V) ;
+SELECT (Pron Pers Nom 2 Sg) IF (0C* DO:Nom + DO:2Sg BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 2 Sg) IF (0C* DO:Dat + DO:2Sg BARRIER CLB OR V) ;
+o-SELECT (Pron Pers Dat 2 Sg) IF (0C* DO:Dat + DO:2Sg OR DO:Dat + DO:2 BARRIER CLB OR V) ;
+o-SELECT (Pron Pers Nom 2 Sg) IF (0C* DO:Nom + DO:2Sg OR DO:Nom + DO:2 BARRIER CLB OR V) ;
 
-SELECT (Pron Pers Erg 1 Pl) IF (0C* DO:Erg + DO:1Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Nom 1 Pl) IF (0C* DO:Nom + DO:1Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 1 Pl) IF (0C* DO:Dat + DO:1Pl BARRIER CLB | V) ;
+SELECT (Pron Pers Erg 1 Pl) IF (0C* DO:Erg + DO:1Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Nom 1 Pl) IF (0C* DO:Nom + DO:1Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 1 Pl) IF (0C* DO:Dat + DO:1Pl BARRIER CLB OR V) ;
 
-SELECT (Pron Pers Erg 2 Pl) IF (0C* DO:Erg + DO:2Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Nom 2 Pl) IF (0C* DO:Nom + DO:2Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 2 Pl) IF (0C* DO:Dat + DO:2Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 2 Pl) IF (0C* IO:Dat + IO:2Pl BARRIER CLB | V) ;
-om-SELECT (Pron Pers Dat 2 Pl) IF (0C* IO:Dat + IO:2 BARRIER CLB | V) ;
+SELECT (Pron Pers Erg 2 Pl) IF (0C* DO:Erg + DO:2Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Nom 2 Pl) IF (0C* DO:Nom + DO:2Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 2 Pl) IF (0C* DO:Dat + DO:2Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 2 Pl) IF (0C* IO:Dat + IO:2Pl BARRIER CLB OR V) ;
+om-SELECT (Pron Pers Dat 2 Pl) IF (0C* IO:Dat + IO:2 BARRIER CLB OR V) ;
 
-SELECT (Pron Pers Dat 1 Pl) IF (0C* IO:Dat + IO:1Pl BARRIER CLB | V) ;
-o-SELECT (Pron Pers Dat 1 Pl) IF (0C* IO:Dat + IO:1 + Incl BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 2 Pl) IF (0C* IO:Dat + IO:2Pl BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 1 Sg) IF (0C* IO:Dat + IO:1Sg BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 2 Sg) IF (0C* IO:Dat + IO:2Sg BARRIER CLB | V) ;
-o-SELECT (Pron Pers Dat 2 Sg) IF (0C* IO:Dat + IO:2Sg OR IO:Dat + IO:2 BARRIER CLB | V) ;
-SELECT (Pron Pers Dat 3 Pl) IF (0C* IO:Dat + IO:3 BARRIER CLB | V) ;
+SELECT (Pron Pers Dat 1 Pl) IF (0C* IO:Dat + IO:1Pl BARRIER CLB OR V) ;
+o-SELECT (Pron Pers Dat 1 Pl) IF (0C* IO:Dat + IO:1 + Incl BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 2 Pl) IF (0C* IO:Dat + IO:2Pl BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 1 Sg) IF (0C* IO:Dat + IO:1Sg BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 2 Sg) IF (0C* IO:Dat + IO:2Sg BARRIER CLB OR V) ;
+o-SELECT (Pron Pers Dat 2 Sg) IF (0C* IO:Dat + IO:2Sg OR IO:Dat + IO:2 BARRIER CLB OR V) ;
+SELECT (Pron Pers Dat 3 Pl) IF (0C* IO:Dat + IO:3 BARRIER CLB OR V) ;
 
-SELECT (Pron Rel Hum Dat) IF (0C* IO:Dat + IO:3 BARRIER CLB | V) ;
+SELECT (Pron Rel Hum Dat) IF (0C* IO:Dat + IO:3 BARRIER CLB OR V) ;
 
 om-SELECT NOM + Pl
        IF (0C Nom)
-       	  (0* DO:Nom + DO:3Pl BARRIER CLB | V) ;
+       	  (0* DO:Nom + DO:3Pl BARRIER CLB OR V) ;
 
 o-SELECT Dat + OldPl
       IF (0 Hum)
       	 (-1 IO:Dat + IO:3)
-	 (NEGATE -2* Dat BARRIER CLB | V) ;
+	 (NEGATE -2* Dat BARRIER CLB OR V) ;
 
 # Erg must be licensed by verb
 SELECT S:Erg + S:3 IF (0C* Erg - Att BARRIER CLB) ;
 
 #@@@ select subj marker from Pron Pers
 
-SELECT (V S:1Sg) IF (0C S:Erg) (0* (Pron Pers Erg 1 Sg) BARRIER CLB | V) ;
+SELECT (V S:1Sg) IF (0C S:Erg) (0* (Pron Pers Erg 1 Sg) BARRIER CLB OR V) ;
 
-SELECT (V S:1Sg) IF (0C S:Nom) (0* (Pron Pers Nom 1 Sg) BARRIER CLB | V) ;
-SELECT (V S:1Sg) IF (0C S:Dat) (0* (Pron Pers Dat 1 Sg) BARRIER CLB | V) ;
+SELECT (V S:1Sg) IF (0C S:Nom) (0* (Pron Pers Nom 1 Sg) BARRIER CLB OR V) ;
+SELECT (V S:1Sg) IF (0C S:Dat) (0* (Pron Pers Dat 1 Sg) BARRIER CLB OR V) ;
 
-SELECT (V S:2Sg) IF (0C S:Erg) (0* (Pron Pers Erg 2 Sg) BARRIER CLB | V) ;
-SELECT (V S:2Sg) IF (0C S:Nom) (0* (Pron Pers Nom 2 Sg) BARRIER CLB | V) ;
-SELECT (V S:2Sg) IF (0C S:Dat) (0* (Pron Pers Dat 2 Sg) BARRIER CLB | V) ;
+SELECT (V S:2Sg) IF (0C S:Erg) (0* (Pron Pers Erg 2 Sg) BARRIER CLB OR V) ;
+SELECT (V S:2Sg) IF (0C S:Nom) (0* (Pron Pers Nom 2 Sg) BARRIER CLB OR V) ;
+SELECT (V S:2Sg) IF (0C S:Dat) (0* (Pron Pers Dat 2 Sg) BARRIER CLB OR V) ;
 
-SELECT (V S:1Pl) IF (0C S:Erg) (0* (Pron Pers Erg 1 Pl) BARRIER CLB | V) ;
-SELECT (V S:1Pl) IF (0C S:Nom) (0* (Pron Pers Nom 1 Pl) BARRIER CLB | V) ;
-SELECT (V S:1Pl) IF (0C S:Dat) (0* (Pron Pers Dat 1 Pl) BARRIER CLB | V) ;
+SELECT (V S:1Pl) IF (0C S:Erg) (0* (Pron Pers Erg 1 Pl) BARRIER CLB OR V) ;
+SELECT (V S:1Pl) IF (0C S:Nom) (0* (Pron Pers Nom 1 Pl) BARRIER CLB OR V) ;
+SELECT (V S:1Pl) IF (0C S:Dat) (0* (Pron Pers Dat 1 Pl) BARRIER CLB OR V) ;
 
-SELECT (V S:2Pl) IF (0C S:Erg) (0* (Pron Pers Erg 2 Pl) BARRIER CLB | V) ;
-SELECT (V S:2Pl) IF (0C S:Nom) (0* (Pron Pers Nom 2 Pl) BARRIER CLB | V) ;
-SELECT (V S:2Pl) IF (0C S:Dat) (0* (Pron Pers Dat 2 Pl) BARRIER CLB | V) ;
+SELECT (V S:2Pl) IF (0C S:Erg) (0* (Pron Pers Erg 2 Pl) BARRIER CLB OR V) ;
+SELECT (V S:2Pl) IF (0C S:Nom) (0* (Pron Pers Nom 2 Pl) BARRIER CLB OR V) ;
+SELECT (V S:2Pl) IF (0C S:Dat) (0* (Pron Pers Dat 2 Pl) BARRIER CLB OR V) ;
 
 # replace previous ones by this and the like
-SELECT (V S:2Pl) IF (0 S:Erg) (NOT 0 DO:2Pl) (NOT 0 IO:2Pl) (0* (Pron Pers Erg 2 Pl) BARRIER CLB | V) ;
+SELECT (V S:2Pl) IF (0 S:Erg) (NOT 0 DO:2Pl) (NOT 0 IO:2Pl) (0* (Pron Pers Erg 2 Pl) BARRIER CLB OR V) ;
 
 
-SET NomArg1Sg = (<S:Nom> S:1Sg) | DO:Nom + DO:1Sg ;
-SET NomArg2Sg = (<S:Nom> S:2Sg) | DO:Nom + DO:2Sg ;
-SET NomArg3Sg = (<S:Nom> S:3Sg) | DO:Nom + DO:3Sg ;
-SET NomArg3Pl = (<S:Nom> S:3Pl) | DO:Nom + DO:3Pl ;
+SET NomArg1Sg = (<S:Nom> S:1Sg) OR DO:Nom + DO:1Sg ;
+SET NomArg2Sg = (<S:Nom> S:2Sg) OR DO:Nom + DO:2Sg ;
+SET NomArg3Sg = (<S:Nom> S:3Sg) OR DO:Nom + DO:3Sg ;
+SET NomArg3Pl = (<S:Nom> S:3Pl) OR DO:Nom + DO:3Pl ;
 
-SET DatArg1Sg = (<S:Dat> S:1Sg) | (<DO:Dat> DO:1Sg) | (<IO:Dat> IO:1Sg) ;
-SET DatArg2Sg = (<S:Dat> S:2Sg) | (<DO:Dat> DO:2Sg) | (<IO:Dat> IO:2Sg) ;
-SET DatArg3Sg = (<S:Dat> S:3Sg) | (<DO:Dat> DO:3Sg) | (<IO:Dat> IO:3) ; # | (<IO:Dat> IO:3Sg) ;
-SET DatArg3Pl = (<S:Dat> S:3Pl) | (<DO:Dat> DO:3Pl) | (<IO:Dat> IO:3) ;
+SET DatArg1Sg = (<S:Dat> S:1Sg) OR (<DO:Dat> DO:1Sg) OR (<IO:Dat> IO:1Sg) ;
+SET DatArg2Sg = (<S:Dat> S:2Sg) OR (<DO:Dat> DO:2Sg) OR (<IO:Dat> IO:2Sg) ;
+SET DatArg3Sg = (<S:Dat> S:3Sg) OR (<DO:Dat> DO:3Sg) OR (<IO:Dat> IO:3) ; # OR (<IO:Dat> IO:3Sg) ;
+SET DatArg3Pl = (<S:Dat> S:3Pl) OR (<DO:Dat> DO:3Pl) OR (<IO:Dat> IO:3) ;
 
-SELECT NomArg1Sg IF (0*C (Pron Pers Nom 1 Sg) BARRIER CLB | V) ;
-SELECT NomArg2Sg IF (0*C (Pron Pers Nom 2 Sg) BARRIER CLB | V) ;
-SELECT NomArg3Pl IF (0*C NOM + Pl BARRIER CLB | V) ;
+SELECT NomArg1Sg IF (0*C (Pron Pers Nom 1 Sg) BARRIER CLB OR V) ;
+SELECT NomArg2Sg IF (0*C (Pron Pers Nom 2 Sg) BARRIER CLB OR V) ;
+SELECT NomArg3Pl IF (0*C NOM + Pl BARRIER CLB OR V) ;
 
-SELECT DatArg1Sg IF (0*C (Pron Pers Dat 1 Sg) - PP BARRIER CLB | V) ;
-SELECT DatArg2Sg IF (0*C (Pron Pers Dat 2 Sg) - PP BARRIER CLB | V) ;
-SELECT DatArg3Sg IF (0*C (Pron Pers Dat 3 Sg) - PP BARRIER CLB | V) ;
+SELECT DatArg1Sg IF (0*C (Pron Pers Dat 1 Sg) - PP BARRIER CLB OR V) ;
+SELECT DatArg2Sg IF (0*C (Pron Pers Dat 2 Sg) - PP BARRIER CLB OR V) ;
+SELECT DatArg3Sg IF (0*C (Pron Pers Dat 3 Sg) - PP BARRIER CLB OR V) ;
 
-SELECT (V S:2Sg) IF (0C S:Erg) (0* (Pron Pers Erg 2 Sg) BARRIER CLB | V) ;
-SELECT (V S:2Sg) IF (0C S:Nom) (0* (Pron Pers Nom 2 Sg) BARRIER CLB | V) ;
-SELECT (V S:2Sg) IF (0C S:Dat) (0* (Pron Pers Dat 2 Sg) - PP BARRIER CLB | V) ;
+SELECT (V S:2Sg) IF (0C S:Erg) (0* (Pron Pers Erg 2 Sg) BARRIER CLB OR V) ;
+SELECT (V S:2Sg) IF (0C S:Nom) (0* (Pron Pers Nom 2 Sg) BARRIER CLB OR V) ;
+SELECT (V S:2Sg) IF (0C S:Dat) (0* (Pron Pers Dat 2 Sg) - PP BARRIER CLB OR V) ;
 
-SELECT (V S:3Sg) IF (0C S:Erg) (0* ErgSg - Att BARRIER CLB | V) ;
-SELECT (V S:3Sg) IF (0C S:Nom) (0* NomSg - Att BARRIER CLB | V) ;
-SELECT (V S:3Sg) IF (0C S:Dat) (0* DatSg - Att BARRIER CLB | V) ; # FIXME: only S:3 for Inv OG
+SELECT (V S:3Sg) IF (0C S:Erg) (0* ErgSg - Att BARRIER CLB OR V) ;
+SELECT (V S:3Sg) IF (0C S:Nom) (0* NomSg - Att BARRIER CLB OR V) ;
+SELECT (V S:3Sg) IF (0C S:Dat) (0* DatSg - Att BARRIER CLB OR V) ; # FIXME: only S:3 for Inv OG
 
-SELECT (V S:3Pl) IF (0C S:Erg) (0* ErgPl - Att BARRIER CLB | V) ;
-SELECT (V S:3Pl) IF (0C S:Nom) (0* NomPl - Att BARRIER CLB | V) ;
-SELECT (V S:3Pl) IF (0C S:Dat) (0* DatPl - Att BARRIER CLB | V) ; # FIXME: only S:3 for Inv OG
+SELECT (V S:3Pl) IF (0C S:Erg) (0* ErgPl - Att BARRIER CLB OR V) ;
+SELECT (V S:3Pl) IF (0C S:Nom) (0* NomPl - Att BARRIER CLB OR V) ;
+SELECT (V S:3Pl) IF (0C S:Dat) (0* DatPl - Att BARRIER CLB OR V) ; # FIXME: only S:3 for Inv OG
 
-SELECT (V S:1Pl) IF (0C S:Erg) (0* (Pron Pers Erg 1 Pl) BARRIER CLB | V) ;
-SELECT (V S:1Pl) IF (0C S:Nom) (0* (Pron Pers Nom 1 Pl) BARRIER CLB | V) ;
-SELECT (V S:1Pl) IF (0C S:Dat) (0* (Pron Pers Dat 1 Pl) - PP BARRIER CLB | V) ;
+SELECT (V S:1Pl) IF (0C S:Erg) (0* (Pron Pers Erg 1 Pl) BARRIER CLB OR V) ;
+SELECT (V S:1Pl) IF (0C S:Nom) (0* (Pron Pers Nom 1 Pl) BARRIER CLB OR V) ;
+SELECT (V S:1Pl) IF (0C S:Dat) (0* (Pron Pers Dat 1 Pl) - PP BARRIER CLB OR V) ;
 
-SELECT (V S:2Pl) IF (0C S:Erg) (0* (Pron Pers Erg 2 Pl) BARRIER CLB | V) ;
-SELECT (V S:2Pl) IF (0C S:Nom) (0* (Pron Pers Nom 2 Pl) BARRIER CLB | V) ;
-SELECT (V S:2Pl) IF (0C S:Dat) (0* (Pron Pers Dat 2 Pl) - PP BARRIER CLB | V) ;
+SELECT (V S:2Pl) IF (0C S:Erg) (0* (Pron Pers Erg 2 Pl) BARRIER CLB OR V) ;
+SELECT (V S:2Pl) IF (0C S:Nom) (0* (Pron Pers Nom 2 Pl) BARRIER CLB OR V) ;
+SELECT (V S:2Pl) IF (0C S:Dat) (0* (Pron Pers Dat 2 Pl) - PP BARRIER CLB OR V) ;
 
-SELECT (V IO:2Pl) IF (0C IO:Dat) (0* (Pron Pers Dat 2 Pl) - PP BARRIER CLB | V) ;
-om-SELECT (V IO:2) IF (0C IO:Dat) (0* (Pron Pers Dat 2 Pl) - PP BARRIER CLB | V) ;
+SELECT (V IO:2Pl) IF (0C IO:Dat) (0* (Pron Pers Dat 2 Pl) - PP BARRIER CLB OR V) ;
+om-SELECT (V IO:2) IF (0C IO:Dat) (0* (Pron Pers Dat 2 Pl) - PP BARRIER CLB OR V) ;
 
-o-REMOVE (V [Excl]) IF (0* (Pron Pers 1 Sg) BARRIER CLB | V) ;
-o-SELECT (V [Excl]) IF (0* (Pron Pers 1 Pl) BARRIER CLB | V) ;
+o-REMOVE (V [Excl]) IF (0* (Pron Pers 1 Sg) BARRIER CLB OR V) ;
+o-SELECT (V [Excl]) IF (0* (Pron Pers 1 Pl) BARRIER CLB OR V) ;
 
-SELECT (V S:3Sg) IF (0C S:Nom) (0* Anthr BARRIER CLB | V) ;
+SELECT (V S:3Sg) IF (0C S:Nom) (0* Anthr BARRIER CLB OR V) ;
 
-SELECT DO:2Pl IF (0C DO:Dat) (0* (Pron Pers Dat 2 Pl) - PP BARRIER CLB | V) ;
+SELECT DO:2Pl IF (0C DO:Dat) (0* (Pron Pers Dat 2 Pl) - PP BARRIER CLB OR V) ;
 
 # არავინ არ…; ვინმე
-SELECT (V S:3Sg) IF (0C S:Nom) (-1* Pron + Hum + Nom BARRIER CLB | V) ;
+SELECT (V S:3Sg) IF (0C S:Nom) (-1* Pron + Hum + Nom BARRIER CLB OR V) ;
 
 # ახლავს, გახლავთ…
 n-SELECT ("ხლებ[ა]/ახლ" MedPass)
@@ -3102,7 +3119,7 @@ SELECT PassState ;
 
 SELECT <S-DO> OR <S-DO-IO>
     IF (0 <S-DO> + DO:Nom + DO:3)
-       (NOT 0 <S>)
+       (NOT 0 <S> OR <S-IO>)
        (0* Nom - Att BARRIER CLB) ;
 
 SELECT <S-DO>
@@ -3307,12 +3324,12 @@ SELECT Dat - OldPl
 
 # თქვენდა etc. if IO
 om-SELECT (Pron Pers Ben)
-	   IF (0* IO:Dat + IO:3 BARRIER CLB | V)
-	      (NEGATE 0* Dat BARRIER CLB | V) ;
+	   IF (0* IO:Dat + IO:3 BARRIER CLB OR V)
+	      (NEGATE 0* Dat BARRIER CLB OR V) ;
 
 # რომლისა ღირს ვარ
 o-SELECT Ben # or Dir?
-	 IF (0* ("ღირს·ი") LINK 1 AUX BARRIER CLB | V) ;
+	 IF (0* ("ღირს·ი") LINK 1 AUX BARRIER CLB OR V) ;
 
 # remove 1/2 person arg reading if a 3rd person arg is found with appropriate case
 # Dangerous! Could be apposition, or Prl
@@ -3362,7 +3379,7 @@ n-REMOVE Gen
        (NOT 1 NACProp)
        (NOT 1 interNPAdv LINK 1 NACProp)
        (NEGATE 1 Adv LINK 1 NA)
-       (NEGATE 1 (Cj Coord) | (",") | (Adv) LINK 1 Gen)
+       (NEGATE 1 (Cj Coord) OR (",") OR (Adv) LINK 1 Gen)
        (NEGATE 1 T:NPGen LINK 1 Gen)
        (NEGATE -1 T:NPGen LINK -1 N) # ??
        (NEGATE -1 T:NPGen LINK -1 PREP + <Gen>)
@@ -3379,15 +3396,15 @@ n-REMOVE Gen + Att IF (1 Pron + Poss - Att) ;
 n-REMOVE Dat + NProp - Att - Temp
     IF (NOT 1 POSTP + <Dat>)
        (NOT 1 POSTP + <Dat/Gen>)
-       (NEGATE 1 ("და" Cj) | (",") | Adv LINK 1 Dat)
+       (NEGATE 1 ("და" Cj) OR (",") OR Adv LINK 1 Dat)
        # (1*C Dat LINK NOT 0 DO:Dat + IO:Dat LINK 1* DatArg3 BARRIER CLB) ;
-       (1*C Dat - PP LINK 1* DatArg3 - DO:Dat + IO:Dat BARRIER CLB) ;
+       (1*C Dat - PP BARRIER V LINK 1* DatArg3 - DO:Dat + IO:Dat BARRIER CLB) ;
 
 # remove Dat if there is a relative in Dat
 n-REMOVE Dat + NProp - Att - Temp - PP
     IF (NOT 1 POSTP + <Dat>)
        (NOT 1 POSTP + <Dat/Gen>)
-       (NEGATE 1 ("და" Cj) | (",") | Adv LINK 1 Dat)
+       (NEGATE 1 ("და" Cj) OR (",") OR Adv LINK 1 Dat)
        (-1* V LINK NOT 0 DO:Dat + IO:Dat LINK -1* Rel + Dat BARRIER CLB) ;
 
 om-REMOVE Gen - L - PP
@@ -3398,7 +3415,7 @@ om-REMOVE Gen - L - PP
        (NOT 1 Gen)
        (NOT -1 Gen) # OG
        (NOT 1 NACProp)
-       (NEGATE 1 ("და" Cj) | (",") | (Adv) LINK 1 Gen)
+       (NEGATE 1 ("და" Cj) OR (",") OR (Adv) LINK 1 Gen)
        (NEGATE 1 T:NPGen LINK 1 Gen)
        (NEGATE -1 T:NPGen LINK -1 N) # ??
        (NEGATE -1 T:NPGen LINK -1 PREP + <Gen>)
@@ -3570,10 +3587,21 @@ REMOVE A + NewPl + $$CASE
 n-REMOVE Att - Pron - Poss
     IF (1 Refl - Att) ;
 
+# მე და შენ
+SELECT Pron + Pers
+    IF (-1 ("და"))
+       (-2 Pron + Pers) ;
+
 n-SELECT Att - <OldPl> + $$CASE - ("დ[ა]") - Guess - ("ხელ·ი") - Refl
     IF (NOT 0 Gen - Att)
        (NOT 0 PP)
+       (NOT 1 Encl:Aux)
+       (NOT 2 <AuxIntr>)
+       (NEGATE 2 Modal OR Neg LINK 3 <AuxIntr>)
        (1C $$CASE - <OldPl>) ;
+
+n-REMOVE Pron + Dem + Nom + Att
+      IF (1* Encl:Aux BARRIER (*) - Modal - Gen - Att) ;
 
 #n-SELECT Att - <OldPl> + Gen
 #    IF (1C $$CASE - <OldPl> + Gen)
@@ -3633,8 +3661,8 @@ n-SELECT ("რ[ა]") + Pron + Rel
        (NEGATE 1* NomHead BARRIER CLB) ;
 
 n-SELECT ("როგორც" Adv)
-      IF (NEGATE 1* V BARRIER CLB | Comma)
-      	 (NEGATE 1* Aux BARRIER CLB | Comma)
+      IF (NEGATE 1* V BARRIER CLB OR Comma)
+      	 (NEGATE 1* Aux BARRIER CLB OR Comma)
 	 (NEGATE 1 Adv + Temp) ;
 
 # NP internal constraints
@@ -3750,12 +3778,12 @@ o-SELECT N + Voc
     IF (0C Voc OR (Abs Encl:IndSp3))
        (1 ExclPoint OR IntMark) ;
 
-SET NonVoc = Nom | Erg | Dat | Gen | Advb | Inst | Abs ;
+LIST NonVoc = Nom Erg Dat Gen Advb Inst Abs ;
 
 REMOVE N + Voc OR DVoc
-    IF (-1C* V BARRIER BOP | BOS) ;
+    IF (-1C* V BARRIER BOP OR BOS) ;
 REMOVE N + Voc OR DVoc
-    IF (-1C* NonVoc BARRIER BOP | BOS) ;
+    IF (-1C* NonVoc BARRIER BOP OR BOS) ;
 
 # -თა is mostly attributive Gen
 n-SELECT Gen + OldPl - Att
@@ -3833,6 +3861,8 @@ n-REMOVE ConjFut IF (0 Impf) ;
 LIST OPTCComp = "ხსოვნ[ა]/ხსოვ" "თხოვნ[ა]/თხოვ" "ა·უცილებ[ე]ლ·ი/ცილ" "უფლებამოსილ·ი"
                 "გონებ[ა]/გონ" "ნებ[ა]/ნებ" "სურვებ[ა]/სურ" ;
 
+SELECT OPT IF (-1* ("ნეტა") BARRIER V) ;
+
 REMOVE OPT # but: სწორი გითხრათ?
     IF (NEGATE -1* V BARRIER CLB)
        (NOT -1* ("<რომ>"))
@@ -3864,6 +3894,9 @@ REMOVE Pass + Impv
 
 n-REMOVE Impv
     IF (-1 ("უკვე")) ;
+
+n-SELECT Att + $$CASE
+    IF (1 Comma LINK 1 Att + $$CASE) ;
 
 n-SELECT N + $$CASE
     IF (0* V BARRIER CLB)
@@ -4097,6 +4130,13 @@ o-REMOVE ("წეს[ა]·ჲ" N) ;
 nm-REMOVE ("წეს[ა]" N) ;
 SELECT ("<მათთან>" "ის") ;
 SELECT ("დაწვრილებით") + Adv ;
+
+LIST XeliMeas = "ტამისამოს·ი" "ლოგინ·ი" ; # and more
+
+REMOVE ("ხელ·ი") + Meas
+    IF (NOT 1 XeliMeas) ;
+
+REMOVE ("ხელ·ი") + A ;
 
 REMOVE ("ხიდ·ი" Prop) ;
 
