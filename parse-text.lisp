@@ -50,6 +50,9 @@
 #+test
 (parse-text "ала" :variety :abk)
 
+(defparameter *sentence-end-strings-kat* '("." "?" "!" "…" ";" ))
+(defparameter *sentence-end-strings-abk* '("." "?" "!" "…" ";" ":"))
+
 (defmethod parse-text ((text string) &key variety load-grammar (disambiguate t) corpus
                                        orthography
                                        dependencies
@@ -95,8 +98,8 @@
                     :variety variety
                     :load-grammar load-grammar
                     :sentence-end-strings (if (eq variety :abk)
-                                              '("." "?" "!" "…" ";" ":")
-                                              '("." "?" "!" "…" ";" ":"))
+                                              *sentence-end-strings-abk*
+                                              *sentence-end-strings-kat*)
                     :guess-scope guess-scope
                     :guess-table guess-table
                     :interactive interactive
@@ -139,8 +142,8 @@
                     :dependencies dependencies
                     :no-postprocessing no-postprocessing
                     :sentence-end-strings (if (eq variety :abk)
-                                              '("." "?" "!" "…" ";" ":")
-                                              '("." "?" "!" "…" ";" ":"))))
+                                              *sentence-end-strings-abk*
+                                              *sentence-end-strings-kat*)))
     parsed-text))
 
 (defun normalize-token (token)
@@ -192,9 +195,9 @@
                   :cg3-variables cg3-variables
                   :dependencies dependencies
                   :no-postprocessing no-postprocessing
-                  :sentence-end-strings (if (eq variety :abk) ;; put this in to text object!
-                                            '("." "?" "!" "…" ";" ":")
-                                            '("." "?" "!" "…" ";" ":"))))
+                  :sentence-end-strings (if (eq (debug variety) :abk) ;; put this in to text object!
+                                            *sentence-end-strings-abk*
+                                            *sentence-end-strings-kat*)))
   text)
 
 ;; remove subsumption:
@@ -552,6 +555,7 @@
                            guess-scope guess-table cg3-variables (dependencies t) remove-brackets
                            &allow-other-keys)
   (print :cg3)
+  (print sentence-end-strings)
   (vislcg3::cg3-disambiguate-text text
                                   :variety variety
                                   :mode mode
@@ -597,7 +601,7 @@
             (dolist (subnode (getf node :subtokens))
               (let* ((sub-wid (getf subnode :wid))
                      (wid-list (when sub-wid (gethash (parse-integer sub-wid :start 1) wid-table))))
-                #-ignore
+                #+ignore
                 (when (null wid-list)
                   (print (list :no-wid-list (if (listp p) (car p) p))))
                 (when wid-list
@@ -947,7 +951,7 @@
 ;; *root*
 
 #+test
-(parse-text "გაიშვირა მაგიდისკენ, რომელიც ეს იყო დატოვა: გატაცებაა"
+(parse-text "მიდის ; მოვა."
             :stream *standard-output* :variety :ng :dependencies t)
 
 ;; todo: remove duplication of get-val here and in function below
@@ -1044,10 +1048,16 @@
                      (t
                       (let ((stored-val (getf token stored-att))
                             (val (getf token att)))
+                        #+ignore
+                        (when reg (print (list reg val stored-val))
+                              (print token))
                         (when (and reg
                                    (not (equal val stored-val))
                                    (not (and (null stored-val)
-                                             (or (eq val -1) (equal val "ROOT")))))
+                                             (or (eq val -1)
+                                                 (equal val "ROOT")
+                                                 (equal (getf token :parent) -1)
+                                                 ))))
                           (setf (car diff) t)))
                       (getf token stored-att)))))
       (unless nil ;; (depid-table text) ;; maps dep node-ids to token-table ids
