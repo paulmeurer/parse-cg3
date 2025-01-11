@@ -241,6 +241,10 @@
 #+test
 (cg3-disambiguate-text *text* :variety :ng :load-grammar nil :variables '("wiki"))
 
+(defmethod parse::is-quote-verb ((text parse::parsed-text) token)
+  (declare (ignore token))
+  nil)
+
 ;; todo: check if grammar has changed
 (defmethod cg3-disambiguate-text ((text parse::parsed-text)
 				  &key (variety :og) (tracep t) (load-grammar t) mode remove-brackets
@@ -251,7 +255,7 @@
                                     sentence-start-is-uppercase
                                     guess-scope guess-table)
   (setf *text* text) ;; debug
-  (debug sentence-end-strings)
+  ;; (debug sentence-end-strings)
   (unless guess-scope (setf guess-table nil))
   (with-process-lock (+disambiguate-lock+)
     (load-grammar variety :force load-grammar)
@@ -366,6 +370,7 @@
 						   (tag (cg3-tag-create-u8
 							 applicator
                                                          (concat "\"<" wordform ">\""))))
+                                               ;;(debug wordform)
 					       (cg3-cohort-setwordform cohort tag)
 					       (loop for l.f in morphology
 						  for i from 0
@@ -420,12 +425,20 @@
                                                       (next-is-lowercase
                                                        (and sentence-start-is-uppercase
                                                             (loop for id from (1+ i) below (length token-array)
-                                                               for (type word) = (aref token-array id)
-                                                               when (and (eq type :word)
+                                                                  for (type word) = (aref token-array id)
+                                                                  when (and (eq type :word)
                                                                          (not (find word '("”" "»" "–" ")" "]" "!" "?")
                                                                                     :test #'string=)))
-                                                               return (lower-case-p (char word 0))))))
-                                                  (unless next-is-lowercase
+                                                                  return (lower-case-p (char word 0)))))
+                                                      ;; no sentence end if dash followed by quote verb
+                                                      (next-is-quotation-dash
+                                                       (loop for id from (1+ i) below (length token-array)
+                                                             for (type word) = (aref token-array id)
+                                                             when (eq type :word)
+                                                             return (and (equal word "–")
+                                                                         (parse::is-quote-verb
+                                                                          text (aref token-array (1+ id)))))))
+                                                  (unless (or next-is-lowercase next-is-quotation-dash)
                                                     (setf end-punct-found t)
                                                     (or (null next-token)
                                                         (not (eq (car next-token) :word))
@@ -433,7 +446,7 @@
                                                                     ;; right punctuation
                                                                    '("”" "»" ")" "]" "?" "!")
                                                                    :test #'string=))))))))))
-		     #+debug(format t "~{~a ~}~%" (nreverse word-list))
+		     #+debug(format t "~&~{~a ~}~%" (nreverse word-list))
 		     (cg3-sentence-runrules applicator sentence)
                      (loop with coh = 0 and mwe-count = 0 and added = nil and added-count = 0
 			for i from prev-pos to pos ;; the sentence range
@@ -531,7 +544,7 @@
                                     (when dependencies
                                       (let ((self (ccl::%new-gcable-ptr 4 t))
 					    (parent (ccl::%new-gcable-ptr 4 t)))
-				        (cg3-cohort-getdependency cohort self parent)
+                                        (cg3-cohort-getdependency cohort self parent)
 				        (setf (getf (cddr token) :self)
 					      (ccl:%get-signed-long self)
 					      (getf (cddr token) :parent)
@@ -556,33 +569,14 @@
 	      for parent = (getf token :parent)
 	      for subtokens = (getf token :subtokens)
 	      when self
-	      do (setf (getf token :self) (1+ (or (position self ids) -1))) ;; or … -1 can only happen if token has been deleted
-	      when parent
+	      ;; or … -1 can only happen if token has been deleted
+	      do (setf (getf token :self) (1+ (or (position self ids) -1)))
+              when parent
 	      do (setf (getf token :parent) (1+ (or (position parent ids) -2)))
 	      (dolist (subtoken subtokens)
 	        (setf (getf subtoken :self) (1+ (or (position (getf subtoken :self) ids) -1)))
 	        (when (getf subtoken :parent)
 	          (setf (getf subtoken :parent) (1+ (or (position (getf subtoken :parent) ids) -2)))))))
-      #+old
-      (let ((ids (loop for token across token-array
-		    for id = (getf token :self)
-		    for subtoken = (getf token :subtoken)
-		    when id
-		    collect id
-		    when (getf subtoken :self)
-		    collect (getf subtoken :self))))
-	(loop for token across token-array
-	   for self = (getf token :self)
-	   for parent = (getf token :parent)
-	   for subtoken = (getf token :subtoken)
-	   when self
-	   do (setf (getf token :self) (1+ (or (position self ids) -1))) ;; or … -1 can only happen if token has been deleted
-	   when parent
-	   do (setf (getf token :parent) (1+ (or (position parent ids) -2)))
-	   when (getf subtoken :self)
-	   do (setf (getf subtoken :self) (1+ (or (position (getf subtoken :self) ids) -1)))
-	   when (getf subtoken :parent)
-	   do (setf (getf subtoken :parent) (1+ (or (position (getf subtoken :parent) ids) -2)))))
       text)))
 
 (defun msa-set-disambiguation (word cohort morphology language guess-table)
