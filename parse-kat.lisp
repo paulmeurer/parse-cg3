@@ -2,6 +2,9 @@
 
 (in-package :parse)
 
+(defclass kp::gnc-text (parsed-text)
+  ())
+
 (defparameter *tokenizer* nil)
 (defparameter *ng-tokenizer* nil)
 (defparameter *og-analyzer* nil)
@@ -279,7 +282,7 @@
     lemmas+features))
 
 #+test
-(pprint (lookup-morphology :kat "თუმცა"))
+(pprint (lookup-morphology :kat "ჰერ"))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) guess-table tmesis-segment mwe
@@ -306,6 +309,9 @@
         ((string= word "ან")
          (list  (list "ან" "Cj Coord @NC" NIL NIL)
                 (list "ან" "Cj Coord @CLB" NIL NIL)))
+        ((string= word "ანდა")
+         (list  (list "ანდა" "Cj Coord @NC" NIL NIL)
+                (list "ანდა" "Cj Coord @CLB" NIL NIL)))
         ((string= word "თუმცა")
          (list  (list "თუმცა" "Cj Sub" NIL NIL)
                 ;;(list "თუმცა" "Cj Coord @CLB" NIL NIL)
@@ -402,6 +408,12 @@
                (list "შეიძლება" "Modal" NIL NIL)))
         ((string= word "კ.")
          (list (list "კ." "N Prop Anthr Abbrev Nom" NIL NIL)))
+        ((string= word "იმათგანი")
+         (list (list "იმათგან·ი" "Pron Par Nom" NIL NIL))) ;; partitive pronoun (?)
+        ((string= word "იმათგანი")
+         (list (list "იმათგან·ი" "Pron Par Nom" NIL NIL))) ;; partitive pronoun (?)
+        ((string= word "მათგანი")
+         (list (list "მათგან·ი" "Pron Par Nom" NIL NIL))) ;; partitive pronoun (?)
         ((string= word "კ-ს")
          (list (list "კ." "N Prop Anthr Abbrev Dat" NIL NIL)))
         ((string= word "კ-მ")
@@ -409,6 +421,15 @@
         ((string= word "ვინა")
          (list (list "ვინ" "Pron Int Hum Nom L" NIL NIL)
                (list "ვინ" "Pron Int Hum Erg L" NIL NIL)))
+        
+        ((string= word "ჰერ")
+         (list (list "ჰერ" "N Hum Qual Nom Att Foreign" NIL NIL)
+               (list "ჰერ" "N Hum Qual Inst Att Foreign" NIL NIL)
+               (list "ჰერ" "N Hum Qual Gen Att Foreign" NIL NIL)
+               (list "ჰერ" "N Hum Qual Erg Att Foreign" NIL NIL)
+               (list "ჰერ" "N Hum Qual Dat Att Foreign" NIL NIL)
+               (list "ჰერ" "N Hum Qual Advb Att Foreign" NIL NIL)
+               (list "ჰერ" "N Hum Voc Sg Foreign" NIL NIL)))
         (t
          (let ((lemmas+features ())
                (stripped-word
@@ -999,11 +1020,12 @@
 
 ;; *root*
 
+
 #+ignore
 (defmethod process-text :after ((text gnc.text::gnc-text) (mode (eql :disambiguate))
                                 &key dependencies &allow-other-keys)
   nil)
-#+move
+
 (defmethod process-text :after ((text kp::gnc-text) (mode (eql :disambiguate))
                                 &key dependencies no-postprocessing &allow-other-keys)
   ;; *text*
@@ -1078,12 +1100,11 @@
                            (if xcomp "COP" "AUX"))))))
       
       ;; fix comma attachment
-      #-under-construction
       (loop with right-parents = ()
             for token across text-array
             for i from 0
             for comma = (and (equal (getf token :label) "PUNCT")
-                             (find (getf token :word) '("," ";xxx") :test #'string=))
+                             (find (getf token :word) '("," "–" ";xxx") :test #'string=))
             for self = (getf token :self)
             when self
             do (setf right-parents (delete-if (lambda (p) (< p self)) right-parents))
@@ -1107,7 +1128,7 @@
                                   done t)))
                   until done)
             when (getf token :parent)
-            do (push (getf token :parent) right-parents))))))
+            do (push (getf token :parent) right-parents)))))
 
 ;; *text*
   

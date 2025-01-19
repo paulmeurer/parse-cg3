@@ -195,7 +195,7 @@
                   :cg3-variables cg3-variables
                   :dependencies dependencies
                   :no-postprocessing no-postprocessing
-                  :sentence-end-strings (if (eq (debug variety) :abk) ;; put this in to text object!
+                  :sentence-end-strings (if (eq variety :abk) ;; put this in to text object!
                                             *sentence-end-strings-abk*
                                             *sentence-end-strings-kat*)))
   text)
@@ -554,8 +554,6 @@
                            (sentence-end-strings vislcg3::*sentence-end-strings*)
                            guess-scope guess-table cg3-variables (dependencies t) remove-brackets
                            &allow-other-keys)
-  (print :cg3)
-  (print sentence-end-strings)
   (vislcg3::cg3-disambiguate-text text
                                   :variety variety
                                   :mode mode
@@ -567,7 +565,7 @@
                                   :remove-brackets remove-brackets
                                   :dependencies dependencies
                                   :variables cg3-variables)
-  (print :cg3-done)
+  ;;(print :cg3-done)
   (when dependencies
     (let ((token-array (text-array text))
           (word-id-table (word-id-table text))
@@ -1028,20 +1026,13 @@
 (defparameter *token-table* nil)
 
 (defmethod get-token-table ((text parsed-text) &key node-id stored &allow-other-keys)
-  (assert node-id)
-  (let* ((id-table (make-hash-table :test #'equal))
-	 (secedge-table (make-hash-table :test #'equal))
-	 (token-table (make-hash-table :test #'equal))
-	 (parent-id nil)
-	 (word nil)
+  (assert node-id) ;; :self in token in token-array
+  (let* ((token-table (make-hash-table :test #'equal))
 	 (token-array (token-array text))
-	 (parents ())
-         (diff (list nil))
-	 ;; (subtoken-count (count-if (lambda (token) (getf token :subtoken)) token-array))
+	 (diff (list nil))
 	 (subtoken-count (reduce #'+ token-array
                                  :key (lambda (token) (length (getf token :subtokens)))
                                  :initial-value 0)))
-    (declare (ignore id-table))
     (labels ((get-val (token att stored-att &optional reg)
                (cond ((not stored)
                       (getf token att))
@@ -1056,12 +1047,11 @@
                                    (not (and (null stored-val)
                                              (or (eq val -1)
                                                  (equal val "ROOT")
-                                                 (equal (getf token :parent) -1)
-                                                 ))))
+                                                 (equal (getf token :parent) -1)))))
                           (setf (car diff) t)))
                       (getf token stored-att)))))
-      (unless nil ;; (depid-table text) ;; maps dep node-ids to token-table ids
-        (initialize-depid-array text :diff diff :stored stored :subtoken-count subtoken-count))
+      ;; maps dep node-ids to token-table ids
+      (initialize-depid-array text :diff diff :stored stored :subtoken-count subtoken-count)
       (labels ((walk (node-id)
 	         (let* ((t-ch-list (aref (depid-array text) node-id))
 		        (token-id (getf t-ch-list :token))
@@ -1088,10 +1078,18 @@
 		        (lemma (car reading)) ;; only first reading is considered!
 		        (features (cadr reading))
 		        (pos (subseq features 0 (position #\space features)))
+		        (word (getf token :word))
                         (relation (if stored
                                       (get-val token :label :stored-label t)
                                       (getf token :label)))
-		        (word (getf token :word))
+                        (relation-diff (when (and stored
+                                                  (not (equal relation (getf token :label))))
+                                         (or (getf token :label) "--")))
+                        (head-diff (when (and stored
+                                              (not (or (and (null parent) (= -1 (getf token :parent)))
+                                                       (equal parent (getf token :parent)))))
+                                     ;;(describe token)
+                                     (getf token :parent)))
 		        (mwe (when (>= token-id 0)
 			       (loop for id from (1+ token-id) below (length token-array)
 				     for token = (aref token-array id)
@@ -1111,32 +1109,46 @@
 						       word))
 					  :atts (list :|lemma| lemma :|pos| pos :|morph| features)
 					  :relation relation
-					  :head parent))
+					  :head parent
+                                          :relation-diff relation-diff
+                                          :head-diff head-diff))
 		   (mapc #'walk children))))
         (walk node-id)))
+    ;; sorted list of node-ids (keys)
     (let ((ids (sort (u:collecting
 		       (maphash (lambda (id tl)
 				  (declare (ignore id))
 				  (u:collect (token-list-id tl)))
 				token-table))
 		     #'<)))
-      (setf *token-table* token-table)
+      ;; remapping: :id goes from 1 in sentence order, :head accordingly
+      ;; (has no effect for first sentence in token-array)
       (maphash (lambda (id tl)
 		 (declare (ignore id))
 		 (let ((pos (position (token-list-id tl) ids)))
 		   (when pos
+                     ;; remap id
 		     (setf (token-list-id tl) (1+ pos))
-		     (unless (eq (token-list-head tl) -1)
+                     ;; remap head
+                     (unless (eq (token-list-head tl) -1)
 		       (let ((pos (position (token-list-head tl) ids)))
 			 (when pos
 			   (setf (token-list-head tl)
-				 (1+ (position (token-list-head tl) ids)))))))))
+				 (1+ (position (token-list-head tl) ids))))))
+                     ;; remap head-diff
+                     (when (token-list-head-diff tl)
+		       (let ((pos (position (token-list-head-diff tl) ids)))
+			 (when pos
+			   (setf (token-list-head-diff tl)
+				 (1+ (position (token-list-head-diff tl) ids)))))))))
 	       token-table)
       (values token-table (1+ (position node-id ids)) (car diff)))))
 
 ;;  *text*
 
 (defparameter *root* nil)
+(defparameter *children-table* nil)
+(defparameter *node-table* nil)
 
 (defstruct token-list
   terminal-p
@@ -1147,26 +1159,34 @@
   slashee-ids
   slash-relations
   atts
-  wid)
+  wid
+  head-diff
+  relation-diff)
 
 ;; *text*
 ;; kp::*session*
 
-(defmethod build-dep-graph ((text parsed-text) &key node-id (add-root t) stored &allow-other-keys)
+(defmethod build-dep-graph ((text parsed-text)
+                            &key node-id ;; = :self in token
+                              (add-root t)
+                              stored &allow-other-keys)
   (assert (not (null node-id)))
   (multiple-value-bind (token-table node-id diff)
       (get-token-table text :node-id node-id :stored stored)
-    ;;(print (list stored :diff diff))
+    ;; :self to token-list with renormalized :id and :head 
+    (setf *token-table* token-table)
     (let ((node-table (make-hash-table :test #'equal)) ;; rehashed in display-dep-graph() below; populated where?
-	  (children-table (make-hash-table :test #'equal))
+	  (children-table (make-hash-table :test #'equal)) ;; self -> dep-linear-node ?
 	  (slash-nodes (make-hash-table :test #'equal))
 	  (roots ()))
+      (setf *children-table* children-table)
       (maphash (lambda (token-id tl)
 		 ;; id might be different from token-list-id when there are gaps in original ids; don't use it!
                  (let* ((id (token-list-id tl)) ;; this is different from build-dep-graph() for dep-parsed-sentence!
 			(children (gethash id children-table))
+                        ;; (gaga (print (list id :children children)))
 			(node (when (listp children) ;; if not, token describes existing node with new slash
-				(make-instance 'dep-linear-node
+                                (make-instance 'dep-linear-node
 					       :id id
                                                :token-id token-id
                                                :wid (token-list-wid tl)
@@ -1179,22 +1199,34 @@
 					       :relation (or (token-list-relation tl) "--") 
 					       :label (or (token-list-word tl) "--")
 					       :atts (token-list-atts tl)
-					       :children children)))
-			(parent (when node (gethash (or (token-list-head tl) -1) children-table))))
+					       :children children
+                                               :relation-diff (token-list-relation-diff tl) 
+                                               :head-diff (token-list-head-diff tl))))
+                        ;; id = 5, word = კურდღლის, children = (ილიზიონისტს/7)
+                        ;; tlh = 12, rel root
+			(parent (when (and node
+                                           (/= id node-id)) ;;; @@@@
+                                  (gethash (or (token-list-head tl) -1) children-table))))
 		   (when node
+                     ;;(print (list :id id :child node))
+                     ;; initialize node-table and children-table with id -> node
 		     (setf (gethash id children-table) node
 			   (gethash id node-table) node)
 		     (when (= id node-id) (push node roots))
 		     (cond ((listp parent)
-                            (let ((head (gethash (or (token-list-head tl) -1) children-table)))
+                            (let* ((head-id (or (token-list-head tl) -1))
+                                   (head (gethash head-id children-table)))
+                              ;;(debug head-id) ;; *text*
                               (if (listp head)
-                                  ;; the normal case
-			          (u:append* (gethash (or (token-list-head tl) -1) children-table) node)
+                                  ;; the normal case: add the node to the children of head
+			          (u:append* (gethash head-id children-table) node)
                                   ;; only happens when head is not the head of the structure
                                   (setf (gethash (or (token-list-head tl) -1) children-table)
                                         (list head node)))))
-			   (t
-			    (u:append* (node-children parent) node))))
+                           (t
+                            ;;(print (list parent :appending (node-children parent) node))
+			    ;(setf (gethash (or (token-list-head tl) -1) children-table) ;; new
+                            (u:append* (node-children parent) node))));)
 		   (mapc (lambda (slashee-id slash-relation)
 			   (let ((slash-node (make-instance 'dep-linear-slash-node
 							    :id slashee-id
@@ -1217,7 +1249,7 @@
 		       (setf (slashee slash-node) (gethash (slashee slash-node) node-table))
 		       (push (cons :parent slash-node) (slash-parents (slashee slash-node)))))))
 	       slash-nodes)
-      ;; *node-table*
+      (setf *node-table* node-table)
       (let ((root (if (and (not add-root) roots (null (cdr roots)))
 		      (car roots)
 		      (setf (gethash 0 node-table)
@@ -1228,19 +1260,22 @@
 					   :label "ROOT"
 					   :sort "root" ;, ??
 					   :children roots)))))
-	(labels ((set-parents (node &optional parent)
-		   #+debug(print (list :parent parent))
-		   (when (node-parents node) (warn "setting ~s to ~s" (node-parents node) parent))
+        (labels ((set-parents (node &optional parent)
+		   #+debug(print (list node (node-parents node) :parent parent))
+		   (when (node-parents node) (error "setting ~s to ~s" (node-parents node) parent))
 		   (when parent (setf (node-parents node) (list parent)))
 		   (setf (slot-value node 'graph::level)
 			 (if parent (1+ (graph::node-level parent)) 0))
-		   (mapc (lambda (child) (set-parents child node)) (node-children node))
+                   ;;(Print (list :node node :children (node-children node)))
+		   (mapc (lambda (child) ;; *text*
+                           (set-parents child node))
+                         (node-children node))
 		   ;; set left-leaf-id; used to sort children
 		   (setf (left-leaf-id node)
 			 (if (node-children node)
 			     (reduce #'min (node-children node) :key #'left-leaf-id)
 			     (node-id node))
-			 (node-children node) (sort (node-children node) #'<  :key #'left-leaf-id)))
+			 (node-children node) (sort (node-children node) #'< :key #'left-leaf-id)))
 		 (set-slash-nodes (node)
 		   (dolist (slash-node (gethash node slash-nodes))
 		     (setf (node-parents slash-node) (list node))
@@ -1338,7 +1373,7 @@ Field number:	Field name:	Description:
   lemma)
 
 (defmethod write-dependency-conll ((graph dep-node) stream
-                                   &key text sentence-id (include-postag t) language &allow-other-keys)
+                                   &key sentence-id (include-postag t) language &allow-other-keys)
   (let ((nodes ())
         (cop-count 0)
         (cop-nodes ())) ;; enclitic copula nodes
@@ -1352,6 +1387,26 @@ Field number:	Field name:	Description:
                           (word (node-label node))
                           (lemma (normalize-lemma language (getf atts :|lemma|) :morph morph :word word))
                           (ext-pos nil))
+                     #+test
+                     (cond ((and (head-diff node)
+                                 (relation-diff node))
+                            (format t "~a	~a->~a	~a->~a~%"
+                                    word
+                                    (node-id (car (node-parents node)))
+                                    (head-diff node)
+                                    (relation node)
+                                    (relation-diff node)))
+                           ((and (head-diff node))
+                            (format t "~a	~a -> ~a~%"
+                                    word
+                                    (node-id (car (node-parents node)))
+                                    (head-diff node)))
+                           ((relation-diff node)
+                            (format t "~a	~a -> ~a~%"
+                                    word
+                                    (relation node)
+                                    (relation-diff node))))
+                           
                      (when (search " udMWE" morph)
                        (setf lemma (subseq lemma 0 (position #\space lemma))))
                      (multiple-value-bind (word clit clit-lemma clit-morph)
@@ -1419,5 +1474,153 @@ Field number:	Field name:	Description:
                              "|SpaceAfter=No" ""))))
       (terpri stream))))
 
+;; precision calculation
+
+#+test
+(calculate-precision *text* *standard-output*)
+
+(defmethod calculate-precision ((text parsed-text) stream
+                                &key document &allow-other-keys)
+  (let ((token-array (text-array text))
+        (node-count 0)
+        (head-diff-count 0)
+        (relation-diff-count 0))
+    (loop for node across token-array
+          when (and (getf node :stored-label)
+                    (not (getf node :stored-parent)))
+          do
+          (let ((graph (build-dep-graph text
+                                        :node-id (getf node :self)
+                                        :stored t)))
+            (setf *graph* graph)
+            (when (graph-is-complete graph)
+              (incf node-count (hash-table-count (graph::node-table graph)))
+              (multiple-value-bind (hdc rdc)
+                  (calculate-precision graph stream :document document)
+                (incf head-diff-count hdc)
+                (incf relation-diff-count rdc)))))
+    (values node-count head-diff-count relation-diff-count)))
+
+(defparameter *diff-table* (make-hash-table :test #'equal))
+
+(defmethod calculate-precision ((graph dep-node) stream &key document &allow-other-keys)
+  (let ((head-diff-count 0)
+        (relation-diff-count 0))
+    (labels ((walk (node)
+               (let ((parent (if (node-parents node)
+                                 (node-id (car (node-parents node)))
+                                 0)))
+                 (unless (zerop (node-id node))
+                   (let ((word (node-label node)))
+                     (when (or (head-diff node) (relation-diff node))
+                       (setf (gethash (u:concat document ":" (graph::wid node)) *diff-table*)
+                             (list word parent (head-diff node) (relation node) (relation-diff node))))
+                     (cond ((and (head-diff node)
+                                 (relation-diff node))
+                            (incf head-diff-count)
+                            (incf relation-diff-count)
+                            (format stream "~a:~a	~a	~a -> ~a	~a -> ~a~%"
+                                    document
+                                    (graph::wid node)
+                                    word
+                                    parent
+                                    (head-diff node)
+                                    (relation node)
+                                    (relation-diff node)))
+                           ((and (head-diff node))
+                            (incf head-diff-count)
+                            (format stream "~a:~a	~a	~a -> ~a	~%"
+                                    document
+                                    (graph::wid node)
+                                    word
+                                    parent
+                                    (head-diff node)))
+                           ((relation-diff node)
+                            (incf relation-diff-count)
+                            (format stream "~a:~a	~a		~a -> ~a~%"
+                                    document
+                                    (graph::wid node)
+                                    word
+                                    (relation node)
+                                    (relation-diff node)))))))
+               (mapc #'walk (node-children node))))
+      (walk graph)
+      (values head-diff-count relation-diff-count))))
+
+#+test
+(let ((text
+       (kp::parse-corpus-context (kp::get-corpus :gnc-kat) :start-cpos 114160 :end-cpos 114554)))
+  (calculate-precision text *standard-output*))
+
+(in-package :korpuskel)
+
+(defmethod calculate-precision ((language t) stream &key &allow-other-keys)
+  (with-database-connection ()
+    (let ((count 0)
+          (corpus nil)
+          (prev-corpus-name nil)
+          (prev-doc nil)
+          (page-start 0)
+          (page-end 0)
+          (node-count 0)
+          (head-diff-count 0)
+          (relation-diff-count 0)
+          (first t))
+      (write-line "# document:word	stored -> parsed relation	stored -> parsed head" stream)
+      (do-query ((corpus-name document wid)
+                 [select [corpus] [document] [wid]
+                         :from [corpus disambiguation]
+                         :where [and [like [corpus]
+                                           (ecase language
+                                             (:kat "gnc-%")
+                                             (:abk "abnc"))]
+                                     [null [parent]]]
+                         :order-by '([corpus] [document] [wid])])
+        (unless (equal prev-corpus-name corpus-name)
+          (setf corpus (get-corpus corpus-name)
+                page-start 0 page-end 0))
+        (let* ((doc-attr (get-corpus-attribute corpus :document))
+               (doc-id (get-value-id doc-attr document))
+	       (wattr (get-corpus-attribute corpus :word))
+	       (wid-attr (get-corpus-attribute corpus :wid))
+               (wid-id (get-value-id wid-attr (format nil "w~a" wid))))
+          (map-attribute-block wid-attr
+                               (lambda (cp cpos end target value-id attribute)
+                                 (declare (ignore cp end target value-id attribute))
+                                 (when (= doc-id (cpos-val-id cpos (index-vector doc-attr) (signature doc-attr)))
+                                   ;; (print (list corpus-name document page-start cpos page-end))
+                                   (unless (and (equal prev-corpus-name corpus-name)
+                                                (equal prev-doc document)
+                                                (<= page-start cpos page-end))
+                                     (multiple-value-bind (start-cpos end-cpos)
+                                         (get-containing-element-cpositions corpus cpos (list "pb") :milestonep t)
+                                       (let ((text (parse-corpus-context corpus
+                                                                         :start-cpos start-cpos
+                                                                         :end-cpos end-cpos
+                                                                         :load-grammar first)))
+                                         (setf page-start start-cpos page-end end-cpos first nil)
+                                         (incf count)
+                                         (write-line document stream)
+                                         (print (list document wid))
+                                         ;;(terpri)
+                                         ;;(debug text)
+                                         (multiple-value-bind (nc hdc rdc)
+                                             (parse::calculate-precision text stream :document document)
+                                           (incf node-count nc)
+                                           (incf head-diff-count hdc)
+                                           (incf relation-diff-count rdc)))))))
+                               wid-id :start-end-block-p nil))
+        (setf prev-corpus-name corpus-name
+              prev-doc document))
+      (format stream "nodes: ~a, head-diff: ~a, relation-diff: ~a~%"
+              node-count head-diff-count relation-diff-count)
+      (print (list :nodes node-count :head-diff head-diff-count :relation-diff relation-diff-count))
+      (debug count))))
+
+#+main
+(with-open-file (stream (format nil "projects:ud;kat;precision;precision-~a.txt"
+                                (now :format :timestamp-utc))
+                        :direction :output :if-exists :supersede)
+  (calculate-precision :kat stream))
 
 :eof
