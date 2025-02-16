@@ -324,6 +324,15 @@
         ((string= word "თითქოს")
          (list (list "თითქოს" "Cj Sub" NIL NIL)
                (list "თითქოს" "Adv Sent" NIL NIL)))
+        ((string= word "თუნდა")
+         (list (list "თუნდა" "Cj Sub" NIL NIL)
+               (list "თუნდა" "Adv Sent" NIL NIL)))
+        ((string= word "თუნდაც")
+         (list (list "თუნდაც" "Cj Sub" NIL NIL)
+               (list "თუნდაც" "Adv Sent" NIL NIL)))
+        ((string= word "თუნდ")
+         (list (list "თუნდ" "Cj Sub" NIL NIL)
+               (list "თუნდ" "Adv Sent" NIL NIL)))
         ((string= word "თითქოსდა")
          (list (list "თითქოსდა" "Cj Sub" NIL NIL)
                (list "თითქოსდა" "Adv Sent" NIL NIL)))
@@ -1026,109 +1035,121 @@
                                 &key dependencies &allow-other-keys)
   nil)
 
+(defparameter *depid-array* nil)
+(defparameter *text-array* nil)
+
 (defmethod process-text :after ((text kp::gnc-text) (mode (eql :disambiguate))
                                 &key dependencies no-postprocessing &allow-other-keys)
   ;; *text*
   (when (and dependencies (not no-postprocessing))
     #-test
-    (initialize-depid-array
-     text
-     :subtoken-count  (reduce #'+ (token-array text)
-                              :key (lambda (token) (length (getf token :subtokens)))
-                              :initial-value 0))
-    #-test
-    (let ((depid-array (depid-array text)) ;; self -> id
-          (text-array (text-array text)))
-      (loop for token across text-array
-            for xcomp = (equal (getf token :label) "XCOMP")
-            for xcomp-aux = (equal (getf token :label) "XCOMP:AUX")
-            for ccomp-aux = (equal (getf token :label) "CCOMP")
-            when (or xcomp xcomp-aux ccomp-aux)
-            do (let* ((self (getf token :self))
-                      (parent (getf token :parent))
-                      (parent-dep (when (> parent -1)
-                                    (aref depid-array parent)))
-                      (parent-id (getf parent-dep :token))
-                      (parent-token (cond ((null parent-dep)
-                                           nil)
-                                          ((> (ash parent-id -32) 0)
-                                           (nth (1- (ash parent-id -32))
-                                                (getf (aref text-array (logand parent-id (- (ash 1 32) 1))) :subtokens))
-                                           #+old
-                                           (getf (aref text-array (- -1 parent-id)) :subtoken))
-                                          (t
-                                           (aref text-array parent-id)))))
-                 ;;(print (list xcomp-aux (getf parent-token :morphology)))
-                 (when (and parent-dep
-                            (find-if (lambda (lemma)
-                                       (or (string= lemma "ყოფნ[ა]/ყ[ავ]")
-                                           (string= lemma "ყოფნ[ა]/არ")
-                                           (string= lemma "ყოფნ[ა]/ქნ")
-                                           (string= lemma "ყოფნ[ა]/ყოფ")
-                                           (and xcomp-aux
-                                                (or (string= lemma "ქონ[ა]/ქვ")
-                                                    (string= lemma "ქონ[ა]/ქონ")
-                                                    (string= lemma "ქმნ[ა]/ქ[ე]ნ")
-                                                    (string= lemma "ქმნ[ა]/ქმ[ე]ნ")
-                                                    (string= lemma "ნდომ[ა]/ნ")
-                                                    (string= lemma "შე·ძლებ[ა]/ძლ")
-                                                    ))
-                                           (and ccomp-aux
-                                                (or (string= lemma "შე·ძლებ[ა]/ძლ")
-                                                    (string= lemma "ნებ[ა]/ნებ")
-                                                    ;;(string= lemma "ნდომ[ა]/ნდ")
-                                                    ))))
-                                     (getf parent-token :morphology)
-                                     :key #'car))
-                   (mapc (lambda (c)
-                           (let* ((child-id (getf (aref depid-array c) :token))
-                                  (child
-                                   (cond ((> (ash child-id -32) 0)
-                                          (nth (1- (ash child-id -32))
-                                               (getf (aref text-array (logand child-id (- (ash 1 32) 1))) :subtokens)))
-                                         (t
-                                          (aref text-array child-id)))))
-                             (unless (= (getf child :parent) self)
-                               (setf (getf child :parent) self))))
-                         (getf parent-dep :children))
-                   ;; swap parent and child
-                   (let ((tp (getf token :parent)))
-                     (setf (getf token :parent) (getf parent-token :parent)
-                           (getf token :label) (getf parent-token :label)
-                           (getf parent-token :parent) tp
-                           (getf parent-token :label)
-                           (if xcomp "COP" "AUX"))))))
-      
-      ;; fix comma attachment
-      (loop with right-parents = ()
-            for token across text-array
-            for i from 0
-            for comma = (and (equal (getf token :label) "PUNCT")
-                             (find (getf token :word) '("," "–" ";xxx") :test #'string=))
-            for self = (getf token :self)
-            when self
-            do (setf right-parents (delete-if (lambda (p) (< p self)) right-parents))
-            when (eql (getf token :parent) -1)
-            do (setf (getf token :label) "ROOT")
-            when comma
-            do ;; (print (list :self self :right right-parents))
-            (loop with done = nil
-                  for j from (1+ i) below (length text-array)
-                  for right-token = (aref text-array j)
-                  for right-self = (getf right-token :self)
-                  ;; while (listp right-token)
-                  do (cond ((find right-self right-parents)
-                            ;;(print (list (getf token :parent) :-> max-parent))
-                            (setf (getf token :parent) right-self
-                                  done t))
-                           ((and (integerp (getf right-token :parent))
-                                 (< (getf right-token :parent) self))
-                            ;;(print (list (getf token :parent) :->> (getf right-token :self)))
-                            (setf (getf token :parent) (getf right-token :self)
-                                  done t)))
-                  until done)
-            when (getf token :parent)
-            do (push (getf token :parent) right-parents)))))
+    (let ((subtoken-count (reduce #'+ (token-array text)
+                                  :key (lambda (token) (length (getf token :subtokens)))
+                                  :initial-value 0)))
+      ;; map self -> id
+      (initialize-depid-array text :subtoken-count subtoken-count)
+      #-test
+      (let ((text-array (text-array text)))
+        (setf *depid-array* (depid-array text) *text-array* text-array)
+        (loop for token across text-array
+              for xcomp = (equal (getf token :label) "XCOMP")
+              for xcomp-aux = (equal (getf token :label) "XCOMP:AUX")
+              for ccomp-aux = (equal (getf token :label) "CCOMP")
+              when (or xcomp xcomp-aux ccomp-aux)
+              do (let* ((self (getf token :self))
+                        (parent (getf token :parent))
+                        (parent-dep (when (> parent -1)
+                                      (aref (depid-array text) parent)))
+                        (parent-id (getf parent-dep :token))
+                        (parent-token (cond ((null parent-dep)
+                                             nil)
+                                            ((> (ash parent-id -32) 0)
+                                             (nth (1- (ash parent-id -32))
+                                                  (getf (aref text-array (logand parent-id (- (ash 1 32) 1))) :subtokens))
+                                             #+old
+                                             (getf (aref text-array (- -1 parent-id)) :subtoken))
+                                            (t
+                                             (aref text-array parent-id)))))
+                   (when (and parent-dep ;(/= self 8) 
+                              (find-if (lambda (lemma)
+                                         (or (string= lemma "ყოფნ[ა]/ყ[ავ]")
+                                             (string= lemma "ყოფნ[ა]/არ")
+                                             (string= lemma "ყოფნ[ა]/ქნ")
+                                             (string= lemma "ყოფნ[ა]/ყოფ")
+                                             (and xcomp-aux
+                                                  (or (string= lemma "ქონ[ა]/ქვ")
+                                                      (string= lemma "ქონ[ა]/ქონ")
+                                                      (string= lemma "ქმნ[ა]/ქ[ე]ნ")
+                                                      (string= lemma "ქმნ[ა]/ქმ[ე]ნ")
+                                                      (string= lemma "ნდომ[ა]/ნ")
+                                                      (string= lemma "შე·ძლებ[ა]/ძლ")
+                                                      ))
+                                             (and ccomp-aux
+                                                  (or (string= lemma "შე·ძლებ[ა]/ძლ")
+                                                      ;;(string= lemma "ნებ[ა]/ნებ")
+                                                      ;;(string= lemma "ნდომ[ა]/ნდ")
+                                                      ))))
+                                       (getf parent-token :morphology)
+                                       :key #'car))
+                     (mapc (lambda (c) ;; children of the node
+                             (let* ((child-id (getf (aref (depid-array text) c) :token))
+                                    (child
+                                     (cond ((> (ash child-id -32) 0)
+                                            (nth (1- (ash child-id -32))
+                                                 (getf (aref text-array (logand child-id (- (ash 1 32) 1))) :subtokens)))
+                                           (t
+                                            (aref text-array child-id)))))
+                               (unless (= (getf child :parent) self)
+                                 
+                                 (setf (getf child :parent) self))))
+                           (getf parent-dep :children))
+                     ;; swap parent and child
+                     (let ((tp (getf token :parent)))
+                       ;;(print (list :self self :token (getf token :self) :parent tp))
+                       (setf
+                        ;; let parent of old parent become parent of new parent
+                        (getf token :parent) (getf parent-token :parent)
+                        ;; same with labels
+                        (getf token :label) (getf parent-token :label)
+                        ;; let token become parent of old parent
+                        (getf parent-token :parent) tp
+                        ;; set label to COP resp. AUX
+                        (getf parent-token :label)
+                        (if xcomp "COP" "AUX")))
+                     ;; have to reinitialize because children have changed
+                     #+test
+                     (initialize-depid-array text :subtoken-count subtoken-count))))
+        
+        ;; fix comma attachment
+        (loop with right-parents = ()
+              for token across text-array
+              for i from 0
+              for comma = (and (equal (getf token :label) "PUNCT")
+                               (find (getf token :word) '("," "–" ";xxx") :test #'string=))
+              for self = (getf token :self)
+              when self
+              do (setf right-parents (delete-if (lambda (p) (< p self)) right-parents))
+              when (eql (getf token :parent) -1)
+              do (setf (getf token :label) "ROOT")
+              when comma
+              do ;; (print (list :self self :right right-parents))
+              (loop with done = nil
+                    for j from (1+ i) below (length text-array)
+                    for right-token = (aref text-array j)
+                    for right-self = (getf right-token :self)
+                    ;; while (listp right-token)
+                    do (cond ((find right-self right-parents)
+                              ;;(print (list (getf token :parent) :-> max-parent))
+                              (setf (getf token :parent) right-self
+                                    done t))
+                             ((and (integerp (getf right-token :parent))
+                                   (< (getf right-token :parent) self))
+                              ;;(print (list (getf token :parent) :->> (getf right-token :self)))
+                              (setf (getf token :parent) (getf right-token :self)
+                                    done t)))
+                    until done)
+              when (getf token :parent)
+              do (push (getf token :parent) right-parents))))))
 
 ;; *text*
   
