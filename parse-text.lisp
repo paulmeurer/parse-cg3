@@ -953,6 +953,7 @@
             :stream *standard-output* :variety :ng :dependencies t)
 
 ;; todo: remove duplication of get-val here and in function below
+;; todo: allow initialization of one sentence stretch alone
 (defmethod initialize-depid-array ((text parsed-text) &key (diff (list nil)) stored (subtoken-count 0))
   (let ((token-array (token-array text)))
     (labels ((get-val (token att stored-att &optional reg)
@@ -1012,16 +1013,37 @@
   (let* ((parent-token (getf token :parent-token))
          (word (getf parent-token :word))
          (subtokens (getf parent-token :subtokens))
+         (rest-subtokens
+          (nthcdr (1+ (position token subtokens)) subtokens))
+         (suffix-start (search (subseq suffix 1) word :from-end t))
+         (suffix-end (when rest-subtokens
+                       (- (length word)
+                          (reduce #'+ rest-subtokens
+                                  :initial-value 0
+                                  :key (lambda (s) (1- (length (getf s :word)))))))))
+    (u:concat "_" (subseq word suffix-start suffix-end))))
+
+(defmethod suffix-token ((text parsed-text) suffix token)
+  (let* ((parent-token (getf token :parent-token))
+         (word (getf parent-token :word))
+         (subtokens (getf parent-token :subtokens))
          (second-subtoken
           (when (= (position token subtokens) 0)
             (cadr subtokens)))
          (second-suffix
           (when second-subtoken
             (getf second-subtoken :word)))
+         (third-subtoken
+          (when (= (position token subtokens) 1)
+            (caddr subtokens)))
+         (third-suffix
+          (when third-subtoken
+            (getf third-subtoken :word)))
          (suffix-start (search (subseq suffix 1) word :from-end t))
-         (suffix-end (when second-suffix
-                       (- (length word) (length second-suffix) -1))))
-    (u:concat "_" (subseq word suffix-start suffix-end))))
+         (suffix-end (when (or second-suffix third-suffix)
+                       (- (length word) (length (or second-suffix third-suffix)) -1))))
+    (print (list :sec second-suffix :third third-suffix :start suffix-start :end suffix-end))
+    (debug (u:concat "_" (subseq word suffix-start suffix-end)))))
 
 (defparameter *token-table* nil)
 
@@ -1310,7 +1332,7 @@ Field number:	Field name:	Description:
 ;; *text*
 
 #+test
-(write-dependencies-conll *text* *standard-output* :language :kat)
+(write-dependencies-conll *text* *standard-output* :language :kat :all t)
 #+test
 (write-dependencies-conll *text* *standard-output* :language :abk)
 
@@ -1328,15 +1350,21 @@ Field number:	Field name:	Description:
     (let ((word (node-label (find-last graph))))
       (not (find-if-not (lambda (c) (find c ".:!?»“”«)")) word)))))
 
+(defparameter *graphs* ())
+
+#+test
+(setf *graph* (nth 14 *graphs*))
+
 (defmethod write-dependencies-conll ((text parsed-text) stream
-                                     &key (start 1)
+                                     &key ;; (start 1)
                                        document-id language
                                        all ;; include also analyses that are not stored; used for on-the-fly parsing
                                        &allow-other-keys)
+  ;;(setf *graphs* ())
   (let ((token-array (text-array text)))
     ;;(decf start)
     (loop for node across token-array
-          when (or (and all (= -1 (getf node :parent)))
+          when (or (and all (eql -1 (getf node :parent)))
                    (and (getf node :stored-label)
                         (not (getf node :stored-parent))))
           do ;; (debug node)
@@ -1344,6 +1372,7 @@ Field number:	Field name:	Description:
                                         :node-id (getf node :self)
                                         :stored (not all))))
             (setf *graph* graph)
+            ;;(push graph *graphs*)
             (when (or all (graph-is-complete graph))
               (write-dependency-conll graph stream
                                       :sentence-id (if document-id
@@ -1484,7 +1513,8 @@ Field number:	Field name:	Description:
   (let ((token-array (text-array text))
         (node-count 0)
         (head-diff-count 0)
-        (relation-diff-count 0))
+        (relation-diff-count 0)
+        (head+relation-diff-count 0))
     (loop for node across token-array
           when (and (getf node :stored-label)
                     (not (getf node :stored-parent)))
@@ -1495,17 +1525,19 @@ Field number:	Field name:	Description:
             (setf *graph* graph)
             (when (graph-is-complete graph)
               (incf node-count (hash-table-count (graph::node-table graph)))
-              (multiple-value-bind (hdc rdc)
+              (multiple-value-bind (hdc rdc hrdc)
                   (calculate-precision graph stream :document document)
                 (incf head-diff-count hdc)
-                (incf relation-diff-count rdc)))))
-    (values node-count head-diff-count relation-diff-count)))
+                (incf relation-diff-count rdc)
+                (incf head+relation-diff-count hrdc)))))
+    (values node-count head-diff-count relation-diff-count head+relation-diff-count)))
 
 (defparameter *diff-table* (make-hash-table :test #'equal))
 
 (defmethod calculate-precision ((graph dep-node) stream &key document &allow-other-keys)
   (let ((head-diff-count 0)
-        (relation-diff-count 0))
+        (relation-diff-count 0)
+        (head+relation-diff-count 0))
     (labels ((walk (node)
                (let ((parent (if (node-parents node)
                                  (node-id (car (node-parents node)))
@@ -1519,6 +1551,7 @@ Field number:	Field name:	Description:
                                  (relation-diff node))
                             (incf head-diff-count)
                             (incf relation-diff-count)
+                            (incf head+relation-diff-count)
                             (format stream "~a:~a	~a	~a -> ~a	~a -> ~a~%"
                                     document
                                     (graph::wid node)
@@ -1545,7 +1578,7 @@ Field number:	Field name:	Description:
                                     (relation-diff node)))))))
                (mapc #'walk (node-children node))))
       (walk graph)
-      (values head-diff-count relation-diff-count))))
+      (values head-diff-count relation-diff-count head+relation-diff-count))))
 
 #+test
 (let ((text
@@ -1565,6 +1598,7 @@ Field number:	Field name:	Description:
           (node-count 0)
           (head-diff-count 0)
           (relation-diff-count 0)
+          (head+relation-diff-count 0)
           (first t))
       (write-line "# document:word	stored -> parsed relation	stored -> parsed head" stream)
       (do-query ((corpus-name document wid)
@@ -1604,23 +1638,29 @@ Field number:	Field name:	Description:
                                          (print (list document wid))
                                          ;;(terpri)
                                          ;;(debug text)
-                                         (multiple-value-bind (nc hdc rdc)
+                                         (multiple-value-bind (nc hdc rdc hrdc)
                                              (parse::calculate-precision text stream :document document)
                                            (incf node-count nc)
                                            (incf head-diff-count hdc)
-                                           (incf relation-diff-count rdc)))))))
+                                           (incf relation-diff-count rdc)
+                                           (incf head+relation-diff-count hrdc)))))))
                                wid-id :start-end-block-p nil))
         (setf prev-corpus-name corpus-name
               prev-doc document))
-      (format stream "nodes: ~a, head-diff: ~a, relation-diff: ~a~%"
-              node-count head-diff-count relation-diff-count)
+      (format stream "date: ~a, nodes: ~a, head-diff: ~a, relation-diff: ~a, head+relation-diff: ~a~%"
+              (now :format :timestamp-utc)
+              node-count head-diff-count relation-diff-count head+relation-diff-count)
       (print (list :nodes node-count :head-diff head-diff-count :relation-diff relation-diff-count))
       (debug count))))
 
+;; diff $(ls -t | head -n 2)
+;; diff of 3rd newest and newest:
+;; diff $(ls -t | head -n 3 | tail -n 1) $(ls -t | head -n 1)
 #+main
 (with-open-file (stream (format nil "projects:ud;kat;precision;precision-~a.txt"
                                 (now :format :timestamp-utc))
                         :direction :output :if-exists :supersede)
-  (calculate-precision :kat stream))
+  (calculate-precision :kat stream)
+  (print :done))
 
 :eof
