@@ -30,22 +30,24 @@ SUBSTITUTE Advb (Advb $ADV) TARGET A + Advb + Sg - FutPart - NegPart - Att - PP 
 SUBSTITUTE Advb (Advb $ADV) TARGET Num + Ord + Advb + Sg - Att - PP - $ADV ;
 
 # prelim; these have to go into the morphology
-LIST AdjDegAdv = "<მეტისმეტად>" "ესოდენ" "ნაკლებ·ი" "ისე" "ასე" ;
+LIST AdjDegAdv = "<მეტისმეტად>" "ესოდენ" "<ნაკლებად>" "ისე" "ასე" "<უაღრესად>" ;
 
 List CCompIntV = "ცოდნ[ა]/ც" "გრძნობ[ა]/გრძნ" "სმენ[ა]/სმ" "*·ხვდომ[ა]/ხვდ" "გა·გებ[ა]/გ" "*·ხედვ[ა]/ხედ"
                  "თქმ[ა]/თხ[ა]რ" "*·ხსნ[ა]/ხსნ" "ნახვ[ა]/ნახ" "და·ნახვ[ა]/ნახ" "თქმ[ა]/ტყვ" "მი·ხვდომ[ა]/ხვდ"
-                 "*·წერ[ა]/წერ" ;
+                 "*·წერ[ა]/წერ" "ხსოვნ[ა]/ხსოვ" ;
 
 # verbs that can have CCOMP without marker (same as CCompV?)
 LIST CCompNoMarkV_DO = "ფიქრ·ი/ფიქრ" "იმედოვნებ[ა]/იმედოვნ" "მო·ხსენებ[ა]/ხსენ"
                     # "*·ტყობ[ა]/ტყ"
                     "გონებ[ა]/გონ" "ცდილობ[ა]/ცდილ" "ხსოვნ[ა]/ხსოვ" "და·შვებ[ა]/შვ"
                     "*·წყვეტ[ა]/წყვეტ" "ნახვ[ა]/ნახ"
+                    "იმედოვნებ[ა]/იმედოვნ"
+                    "შე·ტყობ[ა]/ტყ"
                     ;
 
 LIST CCompNoMarkV_IO = "შე·ცდილობ[ა]/ცად" ;
 
-LIST CCompNoMarkV_S =  "*·ჩენ[ა]/ჩან" "*·ტყობ[ა]/ტყ"  ;
+LIST CCompNoMarkV_S =  "*·ჩენ[ა]/ჩან" "*·ტყობ[ა]/ტყ" ;
 
 LIST CCompIndSpeech = "და·ეჭვებ[ა]/ეჭვ" ;
 
@@ -56,16 +58,22 @@ LIST CCompVaitu = "შიშ·ი/შიშ" "შინებ[ა]/შინ" ;
 SET CSubjV = ("აღმო·ჩენ[ა]/ჩნ") + Pass OR ("ჯობნ[ა]/ჯობ") OR ("შე·ძლებ[ა]/ძლ") OR ("*·ჩვენებ[ა]/ჩვენ") OR
              ("*·ჯერებ[ა]/ჯერ") ;
 
-SET CSubjVerbOPT = ("ჯობნ[ა]/ჯობ") ;
+LIST CSubjVerbOPT = "ჯობნ[ა]/ჯობ" ;
 
 LIST COMPVerbOPT = "ცდ[ა]/ცად"
                    "ხსოვნ[ა]/ხსოვ"
      		   # "ცდილობ[ა]/ცდილ"
                    "თხოვნ[ა]/თხოვ"
+                   "*·თხოვნ[ა]/თხოვ"
                    "ნდომ[ა]/ნდ"
+                   "ხარებ[ა]/ხარ"
                    "გადა·წყვეტ[ა]/წყვიტ"
-                   "ძალ·დებ[ა]/ძ[ევ]"
-     		   "შე·ძლებ[ა]/ძლ" ; # and more
+                   "შე·ძლებ[ა]/ძლ" # should rather be xcomp
+                   "და·პირებ[ა]/პირ"
+                   "ძალ·დებ[ა]/ძ[ევ]" ; # and more
+
+# და·პირებ[ა]/პირ is not strictly XCOMP!
+# ჩემი პრეზიდენტობის ამ ვადაში ვაპირებ რომ ჩვენ დავამთავროთ მოლაპარაკება და მთლიანად გვქონდეს თავისუფალი ვაჭრობა ევროპასთან
 
 LIST COMPVerbOPT_IO = "ცდილობ[ა]/ცდილ" ;
 
@@ -74,15 +82,18 @@ LIST COMPVNOPT = "გადმო·ბირებ[ა]/ბირ" ; # and more
 # verbs that can have a Nom XCOMP Adj
 # see also PREDVerb!
 # should distinguish between those that may and those that must have an XCOMP
-LIST NomXCOMPVerb = "სიარულ·ი/დი" "გა·ხდომ[ა]/ხდ" "აღმო·ჩენ[ა]/ჩნ" "გონებ[ა]/გონ"
+LIST NomXCOMPVerb = "სიარულ·ი/დი" "აღმო·ჩენ[ა]/ჩნ" "გონებ[ა]/გონ"
                     "რქმევ[ა]/რქვ" "მი·წყობ[ა]/წყ" "და·რჩენ[ა]/რჩ"
                     "*·ჯდომ[ა]/ჯდ" "და·ჯდომ[ა]/ჯდ" "*·ხდომ[ა]/ხდ"
                     "მო·ჩვენებ[ა]/ჩვენ" "*·ჯდომ[ა]/ზი" "წა·სვლ[ა]/ვ{ი}დ"
-                    "წარმო·დგენ[ა]/დგინ" "მო·სვლ[ა]/ს" "დგომ[ა]/დგ" "გამო·დგომ[ა]/დგ"
-                    "გა·ხდენ[ა]/ხად" "*·ჩენ[ა]/ჩან" "გონებ[ა]/გონ" "ნანობ[ა]/ნან"
+                    "წარმო·დგენ[ა]/დგინ" "მო·სვლ[ა]/ს" # "დგომ[ა]/დგ"
+                    "გამო·დგომ[ა]/დგ"
+                    "გა·ხდენ[ა]/ხად" "გა·ხდომ[ა]/ხდ"
+                    "*·ჩენ[ა]/ჩან" "გონებ[ა]/გონ" "ნანობ[ა]/ნან"
                     "*·რჩენ[ა]/რჩ" # 
                     # "*·ხვდომ[ა]/ხვდ"
                     "გამო·სვლ[ა]/ვ{ი}დ" "გამო·სვლ[ა]/ს"
+                    "გა·ზრდ[ა]/ზარდ" # FIXNME: case should depend on obj case in transitives!
                     "*·ღვიძებ[ა]/ღვიძ" "*·ბრძანებ[ა]/ბრძან" "ხლებ[ა]/ახლ" ;
 
 # for depictives
@@ -126,7 +137,7 @@ LIST QuoteVerb = "გონებ[ა]/გონ" "კითხვ[ა]/კი�
 # change name!
 LIST SentenceFinalQuoteVerb = "ფიქრ·ი/ფიქრ" "გა·ფიქრებ[ა]/ფიქრ" "*·ყოლ[ა]/ყვ" "*·თქმ[ა]/უბნ"
                               "*·ცხადებ[ა]/ცხად" "თქმ[ა]/თქვ" "კითხვ[ა]/კითხ" "თქმ[ა]/თხ[ა]რ"
-                              "*·კითხვ[ა]/კითხულ" ;
+                              "*·კითხვ[ა]/კითხულ" "პასუხობ[ა]/პასუხ" "თქმ[ა]/მბობ" ;
 
 LIST CSUBJAdjRom = "და·საშვებ·ი/შვ" "და·სანან·ი/ნან" "შე·საძლო/ძლ" "შე·საძლებ[ე]ლ·ი/ძლ"
                    "კარგ·ი" "ცუდ·ი" "სწორ·ი" "უეჭველ·ი" "საოც[ა]რ·ი/ოც" "ნათ[ე]ლ·ი" "საკმარის·ი"
@@ -141,30 +152,41 @@ LIST CSUBJN = "საცოდაობ[ა]" ;
 # many more
 LIST Part_IO = "მი·ჩვეულ·ი/ჩვ" "მო·კლებულ·ი/კლ" ;
 
+# split off indirect speech marker
+ADDCOHORT ("<_ო>" "_ო" [0] Prt IndSp3) AFTER Encl:IndSp3 IF (0C Encl:IndSp3) (NOT 1 ("_ო")) (NOT 0 $ADDED_Ind) ;
+ADDCOHORT ("<_-თქო>" "_-თქო" [0] Prt IndSp2) AFTER Encl:IndSp2 IF (0C Encl:IndSp2) (NOT 1 ("_-თქო")) (NOT 0 $ADDED_Ind) ;
+ADDCOHORT ("<_-მეთქი>" "_-მეთქი" [0] Prt IndSp1) AFTER Encl:IndSp1 IF (0C Encl:IndSp1) (NOT 1 ("_-მეთქი")) (NOT 0 $ADDED_Ind) ;
+
+LIST _Ind = "_ო" "_-თქო" "_-მეთქი" ;
+
+ADD $ADDED_Ind (*) IF (NOT 0 $ADDED_Ind) (1 _Ind) ;
+
 # split off enclitic copula verb
 ADDCOHORT ("<_ა>" "ყოფნ[ა]/არ" [0] V MedPass Pres <S> <AuxIntr> <S:Nom> S:3Sg Encl)
-	  AFTER Aux IF (0C Aux - Encl:IndSp1 - Encl:IndSp2 - Encl:IndSp3) (NOT 1 Encl) (NOT 0 $ADDED) ;
+	  AFTER Aux IF (0C Aux)# - Encl:IndSp1 - Encl:IndSp2)# - Encl:IndSp3)
+                       (NOT 1 Encl) (NOT 0 $ADDED) ;
 
-ADDCOHORT ("<_ა-მეთქი>" "ყოფნ[ა]/არ" [0] V MedPass Pres <S> <AuxIntr> <S:Nom> S:3Sg Encl Encl:IndSp1)
-	  AFTER Aux IF (0C Aux + Encl:IndSp1) (NOT 1 Encl) (NOT 0 $ADDED) ;
+#ADDCOHORT ("<_ა-მეთქი>" "ყოფნ[ა]/არ" [0] V MedPass Pres <S> <AuxIntr> <S:Nom> S:3Sg Encl Encl:IndSp1)
+#	  AFTER Aux IF (0C Aux + Encl:IndSp1) (NOT 1 Encl) (NOT 0 $ADDED) ;
 
-ADDCOHORT ("<_ა-თქო>" "ყოფნ[ა]/არ" [0] V MedPass Pres <S> <AuxIntr> <S:Nom> S:3Sg Encl Encl:IndSp2)
-	  AFTER Aux IF (0C Aux + Encl:IndSp2) (NOT 1 Encl) (NOT 0 $ADDED) ;
+#ADDCOHORT ("<_ა-თქო>" "ყოფნ[ა]/არ" [0] V MedPass Pres <S> <AuxIntr> <S:Nom> S:3Sg Encl Encl:IndSp2)
+#	  AFTER Aux IF (0C Aux + Encl:IndSp2) (NOT 1 Encl) (NOT 0 $ADDED) ;
 
-ADDCOHORT ("<_აო>" "ყოფნ[ა]/არ" [0] V MedPass Pres <S> <AuxIntr> <S:Nom> S:3Sg Encl Encl:IndSp3)
-	  AFTER Aux IF (0C Aux + Encl:IndSp3) (NOT 1 Encl) (NOT 0 $ADDED) ;
+#ADDCOHORT ("<_აო>" "ყოფნ[ა]/არ" [0] V MedPass Pres <S> <AuxIntr> <S:Nom> S:3Sg Encl Encl:IndSp3)
+#	  AFTER Aux IF (0C Aux + Encl:IndSp3) (NOT 1 Encl) (NOT 0 $ADDED) ;
 
 ADD $ADDED (*) IF (NOT 0 $ADDED) (1 Encl) ;
 
 # split off postpositions
 
-LIST _PP = "_გან" "_და" "_დამ" "_დამი" "_დან" "_დმი" "_ებრ" "_ებრივ" "_ვით" "_ზე" "_ზედ" "_თან" "_თვის"
+LIST _PP = "_გან" "_და" "_დამ" "_დამი" "_დან" "_დმი" "_ებრ" "_ებრივ" "_ვით" "_ზე" "_ზედ" "_თან" "_თვის" "_თანავე"
            "_კე" "_კენ" "_მდე" "_მდი" "_მდინ" "_მდის" "_მებრ" "_მი" "_მო" "_ურთ" "_ქვეშ" "_ში" "_შუა" "_წინ" ;
 
 ADDCOHORT ("<_გან>" "_გან" [0] Pp <Gen>) AFTER PP:გან
        IF (0C PP:გან) (NOT 1 ("_გან")) (NOT 0 $ADDED_PP) (NOT 0 DCASE) ;
 ADDCOHORT ("<_დან>" "_დან" [0] Pp <Inst>) AFTER PP:დან IF (0C PP:დან) (NOT 1 ("_დან")) (NOT 0 $ADDED_PP) ;
-ADDCOHORT ("<_თან>" "_თან" [0] Pp <Dat>) AFTER PP:თან IF (0C PP:თან) (NOT 1 ("_თან")) (NOT 0 $ADDED_PP) ;
+ADDCOHORT ("<_თანავე>" "_თანავე" [0] Pp <Gen>) AFTER PP:თან IF (0C PP:თან + Encl:ვე) (NOT 1 ("_თანავე")) (NOT 0 $ADDED_PP) ;
+ADDCOHORT ("<_თან>" "_თან" [0] Pp <Dat>) AFTER PP:თან IF (0C PP:თან) (NOT 1 ("_თან")) (NOT 1 ("_თანავე")) (NOT 0 $ADDED_PP) ;
 ADDCOHORT ("<_ში>" "_ში" [0] Pp <Dat>) AFTER PP:ში IF (0C PP:ში) (NOT 1 ("_ში")) (NOT 0 $ADDED_PP) ;
 ADDCOHORT ("<_ზე>" "_ზე" [0] Pp <Dat>) AFTER PP:ზე IF (0C PP:ზე) (NOT 1 ("_ზე")) (NOT 0 $ADDED_PP) ;
 ADDCOHORT ("<_თვის>" "_თვის" [0] Pp <Gen>) AFTER PP:თვის IF (0C PP:თვის) (NOT 1 ("_თვის")) (NOT 0 $ADDED_PP) ;
@@ -329,6 +351,16 @@ WITH ("და")
    SELECT @NC ;
 } ;
 
+# მე და შენ
+WITH ("და")
+  IF (1* Hum BARRIER (*) - Att)
+     (-1 Pron + Pers)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >CC (*) ;
+   SELECT @NC ;
+} ;
+
 WITH Adv + Temp
     IF (-2 Adv + Temp)
      (-1 ("თუ"))
@@ -389,6 +421,16 @@ WITH ("მეტად") OR ("ბევრად")
    MAP >ADVMOD (*) ;
 } ;
 
+# -დან გამომდინარე
+
+# not needed
+WITH PP:დან + FALSE
+  IF (2 ("გამო·მდინარ[ე]/დენ") + Nom + Sg - Att)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >OBL (*) ;
+} ;
+  
 # ვინ და როდის
 WITH ("და") + @NC
     IF (1 Adv + Int)
@@ -425,6 +467,13 @@ WITH ("ვერ")
 } ;
 
 
+WITH ("<ყოვლისა>")
+  IF (-1 ("უპირველეს") + Adv)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >NMOD (*) ;
+} ;
+
 # ხუთჯერ თუ შვიდჯერ
 WITH ("თუ") + @NC
     IF (1 Repet)
@@ -443,12 +492,21 @@ WITH Repet
    MAP >CONJ (*) ;
 } ;
 
-WITH Modal
-  IF (1 V)
+WITH Modal + ("უნდა")
+  IF (1* V BARRIER (*) - Neg)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >AUX (*) ;
 } ;
+
+# შეიძლება, ასეც იყოს.
+WITH Modal - ("უნდა")
+  IF (1* V BARRIER (*) - Neg - Comma - Adv)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >AUX (*) ;
+} ;
+
 
 # then start with deterministic attachments
 
@@ -471,14 +529,15 @@ WITH Adv + Neg + Temp
   IF (1 V)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >ADVMOD:TMOD (*) ;
+   MAP >ADVMOD (*) ;
+ #  MAP >ADVMOD:TMOD (*) ;
 } ;
 
 WITH Adv + Neg
   IF (1 V)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >ADVMOD (*) ;
+   MAP >ADVMOD:NEG (*) ;
 } ;
 
 WITH Adv + Neg
@@ -486,7 +545,7 @@ WITH Adv + Neg
      (1 Modal)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >ADVMOD (*) ;
+   MAP >ADVMOD:NEG (*) ;
 } ;
 
 # ვერც ერთი
@@ -494,7 +553,7 @@ WITH Adv + Neg + Foc
   IF (1* NA - Att OR Num - Att BARRIER (*) - Att) # more
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >ADVMOD (*) ;
+   MAP >ADVMOD:NEG (*) ;
 } ;
 
 WITH ("რამდენად") + Encl:ც # should be Rel?
@@ -635,7 +694,8 @@ WITH Temp + PP:ში
   IF (2 Repet)
    (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  # MAP >OBL:TMOD (*) ;
 } ;
 
 WITH Adv + DegNum # OR ("<ყველაზე>")
@@ -756,9 +816,17 @@ WITH Neg - Pron
   IF (1 V)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >ADVMOD (*) ;
+   MAP >ADVMOD:NEG (*) ;
 } ;
 
+WITH ("როგორც") + Cj
+     (1* W)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >MARK (*) ;
+} ;
+
+# should be Compar?
 # როგორც წესი
 WITH ("როგორც") + Cj
      (1 Adv - Neg OR $ADV)
@@ -838,13 +906,6 @@ WITH ("შე·ხებ[ა]/ხ")
    MAP >ADVCL (*) ;
 } ;
 
-#SETPARENT Neg
-#	TO (1 Modal) ;
-
-#SETPARENT Neg + L
-#	IF (-1 ("ოღონდ"))
-#	TO (1 (*) LINK pp (*) ) ;
-
 # და conjoining adjectives
 WITH ("და") + Cj OR ("თუ") + Cj OR ("ან") + Cj
   IF (1* $$CASE + Att BARRIER NA + $$CASE - PP)
@@ -872,7 +933,7 @@ SETPARENT A + >CONJ
   IF (p A + >CONJ)
   TO (p A LINK p A) ;
 
-WITH FirstName + $$CASE
+WITH FirstName + $$CASE OR Anthr + Abbrev
   IF (1 LastName + $$CASE)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -908,7 +969,7 @@ WITH N + Att + $$CASE - Num
    MAP >NMOD (*) ;
 } ;
 
-WITH Pron + Indef + $$CASE
+WITH Pron + Indef + $$CASE + Att
   IF (1* NA + $$CASE - Att BARRIER (*) - Att - $$CASE)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -950,6 +1011,17 @@ WITH Pron + Dem + $$CASE + Att - $ADV
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >DET (*) ;
+} ;
+
+WITH Pron + Dem + Att + $$CASE
+  IF (1* NA + $$CASE - Att - Quant OR
+         Num + $$CASE - Att OR
+         Pron + SIndef + $$CASE - Att
+      BARRIER (*) - Att - $$CASE - Gen - Comma)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >DET (*) ;
+   SELECT Att ;
 } ;
 
 # attributive adjective
@@ -1018,7 +1090,14 @@ WITH Att + $$CASE - Poss - Num - Indef
 } ;
 
 WITH Pron + Poss + Att + $$CASE
-  IF (1 (*) LINK Spp NA + $$CASE OR Pron + Refl + $$CASE)
+  IF (1 Part OR VN LINK Spp NA + $$CASE OR Pron + Refl + $$CASE)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >DET:ARG (*) ;
+} ;
+
+WITH Pron + Poss + Att + $$CASE
+  IF (1 (*) LINK Spp NA + $$CASE - Att OR Pron + Refl + $$CASE)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >DET:POSS (*) ;
@@ -1031,10 +1110,6 @@ WITH Att + $$CASE - Num
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >AMOD (*) ;
 } ;
-
-#n-SETPARENT Pron + Pers + Nom + (3)
-#	IF (1* NomHead LINK 1 ("ყოფნ[ა]/არ"))
-#	TO (1* ("ყოფნ[ა]/არ")) ;
 
 SET NACj = N | A | Cj + Coord ;
 
@@ -1084,10 +1159,24 @@ WITH PP:თვის
 } ;
 
 WITH PP:თვის
-  IF (2 PastPart OR V - <AuxIntr> OR VN)
+  IF (2 V - <AuxIntr>)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >OBL (*) ;
+} ;
+
+WITH PP:თვის
+  IF (2 PastPart OR NegPart OR FutPart OR VN)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >OBL:IOBJ (*) ;
+} ;
+
+WITH PP:თვის
+  IF (2 VN)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >NMOD:IOBJ (*) ;
 } ;
 
 WITH PP:ზე
@@ -1150,7 +1239,7 @@ LIST VerbAttachableAdv = Temp Loc Sent Mann Iter Comm Disc Repet Causal Root Foc
 WITH A + Quant + Advb
   IF (1 A)
      (NEGATE p (*)) {
-   SETPARENT (*) TO (jC1 (*)) ;   
+   SETPARENT (*) TO (jC1 (*)) ;
    MAP >ADVMOD (*) ;
 } ;
 
@@ -1183,7 +1272,8 @@ WITH Adv + Temp - ("მაშინ") OR ("მაშინვე") # OR (".*ო�
      (NOT 0 Rel)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >ADVMOD:TMOD (*) ;
+   MAP >ADVMOD (*) ;
+ #  MAP >ADVMOD:TMOD (*) ;
 } ;
 
 WITH ("კი") + Adv
@@ -1274,9 +1364,9 @@ WITH $ADV
 } ;
 
 # apposition
-SETPARENT N + Erg
-	IF (NEGATE p (*))
-	TO (Sccll (*) LINK -1 ("–") LINK -1 Prop + Erg) ;
+#SETPARENT N + Erg
+#	IF (NEGATE p (*))
+#	TO (Sccll (*) LINK -1 ("–") LINK -1 Prop + Erg) ;
 
 # და conjoining nominals, case congruence, except Gen (!)
 
@@ -1313,7 +1403,7 @@ WITH Cj + @NC
 # გია და მე
 WITH Cj + @NC
   IF #(1 (*) LINK Srrpp*w N + Hum + $$CASE - Att - Temp OR Anthr + $$CASE - Att)
-     (1* Nom + Hum - Att + $$CASE OR Anthr + $$CASE BARRIER (*) - Att - Gen)
+     (1* Nom + Hum - Att + $$CASE OR Anthr + $$CASE - Att BARRIER (*) - Att - Gen)
      (-1 Pron + Pers + $$CASE - PP)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -1424,16 +1514,18 @@ WITH FutPart + Advb - Att
   IF (0* FutPartFinalV BARRIER V)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >XCOMP (*) ;
-   SUBSTITUTE Part (Part $VERB) (*) IF (NOT 0 $VERB) ;
+   MAP >OBL:FINAL (*) ;
+ #  MAP >XCOMP (*) ;
+ #  SUBSTITUTE Part (Part $VERB) (*) IF (NOT 0 $VERB) ;
 } ;
 
 WITH FutPart + Advb - Att
   IF (1 PastPart)
      (NEGATE p (*)) {
-   SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >XCOMP (*) ;
-   SUBSTITUTE Part (Part $VERB) (*) IF (NOT 0 $VERB) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+   MAP >OBL:FINAL (*) ;
+ #  MAP >XCOMP (*) ;
+ #  SUBSTITUTE Part (Part $VERB) (*) IF (NOT 0 $VERB) ;
 } ;
 
 #ADD Pl TARGET NAProp IF (1 >CC) ;
@@ -1443,7 +1535,7 @@ WITH V + IndSp
   IF (-1*w QuoteVerb BARRIER V OR Cj)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >CCOMP:QUOTE (*) ;
+   MAP >CCOMP:SPEECH (*) ;
 } ;
 
 WITH V
@@ -1451,7 +1543,7 @@ WITH V
      (1* IndSp BARRIER V)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >CCOMP:QUOTE (*) ;
+   MAP >CCOMP:SPEECH (*) ;
 } ;
 
 # რომ არ გეშინოდეს, იქიდან პოლიცია გამომიყვანსო
@@ -1477,14 +1569,14 @@ WITH V - QuoteVerb
      (NEGATE (jC1 (*)) LINK c >OBJ) # problem: >OBJ is mapped later
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >CCOMP:QUOTE (*) ;
+   MAP >CCOMP:SPEECH (*) ;
 } ;
 
 WITH V
   IF (-1* Dash BARRIER V LINK -1 Comma LINK -1w QuoteVerb)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >CCOMP:QUOTE (*) ;
+   MAP >CCOMP:SPEECH (*) ;
 } ;
 
 # 
@@ -1495,7 +1587,7 @@ WITH V
       LINK NEGATE 1 Pron + Pers + PP:ზე)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >CCOMP:QUOTE (*) ;
+   MAP >CCOMP (*) ;
 } ;
 
 WITH V + FALSE
@@ -1599,30 +1691,43 @@ WITH NAProp - Att - Qual OR Pron - Pers - Att OR Num - Att
    #REMCOHORT IGNORED WITHCHILD (*) (*) ;
 } ;
 
+WITH ("ისე")
+  IF (1*w N - Att BARRIER V)
+     (-1* ("როგორც") BARRIER V)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >CC (*) ;
+} ;
+
 SET AdvNotRel = Adv - Rel OR $ADV ;
 
-WITH Hum + $$CASE - Att
+LIST HUM = Hum Anthr ;
+
+WITH HUM + $$CASE - Att - Int
   IF (-1* Comma BARRIER (*) - Att - Gen - Comma - AdvNotRel
-      LINK -1w Anthr + $$CASE - Att
+      LINK -1w HUM # + $$CASE - Att
       LINK NOT -1 PREP)
-     (1 Punct)
+     #(1 Punct)
+     (NONE c >CC)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >APPOS (*) ;
 } ;
 
+LIST OBLPart = "გამო·მდინარ[ე]/დენ" "მოყოლებულ·ი/ყოლ" ;
 
 # ?? first two positions dont work for: აქვს ლურჯი თვალები , კეხიანი გრძელი ცხვირი , ოდნავ მოღუნული, მხედრის წვივები.
 WITH NAProp + $$CASE - Att - Quant
   OR Pron + $$CASE - Rel - Int - Dem
   OR Num + $$CASE - Att
   IF (-1** Comma BARRIER (*) - Att - Gen - Comma - AdvNotRel
-      LINK -1w NA + $$CASE - Att OR Pron + $$CASE - Att - Recip OR Num + $$CASE - Att
+      LINK -1wX NA + $$CASE - Att OR Pron + $$CASE - Int - Att - Recip OR Num + $$CASE - Att
       LINK NOT -1 PREP OR >CC)
      (NOT jC1 >MARK)
      (NOT cc Int OR Rel)
      (NOT 1 ("კი"))
      (NOT 0 Encl:Aux)
+     (NOT x0 OBLPart)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >CONJ (*) ;
@@ -1634,7 +1739,7 @@ WITH Gen - Att - PP
   IF (1 FutPart + Advb OR NegPart + Advb)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:ARG (*) ;
+   MAP >NMOD:ARG (*) ;
    REMOVE Dat ; # make sure that Dat has been ruled out before
 } ;
 
@@ -1647,6 +1752,14 @@ WITH NA + Gen - Att - PP OR Pron + Rel + Gen - Att - PP
    # REMOVE Dat ; # make sure that Dat has been ruled out before
 } ;
 
+# restricted quantifier
+# (ჩამს) მეტს ვის
+WITH A + Quant + $$CASE
+  IF (1 Pron + Int + $$CASE)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >DET (*) ;
+} ;
 
 TEMPLATE GenNmod = (1 ("ყველა") + Quant + PP:ზე
                    LINK 2* N - Att
@@ -1656,7 +1769,7 @@ TEMPLATE GenNmod = (1 ("ყველა") + Quant + PP:ზე
                     OR Hum + Qual # უბნის პოლიციელი თურნავა
                     BARRIER (*) - Att - Adv - Advb - PronDem - Digits - Gen - Pp
                    ) OR
-                   (1* N - Att
+                   (1* N - Top - Att
                     OR VN - Att
                     OR A - Att - Advb
                     OR Num - Att - Ord
@@ -1685,12 +1798,23 @@ WITH Gen - Att - PP # + L
    REMOVE Dat ; # make sure that Dat has been ruled out before
 } ;
 
-WITH ("მოყოლებულ·ი/ყოლ") + Part + Nom + Sg - Att
-  IF (-1* V BARRIER @CLB)
+# postpositioned genitive
+
+# დედა წინააღმდეგია იმისა, რომ
+WITH Pron + Dem + Gen + L - Att
+  IF (-1* NA - Att BARRIER (*) - V)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >NMOD (*) ;
+} ;
+
+WITH OBLPart + Part + Nom + Sg - Att
+  IF (0* V BARRIER @CLB)
      (-2 PP:დან)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
    SUBSTITUTE Part (Part $CLOSED) (*) IF (NOT 0 $CLOSED)
 } ;
 
@@ -1736,21 +1860,39 @@ WITH PP:ზე
    MAP >OBL (*) ;
 } ;
 
+LIST TanNoun = "ურთიერთობ[ა]" "შეხვედრ[ა]" ;
+
+# რუსებთან ურთიერთობაში
+WITH PP:თან
+  IF (2* TanNoun BARRIER (*) - Adv - Deg)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >NMOD (*) ;
+} ;
+
+LIST GanNoun = "გან·სხვავებ[ა]/სხვავ" ;
+
+# რუსებთან ურთიერთობაში
+WITH PP:გან
+  IF (-1 GanNoun BARRIER (*) - Adv - Deg)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >NMOD (*) ;
+} ;
 
 WITH PP:დმი
   IF (0* ("ვნებ[ა]/ვნ") BARRIER V)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL (*) ;
+   MAP >NMOD (*) ;
 } ;
-
 
 # ??
 WITH PP:ში OR PP:თან OR PP:ზე OR PP:კენ
   IF (2* VN BARRIER (*) - Modal - Neg)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL (*) ;
+   MAP >NMOD (*) ;
 } ;
 
 # საკმარისია …
@@ -1772,7 +1914,7 @@ WITH CSUBJAdj
 WITH PP:ში OR PP:თან OR PP:ზე OR PP:კენ OR PP:თვის
      OR Adv + Loc
   IF (2*wX <AuxIntr> BARRIER (*) - Modal - Neg - Adv LINK NONE c >XCOMP)
-     (NOT x1 Part)
+     (NOT x1* Part - Att OR A - Att)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >XCOMP (*) ;
@@ -1826,7 +1968,7 @@ WITH ("ხელ·ი") + PP:ში
 } ;
 
 WITH PP:თვის
-  IF (2* FutPart BARRIER CLBwords OR Cj + Sub OR Comma OR Coord)
+  IF (2* Part BARRIER CLBwords OR Cj + Sub OR Comma OR Coord)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >OBL:IOBJ (*) ;
@@ -1840,10 +1982,17 @@ WITH PP:თვის
 } ;
 
 WITH PP OR Inst - Att OR ("<ადგილას>")
-  IF (1* V OR VN OR Part BARRIER CLBwords OR Cj + Sub OR Comma OR Coord)
+  IF (1* V OR Part BARRIER CLBwords OR Cj + Sub OR Comma OR Coord)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >OBL (*) ;
+} ;
+
+WITH PP OR Inst - Att OR ("<ადგილას>")
+  IF (1* VN BARRIER CLBwords OR Cj + Sub OR Comma OR Coord)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >NMOD (*) ;
 } ;
 
 # ჩემს ხელთ
@@ -1882,7 +2031,7 @@ WITH PP:თვის
       BARRIER ("რომ") OR ("როცა") OR @CLB)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:IOBJ (*) ;
+   MAP >NMOD:IOBJ (*) ;
 } ;
 
 WITH NAProp + Gen - Att
@@ -1891,13 +2040,13 @@ WITH NAProp + Gen - Att
      (1 ("მიერ"))
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:AGENT (*) ;
+   MAP >NMOD:AGENT (*) ;
 } ;
 
 # შედგება ვაშლისა და მაღაზიების გამოცნობის ბლოკებისაგან.
 WITH PP OR Inst
   IF (-1* V OR Part - Att - $CLOSED # bug?! OR VN
-      BARRIER ("რომ") OR ("როცა") OR @CLB OR Colon
+      BARRIER ("რომ") OR ("როცა") OR @CLB OR Colon OR Dash
       )
       # (NOT 0 Rel)
      (NEGATE p (*)) {
@@ -2106,6 +2255,14 @@ WITH Pron + Pers + 1 + Pl + Dat
    MAP >IOBJ (*) ;
 } ;
 
+WITH Pron + Pers + 1 + Sg + Dat
+  IF (0* IO:Dat + IO:1Pl BARRIER CLB)
+     (c >CONJ)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >IOBJ (*) ;
+} ;
+
 WITH Pron + Pers + 2 + Pl + Dat
   IF (0* IO:Dat + IO:2Pl BARRIER CLB)
      (NEGATE p (*)) {
@@ -2140,7 +2297,7 @@ REMOVE Gen + DNom - PP
 
 SET @PP = (*) - PP OR $ADDED_PP ;
 
-TEMPLATE GenConjuncts = (-1 Gen + @PP + >CONJ LINK pp Gen + >CONJ LINK p Gen) OR
+TEMPLATE GenConjuncts = (-1 Gen + @PP + >CONJ OR >APPOS LINK pp Gen + >CONJ LINK p Gen) OR
                         (-1 Gen + @PP + >CONJ LINK p Gen + L) OR
                         (-1 Gen + @PP) ;
 
@@ -2232,13 +2389,21 @@ WITH Pp + <Nom>
    MAP >CASE (*) ;
 } ;
 
-SETPARENT Advb - PP
-	IF (NEGATE p (*))
-	TO (rrccS (*) LINK 1 <Advb>) ;
+# -თან დაკავშირებით
+WITH <PP:თან>
+  IF (-2 PP:თან)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >CASE (*) ;
+} ;
 
-SETPARENT (PP:თან)
-	IF (NEGATE p (*))
-	TO (1 (<PP:თან>)) ;
+#SETPARENT Advb - PP
+#	IF (NEGATE p (*))
+#	TO (rrccS (*) LINK 1 <Advb>) ;
+
+#SETPARENT (PP:თან)
+#	IF (NEGATE p (*))
+#	TO (1 (<PP:თან>)) ;
 
 WITH Gen + Prop - PP
   IF (1 (*) - Cj LINK Spp NA - Att - Temp)
@@ -2324,18 +2489,20 @@ WITH Temp + Dat - PP
   IF (1* SubCj + ("როცა") BARRIER V
       LINK 1* V
       LINK 1* V)
-     (c >DET OR >NUMMOD OR >NMOD)
+     (c >DET OR >NUMMOD OR >NMOD OR >ADVMOD)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
 WITH Temp + Dat - PP
   IF (1* V BARRIER @CLB)
-     (c >DET OR >NUMMOD OR >NMOD)
+     (c >DET OR >NUMMOD OR >NMOD OR >ADVMOD)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
 LIST BareTempDat = "საღამო" "ნაშუადღევ·ი" ;
@@ -2345,15 +2512,19 @@ WITH BareTempDat + Dat - PP
   IF (1* V BARRIER @CLB)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
-WITH Temp + Nom - PP
-  IF (1* V + AOR + DO:Nom BARRIER @CLB)
+# better: exclude verbs that can have temp arguments?
+# ვიმუშავეთ ერთი თვე
+WITH Temp + Nom - PP - ("დრო")
+  IF (0* V + AOR BARRIER @CLB)
      (c >DET OR >NUMMOD OR >NMOD)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
 WITH Temp + Dat - PP
@@ -2361,7 +2532,8 @@ WITH Temp + Dat - PP
      (c >DET OR >NUMMOD OR >AMOD)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
 # and many more!
@@ -2404,7 +2576,7 @@ WITH VN + Dat + Sg - Att
   # SUBSTITUTE VN (VN $VERB) (*) IF (NOT 0 $VERB) ;
 } ;
 
-WITH DatHead
+WITH DatHead + FALSE
   IF (1*w <S-DO*> + DO:Dat + DO:3 BARRIER (*) - Neg LINK NONE c >OBJ)
      (NOT 0 PP)
      (NEGATE p (*)) {
@@ -2464,10 +2636,23 @@ WITH DatHead + Hum
    REMOVE Gen ;
 } ;
 
+
+WITH DatHead
+  IF (1*w <S-DO*> + DO:Dat + DO:3 BARRIER (*) - Neg LINK NONE c >OBJ)
+     (NOT 0 PP)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;
+   REMOVE Gen ;
+   MAP >OBJ (*) ;
+} ;
+
+
+
 WITH DatHead
   IF (0*w IO:Dat + IO3 BARRIER @CLB OR Comma OR Compl OR V LINK NONE c >IOBJ)
      (NOT 1 (Pp <Dat/Gen>))
      (NOT 1 (Pp <Dat>))
+     (NOT 1 (Pp <Gen>)) # მას შემდეგ!
      (NOT 0 PP)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -2519,7 +2704,8 @@ WITH DatHead
 #	TO (0* <S-DO> + S:Dat + S:3 BARRIER CLB) ;
 
 # საბუთები მქონდა შესადგენი და გადასაწერი.
-WITH PastPart + Nom - Att OR PastPart + Abs
+WITH PastPart + Nom - Att #- ("ცნობილ·ი/ცნ")
+     OR PastPart + Abs
      OR FutPart + Nom - Att - ("შე·საძლებ[ე]ლ·ი/ძლ")
   IF (-1*w AUX BARRIER V OR >CC OR Rel OR Int OR Comma LINK NONE c >XCOMP)
      (NEGATE p (*)) {
@@ -2537,7 +2723,7 @@ WITH PastPart + Nom - PastPart:ნა OR Part + Abs
    SUBSTITUTE Part (Part $VERB) (*) IF (NOT 0 $VERB) ;
 } ;
 
-WITH W
+WITH W + FALSE
   IF (-1* ("<შეიძლება>") BARRIER SubCj OR V)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -2604,11 +2790,14 @@ WITH NomHead - Dem
 #   MAP >NSUBJ (*) ; # ??????
 } ;
 
+# obs: BARRIER has to go into template here!!
+TEMPLATE NextNomHead = (c >CONJ LINK 1* NomHead - >CONJ - Neg BARRIER Rel OR V OR Cj OR Colon) OR
+                       (1* NomHead - >CONJ - Neg BARRIER Rel OR V OR Cj OR Colon) ;
+
 # NSUBJ > XCOMP > AUX
 WITH NomHead
-  IF (1* NomHead - >CONJ - Neg # exclude არავინ
-      BARRIER Rel OR V OR Cj
-      LINK 1*w S:Nom + S:3 + <AuxIntr> BARRIER CLB OR Comma OR PP
+  IF (T:NextNomHead # exclude არავინ
+      LINK 1*w S:Nom + S:3 + <AuxIntr> BARRIER CLB OR Comma OR PP OR V
       LINK NONE c >XCOMP OR >XCOMP:AUX OR >NSUBJ)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -2680,6 +2869,17 @@ WITH NomHead - Neg - Int
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >XCOMP (*) ;
+} ;
+
+# საინტერესოა
+WITH A - Att + Sg + Nom
+  IF (1w S:Nom + S:3 + <AuxIntr>
+      LINK NONE c >XCOMP OR >XCOMP:AUX
+           )
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >XCOMP (*) ;
+ #  MAP >NSUBJ (*) ;
 } ;
 
 WITH NomHead - Neg - Int
@@ -2761,7 +2961,7 @@ WITH NA + Advb - Att
    MAP >NMOD:PRED (*) ;
 } ;
 
-WITH NA + Nom - Att OR Pron + Int + Nom - Att
+WITH NA + Nom - Att OR Pron + Int + Nom - Att OR Pron + Indef + Nom - Att
   IF (1*w V + NomXCOMPVerb BARRIER (*) - Neg - Modal LINK NONE c >XCOMP)
      (0* NomHead BARRIER V - NomXCOMPVerb OR @CLB) # there should be a subj somewhere.
      (NEGATE p (*)) {
@@ -2770,7 +2970,7 @@ WITH NA + Nom - Att OR Pron + Int + Nom - Att
 } ;
 
 # or subj is 1/2
-WITH NA + Nom - Att OR Pron + Int + Nom - Att
+WITH NA + Nom - Att OR Pron + Int + Nom - Att OR Pron + Indef + Nom - Att
   IF (1*w V + S:12 + NomXCOMPVerb BARRIER (*) - Neg - Modal LINK NONE c >XCOMP)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -2871,6 +3071,14 @@ WITH V + Opt # tense concord?
    MAP >CCOMP (*) ;
 } ;
 
+# დედა არ აპირებს გახდეს პატარძლის დედა.
+WITH NA + Nom - Att
+  IF (-1*w V + NomXCOMPVerb + >CCOMP BARRIER (*) - Att - Gen LINK NONE c >XCOMP)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >XCOMP (*) ;
+} ;
+
 # დავიწყე მუშაობა
 WITH VN + Nom + Sg - Att
   IF (0*w XCOMPVerbVN + DO:Nom + DO:3 #- COMPVerbOPT
@@ -2939,8 +3147,9 @@ WITH VN + Nom + Sg - Att
      (NONE c >CC)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >CSUBJ (*) ;
-   SUBSTITUTE VN (VN $VERB) (*) IF (NOT 0 $VERB) ;
+   MAP >NSUBJ (*) ;
+  # MAP >CSUBJ (*) ;
+  # SUBSTITUTE VN (VN $VERB) (*) IF (NOT 0 $VERB) ;
 } ;
 
 # 2. special cases:
@@ -2969,7 +3178,7 @@ WITH N
 
 # 3. other nominals
 # არის საკითხები, რომლებიც ყველას აინტერესებს.
-WITH NomHead - Pers - Dem
+WITH NomHead - Pers - Dem - A
   IF (-1*w W + S:Nom + S:3 + AUX BARRIER CLB OR Rel + Nom OR Comma
       # LINK NOT -1 CSUBJAdj
       LINK NONE Xc >NSUBJ OR >NSUBJ:PASS OR >XCOMP OR >XCOMP:AUX
@@ -2983,17 +3192,17 @@ WITH NomHead - Pers - Dem
 } ;
 
 # xcomp after aux
-WITH NomHead #- Dem - Pers
-  IF (lccS (*) - Comma LINK -1*w W + S:Nom + S:3 + <AuxIntr> BARRIER PP OR V OR Head OR Cj + Sub OR Comma
+# არის ეს ლუდი კარგი?
+WITH A + Nom - Att OR Pron + Indef - Att
+  IF (-1*w NomXCOMPVerb OR AUX BARRIER >CC OR >MARK OR Cj + Sub OR Colon
       LINK NONE c >XCOMP OR >XCOMP:AUX)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >XCOMP (*) ;
 } ;
 
-# არის ეს ლუდი კარგი?
-WITH A + Nom - Att OR Pron + Indef - Att
-  IF (-1*w NomXCOMPVerb OR AUX BARRIER >CC OR >MARK OR Cj + Sub OR Colon
+WITH NomHead #- Dem - Pers
+  IF (lccS (*) - Comma LINK -1*w W + S:Nom + S:3 + <AuxIntr> BARRIER PP OR V OR Head OR Cj + Sub OR Comma
       LINK NONE c >XCOMP OR >XCOMP:AUX)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -3013,7 +3222,7 @@ WITH Pers + 1 + Nom
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >XCOMP (*) ;
-   REMOVE Dat
+   REMOVE Dat ;
 } ;
 
 WITH Pers + 2 + Nom
@@ -3021,7 +3230,7 @@ WITH Pers + 2 + Nom
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >XCOMP (*) ;
-   REMOVE Dat
+   REMOVE Dat ;
 } ;
 
 
@@ -3088,7 +3297,7 @@ WITH NomHead
 
 # jump over advcl
 WITH NomHead
-  IF (1* SubCj BARRIER V
+  IF (1* SubCj BARRIER V OR Colon
       LINK 1* W
       LINK 1*w S:Nom + S:3 - AUX BARRIER V LINK NONE c >CC)
      (NEGATE p (*)) {
@@ -3197,6 +3406,7 @@ WITH DatHead
   IF (0*w DO:Dat + DO:3 BARRIER @CLB OR Compl LINK NONE c >OBJ)
      (NOT 1 (Pp <Dat/Gen>))
      (NOT 1 (Pp <Dat>))
+     (NOT 1 (Pp <Gen>))
      (NOT 0 PP)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -3208,6 +3418,7 @@ WITH DatHead
   IF (0*w IO:Dat + IO:3 BARRIER @CLB LINK NONE c >IOBJ)
      (NOT 1 (Pp <Dat/Gen>))
      (NOT 1 (Pp <Dat>))
+     (NOT 1 (Pp <Gen>))
      (NOT 0 PP)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -3226,11 +3437,12 @@ WITH Gen - PP
 } ;
 
 # როგორც … ისე
+# coordination!
 WITH ("როგორც")
   IF (1**w N - Att BARRIER V LINK 1 Comma LINK 1 ("ისე"))
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >MARK (*) ;
+   MAP >CC (*) ;
 } ;
 
 # ისე როგორც
@@ -3240,14 +3452,6 @@ WITH ("როგორც")
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >MARK (*) ;
-} ;
-
-WITH ("ისე")
-  IF (1*w N - Att BARRIER V)
-     (-1* ("როგორც") BARRIER V)
-     (NEGATE p (*)) {
-   SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >CC (*) ;
 } ;
 
 WITH ("რამდენ·ი") + Rel
@@ -3447,15 +3651,30 @@ WITH Adv + Neg + Foc
   IF (1* V OR VN)
      (NEGATE p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
-  MAP >ADVMOD (*) ;
+  MAP >ADVMOD:NEG (*) ;
+} ;
+
+WITH ("აქ") OR ("იქ") OR ("მანდ") OR ("გარშემო")
+  IF (1 ("მყოფ·ი/ყოფ") + A)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >ADVMOD (*) ;
 } ;
 
 TEMPLATE RightVerb = (1* V BARRIER CLBwords OR Cj + Sub OR @CLB OR Comma) OR
                      (1* ("თუ") OR ("რომ") OR Modal BARRIER CLBwords OR Cj + Sub OR @CLB OR Comma LINK 1 V) OR
                      (1* ("თუ") OR ("რომ") BARRIER CLBwords OR Cj + Sub OR @CLB OR Comma LINK 1 Neg LINK 1 V) ;
 
+WITH Adv + Neg
+  IF (T:RightVerb)
+     (NOT 0 Rel)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >ADVMOD:NEG (*) ;
+} ;
+
 WITH Adv OR $ADV
-  IF (T:RightVerb) # (1* V BARRIER CLBwords OR Cj + Sub OR @CLB OR Comma)
+  IF (T:RightVerb)
      (NOT 0 Rel)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -3482,7 +3701,7 @@ WITH ("კი") + Disc
    MAP >ADVMOD (*) ;
 } ;
 
-WITH ("კი") + Root
+WITH ("კი") + Root OR ("დაე")
   IF (1* V)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -3545,13 +3764,6 @@ WITH ("ასე") OR ("ისე")
    MAP >ADVCL (*) ;
 } ;
 
-WITH ("აქ") OR ("იქ") OR ("მანდ")
-  IF (1 ("მყოფ·ი/ყოფ") + A)
-     (NEGATE p (*)) {
-   SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >ADVMOD (*) ;
-} ;
-
 WITH Adv + VerbAttachableAdv - Comm - Disc OR $ADV
   IF (-1**w V OR VN - Gen OR Part BARRIER CLBwords OR SubCj OR Cj OR @CLB
       LINK NOT c >DET)
@@ -3567,7 +3779,7 @@ WITH NA
      (NOT 0 Rel)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL (*) ;
+   MAP >ADVCL (*) ;
 } ;
 
 # როგორც წესი
@@ -3580,7 +3792,15 @@ WITH NA
    MAP >OBL (*) ;
 } ;
 
-WITH FutPart + Advb + Sg OR NegPart + Advb + Sg
+WITH FutPart + Advb + Sg
+  IF (0* V OR VN OR Part BARRIER CLBwords | ("რომ"))
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >OBL:FINAL (*) ;
+   # SUBSTITUTE A (A $VERB) (*) IF (NOT 0 $VERB) ;
+} ;
+
+WITH NegPart + Advb + Sg
   IF (0* V OR VN OR Part BARRIER CLBwords | ("რომ"))
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -3635,7 +3855,8 @@ WITH Temp
    # (NOT 0 Rel) ??
    (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
 WITH (*)
@@ -3703,8 +3924,15 @@ SETPARENT Adv + Foc
 	IF (NEGATE p (*))
 	TO (1 Neg LINK 1 V) ;
 
-WITH Adv + Deg OR Adv + Causal
+WITH Adv + Deg
   IF (1* V)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >ADVMOD (*) ;
+} ;
+
+WITH Adv + Causal
+  IF (1* V BARRIER Cj + Sub)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >ADVMOD (*) ;
@@ -3731,7 +3959,22 @@ WITH Adv + Neg
 } ;
 
 WITH Adv + VerbAttachableAdv OR $ADV
-  IF (1* V)
+  IF (1* V BARRIER Rel OR Cj + Sub)
+     (NEGATE p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >ADVMOD (*) ;
+} ;
+
+WITH Adv + VerbAttachableAdv OR $ADV
+  IF (-1* V)
+     (NEGATE p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >ADVMOD (*) ;
+} ;
+
+
+WITH Adv + VerbAttachableAdv OR $ADV
+  IF (1* Adv + Causal) # add similar ones!
      (NEGATE p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
   MAP >ADVMOD (*) ;
@@ -3778,7 +4021,7 @@ WITH V
 # როცა…, მაშინ
 WITH V
   IF (1* ("მაშინ"))
-     (c ("როცა"))
+     (c ("როცა") OR ("როდესაც"))
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >ACL:RELCL (*) ;
@@ -3791,7 +4034,8 @@ LIST AuxVerb = "ნდომ[ა]/ნდ" <AuxTrans> <AuxTransHum> <AuxIntr> "�
 
 # find an Indef before or after the previous V
 # perhaps restrict to SIndef instead of NA?
-TEMPLATE IndefLAttach = (-1* Pron + Indef - Att OR ("ყველაფ[ე]რ·ი") - Att BARRIER V) OR # იმათგანი is prelim!
+TEMPLATE IndefLAttach = (-1* Pron + Indef - Att OR ("ყველაფ[ე]რ·ი") - Att OR
+                             Pron + Dem - Att BARRIER V) OR # იმათგანი is prelim!
                         (-1*w NA - Att OR SIndef + Nonhum BARRIER V LINK cc Pron + Indef) OR
                         (-1* V LINK -1*w Pron + Indef - Att OR Pron + Dem - Att BARRIER V - AuxVerb) OR
                         (-1* V LINK -1*w NA - Att OR SIndef + Nonhum BARRIER V - AuxVerb LINK cc Pron + Indef) ;
@@ -3843,7 +4087,7 @@ TEMPLATE IndefRAttach = (1* Pron + Indef - Att OR Pron + Dem + Encl:ვე - Att
                         #(1* V LINK -1*w Pron + Indef - Att OR Pron + Dem - Att BARRIER V - AuxVerb) OR
                         #(1* V LINK -1*w NA - Att OR SIndef + Nonhum BARRIER V - AuxVerb LINK cc Pron + Indef) ;
 
-# if there is an Indef to the left we attach to its head
+# if there is an Indef to the right we attach to its head
 WITH V
   IF (T:IndefRAttach)
      (lc Pron + Rel + ("რ[ა]"))
@@ -3880,9 +4124,17 @@ WITH V
    MAP >ADVCL (*) ;
 } ;
 
-# იმიტომ…, რომ
+# იმიტომ… V, რომ
 WITH V
   IF (lc* ("რომ") LINK -1* V LINK -1*w Adv + Causal BARRIER V OR Cj)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >ACL (*) ;
+} ;
+
+# V იმიტომ, რომ
+WITH V
+  IF (lc* ("რომ") LINK -1*w Adv + Causal BARRIER V OR Cj)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >ACL (*) ;
@@ -3942,7 +4194,7 @@ LIST HumSubjV = "სმენ[ა]/სმ" ;
 
 # ენციკლოპედია ვერც იმას გვეტყვის, როგორ უნდა ვიცხოვროთ.
 WITH V
-  IF (lc* Pron + Int + Nonhum OR Adv + Int # რა, როგორ
+  IF (lc* Pron + Int + Nonhum - ("რაღ[ა]") OR Adv + Int # რა, როგორ
       LINK -1*w Pron + Dem BARRIER Int OR Rel OR Cj) # OR NAProp - Att)
      (NEGATE c >CC)
      (NEGATE p (*)) {
@@ -4003,11 +4255,21 @@ WITH Opt
    MAP >ADVCL (*) ;
 } ;
 
+TEMPLATE HasOpenArg = (0 IO:3 LINK NONE c >IOBJ) OR
+                      (0 DO:3 LINK NONE c >OBJ OR >CCOMP) OR
+                      (0 S:3Sg LINK NONE c >NSUBJ OR >CSUBJ) ;
+
 # relative clause
 # ისეთი ჯამაგირი არ არსებობს, კაცს რომ ეყოს.
+# რომ has to precede verb immediately
+# verb needs an argument without overt dependent, to exclude cases like
+# ჯერ კიდევ ბავშვი ვიყავი, ძველ ეგვიპტეს რომ გადავეყარე.
 WITH V
-  IF (lc ("რომ") + Compl LINK -1* Comma BARRIER @CLB
+  IF (-1* ("რომ") + Compl BARRIER (*) - Neg OR Modal
+      LINK -1* Comma BARRIER @CLB
+     # (lc ("რომ") + Compl LINK -1* Comma BARRIER @CLB
       LINK -1* NAProp - Att OR Pron + Pers + 3 BARRIER Cj)
+     (T:HasOpenArg)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >ACL:RELCL (*) ;
@@ -4057,7 +4319,8 @@ WITH Adv + Temp
   IF (c >ADVCL LINK 1* V) # BARRIER CLB)
      (NEGATE p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
-  MAP >ADVMOD:TMOD (*) ;
+   MAP >ADVMOD (*) ;
+ # MAP >ADVMOD:TMOD (*) ;
 } ;
 
 
@@ -4066,7 +4329,8 @@ WITH Adv + Temp
   IF (1* Rel BARRIER V LINK 1* W LINK 1*w W)
      (NEGATE p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
-  MAP >ADVMOD:TMOD (*) ;
+   MAP >ADVMOD (*) ;
+ #  MAP >ADVMOD:TMOD (*) ;
 } ;
 
 
@@ -4074,7 +4338,8 @@ WITH Adv + Temp
   IF (1* V) # BARRIER CLB)
      (NEGATE p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
-  MAP >ADVMOD:TMOD (*) ;
+   MAP >ADVMOD (*) ;
+ #  MAP >ADVMOD:TMOD (*) ;
 } ;
 
 
@@ -4148,10 +4413,14 @@ WITH V
 
 LIST TempSubCj = "რომ" "როცა" "როდესაც" ; # რაც, როცა?
 
+TEMPLATE TempHead = (-1*w N + Temp BARRIER >CC LINK c >DET) OR
+                    (-1*w ("ის") + Dat BARRIER >CC LINK 1 Pp + ("შემდეგ")) OR
+                    (-1*w ("მაშინ") BARRIER >CC) ;
+
 # რომ has to be verb-adjacent?
 WITH V
- IF (c >MARK + SubCj + TempSubCj
-     LINK -1*w N + Temp BARRIER >CC LINK c >DET) # ამ დღეს, რომ… (refine!)
+ IF (c >MARK + SubCj + TempSubCj LINK T:TempHead
+     ) # ამ დღეს, რომ… (refine!)
     (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >ADVCL (*) ;
@@ -4172,15 +4441,16 @@ WITH W
   IF (-1*w QuoteVerb BARRIER V LINK 1 Colon LINK 1 Dash)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >CCOMP:QUOTE (*) ;
+   MAP >CCOMP:SPEECH (*) ;
 } ;
 
 # იცი, რატომ განსხვავდება ასე ერთმანეთისგან თომასისა და დედამისის ქცევა?
 # NOT: როგორ გგონია, რატომ განსხვავდება ასე ერთმანეთისგან თომასისა და დედამისის ქცევა?
 WITH V
-  IF (-1*w V + CCompNoMarkV_DO + <S-DO*> BARRIER V LINK NONE c >OBJ OR >CCOMP)
+  IF (-1*wX V + CCompNoMarkV_DO + <S-DO*> BARRIER V OR Colon LINK NONE c >OBJ OR >CCOMP)
      (NONE c >CC)
      (NEGATE c Int LINK cx Int) # exclude Int in both matrix and subordinate sentence
+     (NONE cx >MARK)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >CCOMP (*) ;
@@ -4233,7 +4503,18 @@ WITH V
    MAP >CSUBJ (*) ;
 } ;
 
+LIST AdvclPart = "და·რწმუნებულ·ი/რწმუნ" ;
+
 # დარწმუნებული ვარ
+WITH V
+  IF (-1*w AUX BARRIER V LINK -1 AdvclPart + Part)
+     (c >MARK)
+     (NONE c >CC)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >ADVCL (*) ;
+} ;
+
 WITH V
   IF (-1*w AUX BARRIER V LINK -1 CCompV + Part)
      (c >MARK)
@@ -4262,16 +4543,6 @@ WITH V
    MAP >CSUBJ (*) ;
 } ;
 
-
-WITH V
-  IF (-1*w CSubjVerbOPT BARRIER V LINK NONE c >NSUBJ)
-     (NONE c >CC)
-     (NEGATE p (*)) {
-   SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >CSUBJ (*) ;
-} ;
-
-
 # რა გამაჩერებდა მნათედ, რა გამაჩერებდა მნათედ
 WITH V + PluPerf
   IF (0*w Cond BARRIER V)
@@ -4283,8 +4554,8 @@ WITH V + PluPerf
 
 # ის V, რომ
 WITH V
- IF (-1* ("ის") BARRIER V)
-    (c >MARK + ("რომ"))
+ IF (c >MARK + ("რომ") LINK -1* ("ის") BARRIER V)
+    #(c >MARK + ("რომ"))
     (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >ACL (*) ;
@@ -4306,9 +4577,11 @@ WITH V
    MAP >ACL (*) ;
 } ;
 
+LIST romNoun = "საფრთხ[ე]" "და·სკვნ[ა]/სკვნ" ;
+
 # more such nouns!
 WITH V
- IF (-1* ("საფრთხ[ე]"))
+ IF (-1* romNoun LINK NONE c >ACL)
     (c >MARK + ("რომ"))
     (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -4344,7 +4617,7 @@ WITH V
 # შესაძლოა, სამყარო არსებობდა.
 WITH V
   IF (-1* Comma BARRIER V
-      LINK -1w AUX
+      LINK -1w <AuxIntr> # AUX
       LINK -1* CSUBJAdj BARRIER (*) - Neg)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -4354,7 +4627,7 @@ WITH V
 # საცოდაობა არაა, OPT?
 WITH V + OPT
   IF (-1* Comma BARRIER V
-      LINK -1w AUX
+      LINK -1w <AuxIntr>
       LINK -1* CSUBJN BARRIER (*) - Neg)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -4363,7 +4636,7 @@ WITH V + OPT
 
 # same without comma
 WITH V
-  IF (-1*w AUX BARRIER V
+  IF (-1*w <AuxIntr> BARRIER V
       LINK -1* CSUBJAdj BARRIER (*) - Neg)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -4472,7 +4745,7 @@ WITH W
 } ;
 
 WITH W
- IF (-1* W - CCompVtu - COMPNoun BARRIER V OR >CC)
+ IF (-1* W - CCompVtu - COMPNoun BARRIER V OR >CC OR Dash)
     (NONE c >CC)
     (c >MARK + SubCj)
     (NEGATE p (*)) {
@@ -4482,7 +4755,7 @@ WITH W
 
 # or go back to Mark
 WITH W
- IF (c >MARK + SubCj LINK -1* W - CCompVtu OR COMPNoun BARRIER V OR >CC)
+ IF (c >MARK + SubCj LINK -1* W - CCompVtu OR COMPNoun BARRIER V OR >CC OR Dash)
     (NONE c >CC)
     (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -4491,7 +4764,7 @@ WITH W
 
 # თუ თანახმა ხარ, დავიწყოთ
 WITH W
- IF (1* W - CCompVtu - COMPNoun BARRIER V OR >CC)
+ IF (1* W - CCompVtu - COMPNoun BARRIER V OR @CLB + >CC)
     (c >MARK + SubCj)
     (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -4509,7 +4782,7 @@ WITH V
 
 WITH V
  IF (-1* W)
-    (NOT c >CC) # ?? 
+    (NEGATE c >CC)
     (c >MARK + ("თუ") LINK 1 ("<არა>"))
     (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -4550,6 +4823,7 @@ WITH V
 WITH V
  IF (0*w W LINK NEGATE c >CC)
     (c >MARK + ("თუ") LINK 1 ("<არა>"))
+    (NEGATE c >CC + ("და"))
     (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >ADVCL (*) ;
@@ -4636,10 +4910,14 @@ WITH V + Opt
    MAP >ACL (*) ;
 } ;
 
+LIST ACLNoun = "იმედ·ი" "უფლებ[ა]" "საშუალებ[ა]" ;
+
+LIST ACLVerb = "ქონ[ა]/ქვ" "მო·ცემ[ა]/ც" ;
+
 # იმედი მაქვს
 WITH V
-  IF (-1* V + ("ქონ[ა]/ქვ") BARRIER V OR @CLB
-      LINK 0*w ("იმედ·ი") OR ("უფლებ[ა]") BARRIER @CLB)
+  IF (-1* V + ACLVerb BARRIER V OR @CLB
+      LINK 0*w ACLNoun BARRIER @CLB)
      (NONE c >CC)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
@@ -4679,15 +4957,16 @@ WITH V
 
 # … ფიქრობდა სოფი.
 WITH V
-  IF (Scc V LINK 1*w V + SentenceFinalQuoteVerb LINK NONE c >OBJ OR >CC OR PP:ზე) # not ფიქრობდა …ზე
-     (NONE c >CC)
+  IF (Scc V LINK 1*w V + SentenceFinalQuoteVerb - OPT
+      LINK NONE c >OBJ OR >CCOMP:SPEECH OR >CCOMP OR >CC OR PP:ზე) # not ფიქრობდა …ზე
+     (NEGATE c >CC LINK -1* V) # not conjunct, but Cj allowed at sentence start
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
-   MAP >CCOMP:QUOTE (*) ;
+   MAP >CCOMP:SPEECH (*) ;
 } ;
 
 WITH V
-  IF (-1* ("და") OR ("ან") OR ("თუ") + @CLB BARRIER V LINK -1* V)
+  IF (-1* ("და") + @CLB OR ("ან") + @CLB OR ("თუ") + @CLB BARRIER V OR Colon LINK -1* V)
      #(c >CC LINK -1 V) # why doesnt this work?? >CC comes too late??
      (NONE c >MARK)
      (NEGATE p (*)) {
@@ -4728,7 +5007,8 @@ WITH Temp + Dat - PP
      (c >DET OR >NUMMOD OR >AMOD)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
 # იმ დღეს, როცა
@@ -4737,7 +5017,8 @@ WITH Temp + Dat - PP
      (c >DET OR >NUMMOD)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
-   MAP >OBL:TMOD (*) ;
+   MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
 
@@ -4774,7 +5055,8 @@ WITH N + Temp + PP + FALSE
      (c V LINK c >MARK + Sub)
      (NEGATE p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
-  MAP >OBL:TMOD (*) ;
+  MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
 # jump over embedded clauses
@@ -4783,7 +5065,8 @@ WITH N + Temp + PP
      #(c V LINK c >MARK + Sub)
      (NEGATE p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
-  MAP >OBL:TMOD (*) ;
+  MAP >OBL (*) ;
+  #MAP >OBL:TMOD (*) ;
 } ;
 
 # but >PARATAXIS if no overt conjunction
@@ -4889,7 +5172,7 @@ WITH >DET:POSS
 } ;
 
 WITH NomHead - Neg # OR Pron + Nom - Neg
-  IF (1*w V + S:Nom + PREDVerb BARRIER V OR >MARK
+  IF (1*w V + S:Nom + PREDVerb BARRIER V OR >MARK OR Colon
       LINK NONE c >XCOMP OR >XCOMP:AUX)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
@@ -4904,78 +5187,10 @@ WITH NomHead OR Pron + Nom
    MAP >XCOMP (*) ;
 } ;
 
-# ბრმა ვარ
-#ADD >XCOMP TARGET NomHead OR Pron + Nom
-#    IF (p AUX + S:12)
-#       (NEGATE s >XCOMP)
-#       (NEGATE 0 RELS) ;
-
-#@@@ Erg Subject
-#ADD >SUBJ TARGET ErgHead - RELS OR Pron + Erg - RELS
-#    IF (p V + S:Erg)
-#       (NEGATE s >SUBJ) ;
-
-# Dat Subject
-#ADD >SUBJ TARGET DatHead OR Pron + Dat - PP
-#    IF (p V + S:Dat)
-#       (NEGATE 0 RELS)
-#       (NEGATE s >SUBJ) ;
-
-#ADD >SUBJ TARGET Cj
-    #IF (p V + S:Dat)
-       #(NEGATE 0 RELS)
-       #(NEGATE s >SUBJ)
-#        ;
-
-#ADD >COMP TARGET ("რომ") # + Cj
-#    IF (NEGATE 0 RELS)
-#       (p PREDVerb | COMPVerb | COMPNoun) ;
-
-# make this for თუ without როგორ, რომელი… etc.
-# add disambiguation rule for თუ Cj/Adv
-
-#ADD >COMP TARGET ("თუ") # + Cj
-#    IF (NEGATE 0 RELS)
-#       (p COMPVerbTu) ;
-
-#ADD >COMP TARGET ("თუ") # + Cj
-#    IF (NEGATE 0 RELS)
-#       (p COMPVerb) ;
-
-#ADD >COMP TARGET ("თუ") + Cj
-#    IF (NEGATE 0 RELS)
-#       (p COMPNounTu) ;
-
-# better analysis?
-# იშვიათად თუ ნახავდით
-SETPARENT ("თუ") + Adv
-	IF (NEGATE p (*))
-	TO (1 V) ;
-
-#ADD >ADV TARGET ("თუ") + Adv
-#    IF (NEGATE 0 RELS)
-#       (p V) ;
-
 # >XCOMP if Nom arg already found. Refine!
 ADD >XCOMP TARGET PastPart + Nom
     IF (p V + DO:Nom + PREDVerb)
        (NEGATE 0 RELS) ;
-
-#ADD >OBJ TARGET NomHead OR Pron + Pers + Nom
-#    IF (NEGATE 0 RELS)
-#       (p V + DO:Nom + Inv)
-#       (NEGATE s >OBJ) ;
-
-#ADD >DO TARGET NomHead OR Pron + Pers + Nom
-#    IF (NEGATE 0 RELS)
-#       (p V + DO:Nom)
-#       (NEGATE s >DO | >OBJ) ;
-
-# >XCOMP if Nom arg already found. Refine!
-#ADD >XCOMP TARGET NomHead OR Pron + Pers + Nom
-#    IF (p V + DO:Nom + PREDVerb)
-#       (NEGATE 0 RELS)
-#       (s >DO) ;
 
 # adverbial sentence (dispatch on conjunction!)
 
@@ -4985,48 +5200,6 @@ WITH Anthr + Abbrev OR Hum + Qual + Abbrev
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >NMOD (*) ;
 } ;
-
-# ADD >NAMEMOD TARGET Att + FirstName - RELS;
-
-#ADD >NAMEMOD TARGET Anthr + Abbrev - RELS
-#    IF (p LastName) ;
-
-# ADD >NUM TARGET Num - RELS ;
-
-# ADD >ATR TARGET Att - Qual - RELS ;
-
-#ADD >ATR TARGET Att - RELS
-#    IF (p N) ;
-
-# postpositions
-#ADD >OBJ TARGET (*)
-#    IF (NEGATE 0 RELS)
-#       (p POSTP) ;
-
-# prepositions
-#ADD >OBJ TARGET (*)
-#    IF (NEGATE 0 RELS)
-#       (p PREP) ;
-
-# Adj coordination
-#ADD >ATR TARGET Cj + Coord
-#    IF (NEGATE 0 RELS)
-#       (cc A + Att) ;
-
-#ADD >ROOT TARGET Cj + Coord
-#    IF (NEGATE 0 RELS)
-#       (c V) ;
-
-#ADD V TARGET Cj + Coord
-#    IF (NEGATE 0 V)
-#       (c V) ;
-
-#ADD >DET TARGET Pron + Dem
-#    IF (NEGATE 0 RELS)
-#       (p NA) ;
-
-#ADD >POSS TARGET Pron + Poss
-#    IF (NEGATE 0 RELS) ;
 
 WITH Advb - Att
   IF (0*w AdvbVerb BARRIER V OR @CLB LINK NONE c >XCOMP)
@@ -5173,6 +5346,8 @@ WITH Punct - Comma - Dash
   MAP >PUNCT (*) ;
 } ;
 
+SECTION
+
 # if there is no verb…
 WITH Punct - Comma - Dash - ("(")
   IF (-1 (*))
@@ -5283,6 +5458,14 @@ WITH ("რა") + Interj
 #ADD >MWE TARGET ("კარგი") + Interj - RELS
 #    IF (1 ("რა" Interj)) ;
 
+# აბა რა იქნებოდა!
+WITH Interj + ("აბა")
+     IF (1* V)
+        (NOT p (*)) {
+     SETPARENT (*) TO (jC1 (*)) ;
+     MAP >DISCOURSE (*) ;
+} ;
+
 WITH Interj
      IF (0* V)
         (NOT p (*)) {
@@ -5323,11 +5506,26 @@ WITH Colon
 REMOVE INTRANS IF (c >OBJ) ;
 
 WITH W
-  IF (-1* Colon LINK -1* W)
+  IF (-1* Colon OR Dash LINK -1* W)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
    MAP >PARATAXIS (*) ;
 } ;
+
+WITH W
+  IF (-1* Colon LINK -1*w N LINK NONE -1* V)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;
+   MAP >PARATAXIS (*) ;
+} ;
+
+WITH IndSp3 OR IndSp2 OR IndSp1
+  IF (-1* V + >CCOMP:SPEECH)
+     (NOT p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >MARK (*) ;
+} ;
+
 
 SECTION
 
@@ -5383,6 +5581,7 @@ SETPARENT V + >CONJ
 
 SETPARENT >PARATAXIS
   IF (p >PARATAXIS OR >CONJ)
+     (NEGATE p (*) LINK p (*) LINK 1 Colon)
   TO (p (*) LINK p (*)) ;
 
 # lift relative clause up to first conjunct
@@ -5394,13 +5593,14 @@ SECTION
 
 SETPARENT V + >CONJ
   IF (p V + >CONJ + IndSp)
-  TO (p (*) LINK p >CCOMP:QUOTE LINK p (*)) ;
+  TO (p (*) LINK p >CCOMP:SPEECH LINK p (*)) ;
 
 # the indirect speech marker should be final in a quotation,
 # therefore a following advcl is lifted up to the matrix clause for the indirect speech
 SETPARENT V + >ADVCL
   IF (p V + >CONJ + IndSp)
-  TO (p (*) LINK p >CCOMP:QUOTE LINK p (*)) ;
+  TO (p (*) LINK p >CCOMP:SPEECH LINK p (*)) ;
+
 
 # fix balanced quotes
 SETCHILD (*)
@@ -5436,13 +5636,23 @@ SETCHILD (*)
 
 # move Period up to top VMain
 SETCHILD V
+  IF (NOT 1* Colon)
   TO (rc* Period OR IntMark # OR ExclPoint
       OR Semicolon OR Ellipsis # OR Colon
-      BARRIER Colon) ;
+     ) ;
 
 # two rules needed if sentence ends in ?! 
 SETCHILD V
   TO (rc* ExclPoint) ;
+
+# if there is no VMain:
+# don’t need previous rule?
+SETCHILD (*)
+  IF (NOT 1* Colon OR V)
+  TO (rc* Period OR IntMark # OR ExclPoint
+      OR Semicolon OR Ellipsis # OR Colon
+     ) ;
+
 
 REMOVE Old ;
 REMOVE Cond ;
