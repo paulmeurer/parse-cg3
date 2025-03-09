@@ -1705,7 +1705,7 @@ LIST HUM = Hum Anthr ;
 
 WITH HUM + $$CASE - Att - Int
   IF (-1* Comma BARRIER (*) - Att - Gen - Comma - AdvNotRel
-      LINK -1w HUM # + $$CASE - Att
+      LINK -1w HUM + $$CASE - Att # check necessity of CASE
       LINK NOT -1 PREP)
      #(1 Punct)
      (NONE c >CC)
@@ -5526,6 +5526,19 @@ WITH IndSp3 OR IndSp2 OR IndSp1
   MAP >MARK (*) ;
 } ;
 
+WITH IndSp3 OR IndSp2 OR IndSp1
+  IF (-1* V)
+     (NOT p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >MARK (*) ;
+} ;
+
+WITH IndSp3 OR IndSp2 OR IndSp1
+  IF (-1 (*))
+     (NOT p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >MARK (*) ;
+} ;
 
 SECTION
 

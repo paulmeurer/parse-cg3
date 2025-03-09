@@ -51,7 +51,7 @@
 (parse-text "ала" :variety :abk)
 
 (defparameter *sentence-end-strings-kat* '("." "?" "!" "…" ";" ))
-(defparameter *sentence-end-strings-abk* '("." "?" "!" "…" ";" ":"))
+(defparameter *sentence-end-strings-abk* '("." "?" "!" "…" ";" )) ;;":"))
 
 (defmethod parse-text ((text string) &key variety load-grammar (disambiguate t) corpus
                                        orthography
@@ -1385,6 +1385,36 @@ Field number:	Field name:	Description:
                                       :include-postag (not all)
                                       :language language))))))
 
+(defmethod write-text-cg3-vrt ((text parsed-text) stream
+                               &key ;; (start 1)
+                                 document-id language
+                                 &allow-other-keys)
+  (labels ((filter (features)
+	     (let ((end (or (search " @" features) (search " >" features))))
+	       (if end (subseq features 0 end) features)))
+           (write-node (node &optional is-subtoken)
+             (destructuring-bind (&optional type word &key dipl norm
+                                            morphology tmesis-msa subtoken
+                                            |xml:id| comment rest parent self
+                                            &allow-other-keys)
+                 node
+               (declare (ignore dipl norm tmesis-msa |xml:id| comment rest parent self))
+               (when (eq type :word)
+                 (format stream "\"<~a>\"~%" (getf node :word))
+                 )
+               (loop for (lemma features flag) in morphology
+                     unless (find flag '(:discarded-cg :discarded))
+                     do (format stream "        \"~a\" ~a~%" lemma (filter features)))
+               #+ignore
+               (when dependencies
+                 (u:collect (if parent (list parent self) (list self))))
+               subtoken)))
+    (loop for node across (token-array text)
+          for id from 0
+          for subtoken = (write-node node)
+          when subtoken
+          do (write-node subtoken t))))
+
 #+test
 (write-dependency-conll *graph* *standard-output* :language :kat)
 
@@ -1435,7 +1465,7 @@ Field number:	Field name:	Description:
                                     word
                                     (relation node)
                                     (relation-diff node))))
-                           
+                     
                      (when (search " udMWE" morph)
                        (setf lemma (subseq lemma 0 (position #\space lemma))))
                      (multiple-value-bind (word clit clit-lemma clit-morph)
@@ -1608,6 +1638,7 @@ Field number:	Field name:	Description:
                                            (ecase language
                                              (:kat "gnc-%")
                                              (:abk "abnc"))]
+                                     [not [null [label]]]
                                      [null [parent]]]
                          :order-by '([corpus] [document] [wid])])
         (unless (equal prev-corpus-name corpus-name)
@@ -1661,6 +1692,13 @@ Field number:	Field name:	Description:
                                 (now :format :timestamp-utc))
                         :direction :output :if-exists :supersede)
   (calculate-precision :kat stream)
+  (print :done))
+
+#+main
+(with-open-file (stream (format nil "projects:ud;abk;precision;precision-~a.txt"
+                                (now :format :timestamp-utc))
+                        :direction :output :if-exists :supersede)
+  (calculate-precision :abk stream)
   (print :done))
 
 :eof

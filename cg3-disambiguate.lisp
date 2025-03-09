@@ -271,7 +271,7 @@
                        (otherwise :kat)))
 	   (applicator (cg3-applicator-create grammar))
 	   (sentence nil)
-	   #+debug(word-list ()) ;; for debugging
+	   (word-list ()) ;; for debugging
 	   (prev-pos 0)
 	   (pos 0)
 	   (token-array (parse::text-array text))
@@ -298,7 +298,7 @@
 			   (cg3-cohort-addreading cohort reading))
                          (cg3-sentence-addcohort sentence cohort)))
                      
-                     ;; (setf word-list ())
+                     (setf word-list ())
 		     (loop with word-seen = nil ;; and w = nil
 			and end-punct-found = nil
 			for i from prev-pos below (length token-array)
@@ -318,7 +318,7 @@
 				  (destructuring-bind (&key word dipl facs norm morphology tmesis-msa mwe
 							    &allow-other-keys)
                                       token
-                                    #+debug(push word word-list)
+                                    (push word word-list)
 				    (when mwe (setf mwe-length mwe))
 				    (let ((wordform
                                            (cond ((and word remove-brackets)
@@ -540,7 +540,7 @@
 					       (msa-set-disambiguation
                                                 word cohort morphology language guess-table)))))
 				    ;; dependencies
-				    #+ccl
+				    #+ccl ;; *text*
                                     (when dependencies
                                       (let ((self (ccl::%new-gcable-ptr 4 t))
 					    (parent (ccl::%new-gcable-ptr 4 t)))
@@ -616,7 +616,8 @@
 			    when (find (char tag 0) ">@")
 			    collect tag
 			    when (or (equal tag "$ADDED")
-                                     (equal tag "$ADDED_PP"))
+                                     (equal tag "$ADDED_PP")
+                                     (equal tag "$ADDED_Ind"))
 			    do (setf added t)
                             ;; incf only for first reading!
                             (when (zerop re) (incf added-count)))))

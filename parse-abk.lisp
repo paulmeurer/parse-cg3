@@ -533,6 +533,7 @@
     pos))
 
 (defun abk-split-clitics (word is-cop)
+  ;; (print (list word is-cop))
   (cond ((not is-cop)
          word)
         ((< (length word) 4)
