@@ -3325,6 +3325,8 @@ SELECT <S-DO> + IOHumV
 
 SELECT ("გა·კვირვებ[ა]/კვირვ") + <S-DO> + DO:12 ;
 
+SELECT ("*·ხმობ[ა]/ხმ") + <S-DO> + DO:12 ;
+
 SELECT ("შე·ხედვ[ა]/ხედ") + <S-IO>
     IF (0* T:NPDat BARRIER CLB) ;
 

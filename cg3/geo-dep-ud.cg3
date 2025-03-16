@@ -2352,6 +2352,14 @@ WITH Pp + <Dat> OR Pp + <Dat/Gen>
    MAP >CASE (*) ;
 } ;
 
+WITH Pp + <Dat>
+  IF (-1 Gen + @PP + Pron)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >CASE (*) ;
+} ;
+
+
 WITH Pp + <Inst>
   IF (-1 Inst + @PP + >CONJ LINK p Inst + L)
      (NEGATE p (*)) {
@@ -2626,7 +2634,7 @@ WITH DatHead
 # try first to find a Hum dat for IO
 # თავიანთ ღვთაებრივ ხელს_DO ჭუჭყიან თავზე უსვამდნენ ადამიანს_IO.
 WITH DatHead + Hum
-  IF (0*w IO:Dat + IO3 BARRIER @CLB OR Comma OR Compl LINK NONE c >IOBJ)
+  IF (0*w IO:Dat + IO3 BARRIER @CLB OR Comma OR Compl OR Colon LINK NONE c >IOBJ)
      (NOT 1 (Pp <Dat/Gen>))
      (NOT 1 (Pp <Dat>))
      (NOT 0 PP)
@@ -2646,10 +2654,8 @@ WITH DatHead
    MAP >OBJ (*) ;
 } ;
 
-
-
 WITH DatHead
-  IF (0*w IO:Dat + IO3 BARRIER @CLB OR Comma OR Compl OR V LINK NONE c >IOBJ)
+  IF (0*w IO:Dat + IO3 BARRIER @CLB OR Comma OR Compl OR V OR Colon LINK NONE c >IOBJ)
      (NOT 1 (Pp <Dat/Gen>))
      (NOT 1 (Pp <Dat>))
      (NOT 1 (Pp <Gen>)) # მას შემდეგ!
@@ -4966,7 +4972,7 @@ WITH V
 } ;
 
 WITH V
-  IF (-1* ("და") + @CLB OR ("ან") + @CLB OR ("თუ") + @CLB BARRIER V OR Colon LINK -1* V)
+  IF (-1* ("და") + @CLB OR ("ან") + @CLB OR ("თუ") + @CLB BARRIER V OR Colon LINK -1* V BARRIER Colon)
      #(c >CC LINK -1 V) # why doesnt this work?? >CC comes too late??
      (NONE c >MARK)
      (NEGATE p (*)) {
@@ -5577,8 +5583,8 @@ SETPARENT V + >CONJ
 
 # the indirect speech marker should be final in a coordinated phrase,
 # therefore, the next conjunct should be conjoined with the matrix clause of the embedded indirect speech.
-# მერე დავეჭვდი, იქნებ ჩემდაუნებურად რამე, ვაწყენინე-მეთქი, და ვკითხე კიდეც:
-SETPARENT V + >CONJ
+# მერე დავეჭვდი, იქნებ ჩემდაუნებურად რამე ვაწყენინე-მეთქი, და ვკითხე კიდეც:
+SETPARENT V + >CONJ # + FALSE
   IF (p V + >CCOMP OR >ADVCL LINK Sc* IndSp)
   TO (p (*) LINK p (*)) ;
 
