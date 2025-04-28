@@ -150,7 +150,8 @@ STRICT-TAGS += Abbrev Abs Cnv Adhort
        FALSE
        CopNounFin
        <Lemma> <LemmaLC>
-       <Sel> ;
+       <Sel>
+       [0] $ADDED EnclCop ;
 
 # OPTIONS += safe-setparent ;
 
@@ -314,6 +315,24 @@ LIST PlNoun = "а́-жәлар" "а-мили́циа" "а́-рахә" "а́-ра
 # ======== #
 
 SELECT <Sel> ; # select manually disambiguated reading
+
+SELECT ("а́уп") + Adv IF (-1C V + Fin) ;
+REMOVE ("а́уп") + Adv ;
+SELECT ("а́кә-заа-ра") IF (NOT 0 ("изакәы́зеи")) ; # too rigid?
+
+ADDCOHORT ("<_оуп>" "а́кә-заа-ра" [0] V Stat Fin Pres S:3 IO:3SgNH EnclCop)
+    AFTER Cop - V - Q
+       IF (0C Cop - V)
+          (NOT 1 ("_оуп"))
+          (NOT 0 $ADDED) ;
+
+ADDCOHORT ("<_оума>" "а́кә-заа-ра" [0] V Stat Fin Pres S:3 IO:3SgNH Q EnclCop)
+    AFTER Cop - V + Q
+       IF (0C Cop - V)
+          (NOT 1 ("_оума"))
+          (NOT 0 $ADDED) ;
+
+ADD $ADDED (*) IF (NOT 0 $ADDED) (1 EnclCop) ;
 
 REMOVE Subj + S:2Sg ; # prelim. bug fix
 
@@ -898,9 +917,6 @@ SELECT ("а́-ӡбахә") + Poss:3SgNH ;
 
 # SELECT ("<ауп>" "а́кә-заа-ра") ;
 
-SELECT ("а́уп") + Adv IF (-1C V + Fin) ;
-REMOVE ("а́уп") + Adv ;
-
 # SELECT ("а́кә-заа-ра" Cop Pres) ;
 
 #REMOVE NOUN + Cop IF (0 Conj-I + Cop) ;
@@ -1219,8 +1235,6 @@ SELECT ("а-шәы́шықәса") ; # not "а́-шықәса" Poss:2Pl
 SELECT ("а́-лаф") ;
 
 SELECT ("изакәу́") ;
-SELECT ("а́кә-заа-ра") IF (NOT 0 ("изакәы́зеи")) ; # too rigid?
-
 SELECT ("а-ны·р:ха-ра́") + DO:Ad IF (-1 ("а-гәы́")) ;
 
 SELECT ("<изкуп>" "а-з·к-ра́") ;
@@ -1546,7 +1560,7 @@ SET FIN = Fin | Cop | QUEST ;
 # Pers + 3Sg is Hum and needs д as agens marker
 REMOVE Pers + 3Sg IF (0 Dem) (1C Ad) ;
 
-REMOVE Dem IF (0 Pers) (1C Punct OR FIN) ;
+REMOVE Dem IF (0 Pers) (1C Punct OR FIN - Cop) ;
 
 SELECT Noun IF (0C VN OR Noun) (1 PP) ;
 
@@ -1903,6 +1917,9 @@ SELECT ("аиҳа́рак") + Adv
     IF (NOT -1 Noun) ;
 SELECT ("аиҳа́раӡак") + Adv
     IF (NOT -1 Noun) ;
+
+SELECT ("а́-р:цәа-ра")
+    IF (-1 ("а́-мцахә") OR ("а́-мца")) ;
 
 # Prop зыхьӡыз
 SELECT Prop
@@ -4217,10 +4234,12 @@ WITH NOPARENT Pron + Quant
      SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
+LIST CopEncl = Cop EnclCop ;
+
 # акәхеит
 # fixme: should distinguish between copula verb and necessitive
 WITH NOPARENT Pron + Pers + 3Sg | Pron + Dem + Sg | N - Pl | Pron + Indef + NH | V + Rel
-  IF (1 IO:3SgNH + Cop - Conj-I - Conj-II)
+  IF (1 IO:3SgNH + CopEncl - Conj-I - Conj-II)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
    MAP >XCOMP (*) ;
@@ -4261,7 +4280,7 @@ WITH NOPARENT Pron + 3SgF
 } ;
 
 WITH NOPARENT Pron + 3Sg OR Pron + Indef + NH + Sg
-    IF (1 Poss:3SgNH)
+    IF (1 Poss:3SgNH - PP)
        (NONE c >CASE)
        (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
@@ -4362,6 +4381,15 @@ WITH NOPARENT ("ари́")
         (NONE c >OBJ)
         (NOT p (*)) {
    MAP >OBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+# уи азоуп сзааз
+WITH NOPARENT Noun OR Adj OR Pron
+  IF (2 ("а́кә-заа-ра") + CopEncl)
+     (1 >CASE)
+     (NOT p (*)) {
+   MAP >XCOMP (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
@@ -4478,7 +4506,7 @@ WITH NOPARENT ("иара́")
 
 
 WITH NOPARENT Noun + EPOSTP | VN + EPOSTP | Adj + EPOSTP
-  IF (1 COP)
+  IF (1 COP OR EnclCop)
      (NOT p (*)) {
    MAP >XCOMP (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -4567,7 +4595,7 @@ LIST VNonFinPresLO = "а́-ла·га-ра" ;
 WITH NOPARENT Purp
   IF (1 VPurpLO)
      (NOT p (*)) {
-   MAP >XCOMP:LO (*) ;
+   MAP >CCOMP:LO (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
@@ -4584,7 +4612,7 @@ WITH NOPARENT Conj-I
   IF (1 ("а-ҭах·ха-ра́") + S:Ad)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
-   MAP >XCOMP:SUBJ (*) ; # ?????
+   MAP >CSUBJ (*) ; # ?????
 } ;
 
 WITH NOPARENT Purp
@@ -5045,7 +5073,15 @@ WITH NOPARENT Purp
 } ;
 
 WITH NOPARENT Purp
+     IF (-1*w PurpVerbs BARRIER Comma LINK NONE c >OBJ:LO)
+        (NOT p (*)) {
+   MAP >ADVCL:PURP (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+WITH NOPARENT Purp
      IF (-1*w PurpVerbs LINK NONE c >OBJ:LO)
+        (NOT 1* V)
         (NOT p (*)) {
    MAP >ADVCL:PURP (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -5144,7 +5180,7 @@ WITH ("џьара́")
 } ;
 
 # Adj + Emph is prelim.
-WITH NOPARENT Adv - ("а-хаҭа́") OR Adj + Emph
+WITH NOPARENT Adv - ("а-хаҭа́") - Pred OR Adj + Emph - Pred
    IF (1* VERB | VN # was - Rel; not sure about Rel, cannot be easily decided
        BARRIER CLBc)
       (NOT p (*)) {
@@ -6687,7 +6723,7 @@ WITH NOPARENT N + Hum - Pl | Pron + Pers + 3SgM | Pron + Pers + 3SgF | S:Rel
 
 LIST S:Pl = S:3 S:3Pl ;
 
-WITH NOPARENT N + Pl | Pron + Pers + 3Pl | N + Coord
+WITH NOPARENT N + Pl | Pron + Pers + 3Pl | N + Coord | Num + Card
    IF (-1*w S:Pl - S:Ad BARRIER Comma | Colon LINK NONE c >NSUBJ OR >CSUBJ)
       (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;

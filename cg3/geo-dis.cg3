@@ -52,7 +52,7 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
             <IO:Obl>
 	    Unrecognized Guess <Cand> @NC @CLB $ADDED $ADDED_PP $ADDED_Ind [0]
             MWE <MWE> udMWE <udMWE>
-            $Prop $Adv
+            $Prop $Adv $Interj
             Coll
             GLastName # test
 	    # dependency relations
@@ -257,6 +257,11 @@ SET DatPl = (Dat Pl) ;
 
 LIST AUX = <AuxTrans> <AuxTransHum> <AuxIntr> "ქმნ[ა]/ქმ[ე]ნ" "ქმნ[ა]/ქ[ე]ნ" ;
 
+LIST PPP = PP:გან PP:და PP:დამ PP:დამი PP:დან
+	    PP:დმი PP:ებრ PP:ებრივ PP:ვით PP:ზე PP:ზედ PP:თან PP:თვის PP:კე
+	    PP:კენ PP:მდე PP:მდი PP:მდინ PP:მდის PP:მებრ PP:მი PP:მო PP:ურთ
+	    PP:ქვეშ PP:ში PP:შუა PP:წინ ;
+
 # verbs (optionally) taking a Hum IO
 LIST IOHumV = "და-ბარებ[ა]/ბარ" ;
 
@@ -264,7 +269,9 @@ SET SubCj = ("რომ") OR ("როგორც") + Sub OR ("რათა") OR
             ("როცა") OR ("როდესაც") OR ("სანამ") OR ("თითქოს") OR ("თითქოსდა") OR ("თითქო") OR ("თუკი") OR
             ("რამდენადაც") OR ("რადგან") OR ("ვინაიდან") OR ("ვიდრე") OR ("თუმცა") + Cj OR ("თუმც") + Cj OR
             # ("სად") OR
-            ("რაც") OR ("რაკი") OR ("რაკიღა") OR ("თუნდაც") + Cj OR ("თუნდა") + Cj OR ("თუნდ") + Cj ;
+            ("რაც") OR ("რაკი") OR ("რაკიღა") OR ("თუნდაც") + Cj OR ("თუნდა") + Cj OR ("თუნდ") + Cj OR
+            ("როს") + Cj OR
+            ("ვითომ") + Cj ;
 
 SET SCONJ = SubCj + Cj + Sub OR ("თუმცა") + Coord ; # თუმცა should be Sub?!
 
@@ -360,9 +367,12 @@ LIST CCompV = "ფიქრ·ი/ფიქრ" "მი·ხვდომ[ა]/ხ
               "პატიებ[ა]/პატი" "გრძნობ[ა]/გრძვნ" "ჯერებ[ა]/ჯერ" "*·ხვდომ[ა]/ხვდ" "წარმო·დგენ[ა]/დგინ"
               "სწავლ[ა]/სწავლ" "თქმ[ა]/თხ[ა]რ" "და·ფიცებ[ა]/ფიც" "ნდომ[ა]/ნდ" # "ცდილობ[ა]/ცდილ"
               "გრძნობ[ა]/გრძ[ე]ნ" "მო·ლაპარაკებ[ა]/ლაპარაკ" # "და·რწმუნებ[ა]/რწმუნ"
-              "შე·ტყობ[ა]/ტყ" "*·მტკიცებ[ა]/მტკიც"
+              "შე·ტყობ[ა]/ტყ" "*·მტკიცებ[ა]/მტკიც" "ჩა·წერ[ა]/წერ"
               "*·ხედვ[ა]/ხედ" "გა·გებ[ა]/გ" "*·წყვეტ[ა]/წყვეტ" "შე·მჩნევ[ა]/მჩნ[ევ]"
               "წინასწარმეტყველებ[ა]/წინასწარმეტყველ" "შიშ·ი/შიშ" "თქმ[ა]/ტყვ" "სწავლებ[ა]/სწავლ"
+              "გა·თვალისწინებ[ა]/თვალისწინ" "აღ·ნიშვნ[ა]/ნიშნ"
+              "ჩვენებ[ა]/ჩვენ"
+              "ლოდინ·ი/ლოდ" # with IO
               "და·მტკიცებ[ა]/მტკიც" "წამებ[ა]/წამ" "იმედოვნებ[ა]/იმედოვნ" ;
 
 # Sets
@@ -513,11 +523,18 @@ SELECT ("ქვემოთ" Adv) ;
 SELECT ("შორს" Adv) ;
 REMOVE ("მერმე" V) ;
 REMOVE ("ბუნებით" Adv) ;
+REMOVE ("წუ") + A ;
 
 REMOVE ("უარე") IF (0 ("უარეს·ი")) ;
 
+REMOVE ("ჯერჯერობით") + Interj IF (NOT 1 ExclPoint) ;
+
 REMOVE ("ისეთივ[ე]") ; # wrong
 REMOVE ("ასეთივ[ე]") ; # wrong
+
+REMOVE ("ჩემ·ი") + N ;
+
+SELECT ("ნებ[ა]") IF (1 ("ბოძებ[ა]/ბოძ")) ;
 
 SELECT ("თავისით") + Adv ;
 
@@ -538,6 +555,7 @@ REMOVE ("დარბაზ·ი") + Prop ;
 REMOVE ("კავშირ·ი") + Prop ;
 REMOVE ("საღამო") + Prop ;
 
+REMOVE ("შრომა") + Prop ;
 REMOVE ("მხატვ[ა]რ·ი") + Prop ;
 
 REMOVE ("დამ·ი") OR ("დამ[ა]") IF (0 ("და·სმ[ა]/სვ")) ; # დამისვით
@@ -564,6 +582,8 @@ SELECT ("სამაგიეროდ") + Adv ;
 SELECT ("ნაბიჯ·ი") + N - Meas ; # why Meas?
 
 SELECT ("თუნდაც") ;
+
+REMOVE ("გინდ") + L ;
 
 SELECT ("კვლავ") + Adv ;
 SELECT ("<გარს>" Adv) ;
@@ -645,6 +665,8 @@ SELECT ("ალბათ" Adv) ;
 
 SELECT ("ზოგ·ი" A) ;
 
+REMOVE ("ისეთებ·ი") IF (NOT 1 ExclPoint) ;
+
 # SELECT ("რამდენ·ი") + Rel ;
 
 REMOVE ("იმით") ; # ის
@@ -659,7 +681,7 @@ REMOVE ("საკუთ[ა]რ·ი") + N IF (1 N) ;
 REMOVE ("ხევ·ი" Prop) ;
 
 REMOVE ("როდი") + L ;
-
+REMOVE ("მაშინ[ა]") + Encl:Aux ;
 REMOVE ("მემკვიდრეობით") + Adv ;
 SELECT ("წარმო·დგენ[ა]/დგენ" Pres) ; # not Fut
 
@@ -846,6 +868,9 @@ SELECT ("კიდევაც") ;
 SELECT ("გაცილებით" Adv) ;
 SELECT ("<მეტიც>" Adv) ;
 SELECT ("ოდეს[ა]") ;
+SELECT ("ანაზდად") + Adv ;
+
+REMOVE ("ფარ·ი") + Encl:IndSp3 IF (0 ("ფართო")) ;
 
 REMOVE ("კარგ·ი" N) ;
 
@@ -897,6 +922,9 @@ SELECT ("მისტერი[ა]") ; # not მისტერ-ი
 REMOVE ("ბუ") IF (0 ("ბუღ[ა]")) ;
 
 SELECT ("ძალზე") IF (1 A) ;
+
+# but: არაა!
+# REMOVE L IF (0 Encl:Aux) ;
 
 # დათას
 REMOVE ("დ[ა]") + N + OldPl + DSg ;
@@ -1199,7 +1227,7 @@ n-SELECT Dem + $$CASE
 n-SELECT ("დრო") + N + $$CASE IF (-1 Dem + $$CASE) ;
 
 # დრო და დრო Adv
-n-SELECT ("დრო") + N + Nom IF (NEGATE 1 ("და") LINK 1 ("დრო")) ;
+n-SELECT ("დრო") + N IF (NEGATE 1 ("და") LINK 1 ("დრო")) ;
 
 # Reflexives
 
@@ -1754,6 +1782,7 @@ n-SELECT Anthr
 n-REMOVE FirstName + Att
     IF (NOT 1 FirstNameQual) # ირინე ბებია; more?
        (NOT 1 Prop)
+       (NOT 1 ("კურაპალატ·ი") OR ("სპარს·ი")) # generalize!
        (NEGATE 1 Roman LINK 1 FirstNameQual) # without ბებია, ბაბუა! fixme
        (NEGATE 1 ("და") LINK 1 LastName) ;
 
@@ -2002,6 +2031,11 @@ SELECT @NC
 SELECT @NC
     IF (-1 Att + $$CASE)
        (1 Att + $$CASE) ;
+
+
+SELECT @NC
+    IF (-1 $$PPP)
+       (1* $$PPP BARRIER V OR CLB) ;
 
 # this is a bit dangerous
 SELECT @NC
@@ -2426,7 +2460,9 @@ n-REMOVE Adv
        (-1 Gen - L) ;
 
 REMOVE Att + $$CASE
-    IF (NEGATE 1* NACProp + $$CASE - Att OR SIndef + $$CASE OR Pron + Neg + $$CASE
+    IF (NEGATE 1* NACProp + $$CASE - Att
+        OR SIndef + $$CASE
+        OR Pron + Neg + $$CASE
         OR Pron + Dem + $$CASE - Att
         OR Pron + Refl + $$CASE - Att
         BARRIER @CLB) ;
@@ -2645,6 +2681,8 @@ REMOVE $$CASE + Att - Erg
     IF (NOT 1 $$CASE)
        (NOT 1 Comma)
        (NOT 1 Foreign)
+       #      (NEGATE 3 $$CASE)
+       (NEGATE 1 N + PP LINK 1* $$CASE BARRIER (*) - Pp)
        (NEGATE 1 Coord | Adv LINK 1 $$CASE)
        (NEGATE 1 Coord LINK 1 Advb OR Adv LINK 1 $$CASE)
        # (NEGATE 1 T:NPGen LINK 1 $$CASE) ; # doesn't work
@@ -3591,7 +3629,7 @@ o-SELECT N + Gen + OldPl
 SELECT N + Temp + Nom
     IF (0* DO:Nom + DO:3 BARRIER CLB) ;
 
-REMOVE S:Nom + S:12
+REMOVE S:Nom + S:12 + FALSE
     IF (0 DO:Nom + DO:3)
        (0* Nom BARRIER CLB)
        (NEGATE 0* <AuxIntr> BARRIER CLB) ;
@@ -3654,6 +3692,7 @@ SELECT A + Quant + Dat # not Gen
 REMOVE Att + $$CASE
     IF (NOT 1 NOM)
        (NOT 1 Foreign)
+       (NOT 1 Pron + Indef + $$CASE) # ბევრი ისეთი ხერხი
        (NOT 1 Pron + Dem + $$CASE) # მთელი ეს ფიქრი
        (NOT 1 Pron + Poss + $$CASE) # დღევანდელი ჩვენი მწერლობის
        (NOT 1 Pron + Refl + $$CASE) # ჩემს თავზე
@@ -3754,6 +3793,12 @@ SELECT Pron + Poss + Att + $$CASE
 SELECT Pron + Pers
     IF (-1 ("და"))
        (-2 Pron + Pers) ;
+
+# but: ყოველივე ამას
+n-REMOVE Att - Quant
+    IF (1 Pron + Dem) ;
+
+SELECT ("მუდამ") + Adv ;
 
 n-SELECT Att - <OldPl> + $$CASE - ("დ[ა]") - Guess - ("ხელ·ი") - Refl
     IF (NOT 0 Gen - Att)
@@ -4417,6 +4462,7 @@ REMOVE ("მი·.*"r)
 REMOVE ("შე·.*"r)
     IF (0C ("შე·.*"r) OR ("შემო·.*"r)) ;
 
+SELECT ("ყოფნ[ა]/ყოფნ") + Inv + S:12 ;
 REMOVE Inv IF (0C V) ; # remove Inv if non-Inv reading is available
 
 # test
