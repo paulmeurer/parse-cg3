@@ -1023,6 +1023,7 @@
                                   :key (lambda (s) (1- (length (getf s :word)))))))))
     (u:concat "_" (subseq word suffix-start suffix-end))))
 
+#+orig
 (defmethod suffix-token ((text parsed-text) suffix token)
   (let* ((parent-token (getf token :parent-token))
          (word (getf parent-token :word))
@@ -1042,8 +1043,8 @@
          (suffix-start (search (subseq suffix 1) word :from-end t))
          (suffix-end (when (or second-suffix third-suffix)
                        (- (length word) (length (or second-suffix third-suffix)) -1))))
-    (print (list :sec second-suffix :third third-suffix :start suffix-start :end suffix-end))
-    (debug (u:concat "_" (subseq word suffix-start suffix-end)))))
+    ;;(print (list :sec second-suffix :third third-suffix :start suffix-start :end suffix-end))
+    (u:concat "_" (subseq word suffix-start suffix-end))))
 
 (defparameter *token-table* nil)
 
@@ -1187,6 +1188,9 @@
 
 ;; *text*
 ;; kp::*session*
+
+#+test
+(build-dep-graph *text* :node-id 3)
 
 (defmethod build-dep-graph ((text parsed-text)
                             &key node-id ;; = :self in token
@@ -1360,6 +1364,8 @@ Field number:	Field name:	Description:
                                        document-id language
                                        all ;; include also analyses that are not stored; used for on-the-fly parsing
                                        &allow-other-keys)
+  (print :hier)
+  (debug document-id)
   ;;(setf *graphs* ())
   (let ((token-array (text-array text)))
     ;;(decf start)
@@ -1367,7 +1373,7 @@ Field number:	Field name:	Description:
           when (or (and all (eql -1 (getf node :parent)))
                    (and (getf node :stored-label)
                         (not (getf node :stored-parent))))
-          do ;; (debug node)
+          do
           (let ((graph (build-dep-graph text
                                         :node-id (getf node :self)
                                         :stored (not all))))
@@ -1375,13 +1381,14 @@ Field number:	Field name:	Description:
             ;;(push graph *graphs*)
             (when (or all (graph-is-complete graph))
               (write-dependency-conll graph stream
-                                      :sentence-id (if document-id
-                                                       (let ((slash-pos (position #\/ document-id :from-end t)))
-                                                         (u:concat (if slash-pos
-                                                                       (subseq document-id (1+ slash-pos))
-                                                                       document-id)
-                                                                   "+" (getf node :wid)))
-                                                       (getf node :wid))
+                                      :sentence-id
+                                      (if document-id
+                                          (let ((slash-pos (position #\/ document-id :from-end t)))
+                                            (u:concat (if slash-pos
+                                                          (subseq document-id (1+ slash-pos))
+                                                          document-id)
+                                                      "+" (getf node :wid)))
+                                          (getf node :wid))
                                       :include-postag (not all)
                                       :language language))))))
 
@@ -1471,7 +1478,8 @@ Field number:	Field name:	Description:
                      (multiple-value-bind (word clit clit-lemma clit-morph)
                          (if (eq language :abk)
                              (abk-split-clitics word (if (and (search "Cop" morph)
-                                                              (not (equal lemma "а́кә-заа-ра")))
+                                                              (not (equal lemma "а́кә-заа-ра"))
+                                                              (not (search "Conj-I" morph)))
                                                          t))
                              word)
                        (push (list (node-id node)
@@ -1617,7 +1625,7 @@ Field number:	Field name:	Description:
 
 (in-package :korpuskel)
 
-(defmethod calculate-precision ((language t) stream &key &allow-other-keys)
+(defmethod calculate-precision ((language t) stream &key write-conll &allow-other-keys)
   (with-database-connection ()
     (let ((count 0)
           (corpus nil)
@@ -1636,11 +1644,12 @@ Field number:	Field name:	Description:
                          :from [corpus disambiguation]
                          :where [and [like [corpus]
                                            (ecase language
-                                             (:kat "gnc-%")
+                                             (:kat "g%-%")
                                              (:abk "abnc"))]
                                      [not [null [label]]]
                                      [null [parent]]]
                          :order-by '([corpus] [document] [wid])])
+        ;;(print (list corpus-name document wid))
         (unless (equal prev-corpus-name corpus-name)
           (setf corpus (get-corpus corpus-name)
                 page-start 0 page-end 0))
@@ -1658,17 +1667,51 @@ Field number:	Field name:	Description:
                                                 (equal prev-doc document)
                                                 (<= page-start cpos page-end))
                                      (multiple-value-bind (start-cpos end-cpos)
-                                         (get-containing-element-cpositions corpus cpos (list "pb") :milestonep t)
+                                         (get-containing-element-cpositions corpus cpos (list "pb")
+                                                                            :milestonep t)
+                                       (unless start-cpos
+                                         ;; for rt and ci
+                                         (multiple-value-setq (start-cpos end-cpos)
+                                           (get-containing-element-cpositions corpus cpos (list "text")
+                                                                              :milestonep nil :complete-text t)))
+                                       ;;(print (list start-cpos end-cpos))
                                        (let ((text (parse-corpus-context corpus
                                                                          :start-cpos start-cpos
                                                                          :end-cpos end-cpos
-                                                                         :load-grammar first)))
+                                                                         :load-grammar first
+                                                                         :keep-non-mwe-readings t)))
                                          (setf page-start start-cpos page-end end-cpos first nil)
                                          (incf count)
                                          (write-line document stream)
-                                         (print (list document wid))
-                                         ;;(terpri)
-                                         ;;(debug text)
+                                         (when write-conll
+                                           (let ((conll (with-output-to-string (stream)
+                                                          (parse::write-dependencies-conll text stream
+                                                                                           :document-id document
+                                                                                           :language language)))
+                                                 (page nil)
+                                                 (page-att nil))
+                                             ;; extract page from text-array
+                                             (loop for token
+                                                   across (parse::text-array text) ;; *text*
+                                                   until (and (eq (car token) :empty-element)
+                                                              (equal (cadr token) "pb")
+                                                              (setf page-att (getf token :atts))))
+                                             (when page-att
+                                               (let* ((start (+ (search " n=" page-att) 4))
+                                                      (end (position #\" page-att :start (1+ start))))
+                                                 (setf page (subseq page-att start end))))
+                                             (with-open-file (stream (debug (format nil
+                                                                             (if (string= corpus-name "abnc")
+                                                                                 "projects:ud;abk;~a"
+                                                                                 "projects:ud;kat;~a")
+                                                                             (if page
+                                                                                 (substitute
+                                                                                  #\; #\/
+                                                                                  (normalize-name-page-nr
+                                                                                   (u:concat document "_" page ".conll")))
+                                                                                 (u:concat (substitute #\; #\_ document) ".conll"))))
+                                                                     :direction :output :if-exists :supersede)
+                                               (write-string conll stream))))
                                          (multiple-value-bind (nc hdc rdc hrdc)
                                              (parse::calculate-precision text stream :document document)
                                            (incf node-count nc)
@@ -1691,14 +1734,14 @@ Field number:	Field name:	Description:
 (with-open-file (stream (format nil "projects:ud;kat;precision;precision-~a.txt"
                                 (now :format :timestamp-utc))
                         :direction :output :if-exists :supersede)
-  (calculate-precision :kat stream)
+  (calculate-precision :kat stream :write-conll t)
   (print :done))
 
 #+main
 (with-open-file (stream (format nil "projects:ud;abk;precision;precision-~a.txt"
                                 (now :format :timestamp-utc))
                         :direction :output :if-exists :supersede)
-  (calculate-precision :abk stream)
+  (calculate-precision :abk stream :write-conll t)
   (print :done))
 
 :eof
