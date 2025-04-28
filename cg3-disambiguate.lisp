@@ -158,6 +158,7 @@
                 (45 "remcohort")
                 (47 "unmap")
                 (48 "copy")
+                (60 "protect")
                 (64 "with"))))
     (if line
 	(format nil "~:[~;; ~]~a:~d" discarded name line)
@@ -413,8 +414,8 @@
 						       t))
 					   (and (eq (car token) :end-element)
 						(find (cadr token)
-                                                      '(:|p| :|div| :|head| :|lg| :|li|
-                                                        "p" "div" "head" "lg" "li")
+                                                      '(:|p| :|div| :|head| :|lg| :|li| :|title|
+                                                        "p" "div" "head" "lg" "li" "title")
                                                       :test #'equal))
 					   (and (eq (car token) :word)
 						(find word-seen sentence-end-strings :test #'equal)
