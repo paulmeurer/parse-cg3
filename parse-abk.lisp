@@ -229,171 +229,178 @@
                                 (orthography :abk-cyr)
                                 &allow-other-keys)
   ;;(print (list word language variety))
-  (let ((lemmas+features ())
-	(stripped-word
-	 (remove-if (lambda (c) 
-		      (find c "ՙ‹›{}\\|"))
-		    word))
-	(analyzer *abk-analyzer*))
-    (cond ((and variety (not (eq variety :abk)))
-           (setf lemmas+features (list (list "-" (format nil "Foreign ~a" variety) nil nil))))
-          (analyzer
-           (when (eq orthography :abk-cyr-old)
-             (cl-fst:fst-lookup
-              *abk-old-to-new-orth*
-              stripped-word
-              (lambda (w norm net)
-                (declare (ignore w net))
-                (u:trim norm)
-                (setf stripped-word norm))))
-           (let ((reading-tree (dat:make-string-tree)))
-             (cl-fst:fst-lookup
-              *abk-relax-analyzer*
-              stripped-word
-              (lambda (w l+f net)
-                (declare (ignore w net))
-                (dolist (reading (u:split l+f #\newline nil nil t))
-                  (when (find #\+ reading) ;; temp. workaround
-                    (setf (dat:string-tree-get reading-tree reading) :relax))))
-              :mode :union)
-             (cl-fst:fst-lookup
-              analyzer
-              stripped-word
-              (lambda (w l+f net)
-                (declare (ignore w net))
-                ;;(print (list :base l+f))
-                (dolist (reading (u:split l+f #\newline nil nil t))
-                  ;; possibly overwrites :relax
-                  (when (find #\+ reading) ;; temp. workaround
-                    (setf (dat:string-tree-get reading-tree reading) :base))))
-              :mode :union)
-             (dat:do-string-tree (reading mode reading-tree)
-               (let (#+test(acc-word stripped-word))
-                 #+test
-                 (cl-foma:foma-lookup *abk-analyzer*
-                                      reading
-                                      (lambda (w acc-words net)
-                                        (declare (ignore w net))
-                                        ;;(debug acc-words)
-                                        (loop for acc-w in (u:split acc-words #\newline)
-                                           until (and (find #\́ acc-w)
-                                                      (string= stripped-word (delete #\́ acc-w))
-                                                      (setf acc-word acc-w))))
-                                      :side :upper)
-                 ;; move trailing features behind the lemma
-                 (let* ((lemma-start (or (position #\* reading) -1))
-                        (f-start (position #\+ reading :start (max lemma-start 1)))
-                        (features (if (= -1 lemma-start)
-                                      (u:split (subseq reading f-start) #\+ nil nil t)
-                                      (append (u:split (subseq reading f-start)
-                                                       #\+ nil nil t)
-                                              (u:split (subseq reading 0 lemma-start)
-                                                       #\+ nil nil t))))
-                        (lemma (subseq reading (1+ lemma-start) f-start))
-                        (features (if (eq mode :relax)
-                                      (append features (list "<Relax>"))
-                                      features))
-                        (features (cond (coord
-                                         features)
-                                        ((find "Punct" features :test #'string=)
-                                         features)
-                                        (t
-                                         (let ((lemma-in-dict (lemma-in-dictionary lemma)))
-                                           (cond ((word-equals-lemma word lemma)
-                                                  (append features (list "<Lemma>")))
-                                                 ((word-equals-lemma-lc word lemma)
-                                                  (append features (list "<LemmaLC>")))
-                                                 ((not lemma-in-dict)
-                                                  (append features (list "<NoLex>")))
-                                                 ((eq lemma-in-dict :hunting-lang)
-                                                  (append features (list "<HuntingLang>")))
-                                                 (t
-                                                  features))))))
-                        (features (sort-abkhaz-features features))
-                        (rid -1))
-                   
-                   ;; add translations if needed
-                   (if (and #+gekko *use-simple-dict-p* *simple-dictionary* (not coord))
-                       (let ((trans-list (get-simple-translation lemma features)))
-                         (dolist (trans (or trans-list (list (list "" ""))))
-                           (pushnew (list lemma
-                                          features
-                                          #+test(u:concat "[" acc-word "] "
-                                                          (substitute #\space #\+ features))
-                                          nil nil (list (incf rid)) trans)
-                                    lemmas+features :test #'equal)))
-                       (pushnew (list lemma
-                                      features
-                                      #+test(u:concat "[" acc-word "] "
-                                                      (substitute #\space #\+ features))
-                                      nil
-                                      nil #+ignore(list (incf rid))) ;; ??
-                                lemmas+features :test #'equal))
-                   
-                   )))
-             
-             (setf lemmas+features
-                   (sort lemmas+features
-                         (lambda (lf1 lf2)
-                           (or (string< (car lf1) (car lf2))
-                               (and (string= (car lf1) (car lf2))
-                                    (< (length (cadr lf1)) (length (cadr lf2))))
-                               (and (string= (car lf1) (car lf2))
-                                    (= (length (cadr lf1)) (length (cadr lf2)))
-                                    (loop for f1 in (cadr lf1)
-                                          for f2 in (cadr lf2)
-                                          thereis (string< f1 f2)))))))
-             
-             ;; mark +Det reading if one without +Det exists
-             (setf lemmas+features
-                   (loop with prev-lemma = "" ;; and collected = nil
-                      and prev-features = ()
-                      and prev-filtered-features = ()
-                      for l+f in lemmas+features
-                      for lemma = (car l+f)
-                      and features = (cadr l+f)
-                      and filtered-features = (remove-if (lambda (f)
-                                                           (find f '("<Relax>") :test #'string=))
-                                                         (cadr l+f))
-                      ;; do (print (list :pl prev-lemma :l lemma :pf prev-features :f features))
-                      if (and (string= prev-lemma lemma)
-                              (= (length prev-filtered-features)
-                                 (1- (length filtered-features)))
-                              (let ((diff (set-difference filtered-features prev-filtered-features
-                                                          :test #'string=)))
-                                (and (car diff)
-                                     (null (cadr diff))
-                                     (string= (car diff) "Det"))))
-                      do (setf (cdr prev-features) (append (cdr prev-features) (list "[Det]")))
-                      else if (and (string= prev-lemma lemma)
-                                   (= (length prev-filtered-features) (1- (length filtered-features)))
-                                   (let ((diff (set-difference filtered-features prev-filtered-features
-                                                               :test #'string=)))
-                                     (and (car diff)
-                                          (null (cadr diff))
-                                          (string= (car diff) "LO:3SgNH"))))
-                      do (setf (cdr prev-features)
-                               (append (cdr prev-features) (list "[LO:3SgNH]")))
-                      else
-                      collect l+f
-                      when (or (string/= lemma prev-lemma)
-                               (> (length filtered-features) (1+ (length prev-filtered-features))))
-                      do (setf prev-features features
-                               prev-filtered-features filtered-features
-                               prev-lemma lemma))) 
-
-             (unless coord
-               (when (null lemmas+features)
-                 (setf lemmas+features
-                       (lookup-abk-coord-compound word :orthography orthography)))
-               (loop for lf in lemmas+features
-                  do (setf (cadr lf) (format nil "~{~a~^ ~}" (cadr lf)))))
-	     ))
-	  (mwe ;; don’t recognize foreign stuff as mwe
-	   nil)
-	  (t
-	   (setf lemmas+features (list (list "-" (format nil "Foreign ~a" :abk) nil nil)))))
-    (values lemmas+features stripped-word)))
+  (cond ((string= (string-downcase word) "иа")
+         (values (list (list "иа́" "Pron Pers 3SgM" NIL NIL)
+                       (list "иа́" "Cj Coord" NIL NIL)
+                       (list "иа́" "Interj" NIL NIL)
+                       )
+                 word))
+        (t
+         (let ((lemmas+features ())
+	       (stripped-word
+	        (remove-if (lambda (c) 
+		             (find c "ՙ‹›{}\\|"))
+		           word))
+	       (analyzer *abk-analyzer*))
+           (cond ((and variety (not (eq variety :abk)))
+                  (setf lemmas+features (list (list "-" (format nil "Foreign ~a" variety) nil nil))))
+                 (analyzer
+                  (when (eq orthography :abk-cyr-old)
+                    (cl-fst:fst-lookup
+                     *abk-old-to-new-orth*
+                     stripped-word
+                     (lambda (w norm net)
+                       (declare (ignore w net))
+                       (u:trim norm)
+                       (setf stripped-word norm))))
+                  (let ((reading-tree (dat:make-string-tree)))
+                    (cl-fst:fst-lookup
+                     *abk-relax-analyzer*
+                     stripped-word
+                     (lambda (w l+f net)
+                       (declare (ignore w net))
+                       (dolist (reading (u:split l+f #\newline nil nil t))
+                         (when (find #\+ reading) ;; temp. workaround
+                           (setf (dat:string-tree-get reading-tree reading) :relax))))
+                     :mode :union)
+                    (cl-fst:fst-lookup
+                     analyzer
+                     stripped-word
+                     (lambda (w l+f net)
+                       (declare (ignore w net))
+                       ;;(print (list :base l+f))
+                       (dolist (reading (u:split l+f #\newline nil nil t))
+                         ;; possibly overwrites :relax
+                         (when (find #\+ reading) ;; temp. workaround
+                           (setf (dat:string-tree-get reading-tree reading) :base))))
+                     :mode :union)
+                    (dat:do-string-tree (reading mode reading-tree)
+                      (let (#+test(acc-word stripped-word))
+                        #+test
+                        (cl-foma:foma-lookup *abk-analyzer*
+                                             reading
+                                             (lambda (w acc-words net)
+                                               (declare (ignore w net))
+                                               ;;(debug acc-words)
+                                               (loop for acc-w in (u:split acc-words #\newline)
+                                                     until (and (find #\́ acc-w)
+                                                                (string= stripped-word (delete #\́ acc-w))
+                                                                (setf acc-word acc-w))))
+                                             :side :upper)
+                        ;; move trailing features behind the lemma
+                        (let* ((lemma-start (or (position #\* reading) -1))
+                               (f-start (position #\+ reading :start (max lemma-start 1)))
+                               (features (if (= -1 lemma-start)
+                                             (u:split (subseq reading f-start) #\+ nil nil t)
+                                             (append (u:split (subseq reading f-start)
+                                                              #\+ nil nil t)
+                                                     (u:split (subseq reading 0 lemma-start)
+                                                              #\+ nil nil t))))
+                               (lemma (subseq reading (1+ lemma-start) f-start))
+                               (features (if (eq mode :relax)
+                                             (append features (list "<Relax>"))
+                                             features))
+                               (features (cond (coord
+                                                features)
+                                               ((find "Punct" features :test #'string=)
+                                                features)
+                                               (t
+                                                (let ((lemma-in-dict (lemma-in-dictionary lemma)))
+                                                  (cond ((word-equals-lemma word lemma)
+                                                         (append features (list "<Lemma>")))
+                                                        ((word-equals-lemma-lc word lemma)
+                                                         (append features (list "<LemmaLC>")))
+                                                        ((not lemma-in-dict)
+                                                         (append features (list "<NoLex>")))
+                                                        ((eq lemma-in-dict :hunting-lang)
+                                                         (append features (list "<HuntingLang>")))
+                                                        (t
+                                                         features))))))
+                               (features (sort-abkhaz-features features))
+                               (rid -1))
+                          
+                          ;; add translations if needed
+                          (if (and #+gekko *use-simple-dict-p* *simple-dictionary* (not coord))
+                              (let ((trans-list (get-simple-translation lemma features)))
+                                (dolist (trans (or trans-list (list (list "" ""))))
+                                  (pushnew (list lemma
+                                                 features
+                                                 #+test(u:concat "[" acc-word "] "
+                                                                 (substitute #\space #\+ features))
+                                                 nil nil (list (incf rid)) trans)
+                                           lemmas+features :test #'equal)))
+                              (pushnew (list lemma
+                                             features
+                                             #+test(u:concat "[" acc-word "] "
+                                                             (substitute #\space #\+ features))
+                                             nil
+                                             nil #+ignore(list (incf rid))) ;; ??
+                                       lemmas+features :test #'equal))
+                          
+                          )))
+                    
+                    (setf lemmas+features
+                          (sort lemmas+features
+                                (lambda (lf1 lf2)
+                                  (or (string< (car lf1) (car lf2))
+                                      (and (string= (car lf1) (car lf2))
+                                           (< (length (cadr lf1)) (length (cadr lf2))))
+                                      (and (string= (car lf1) (car lf2))
+                                           (= (length (cadr lf1)) (length (cadr lf2)))
+                                           (loop for f1 in (cadr lf1)
+                                                 for f2 in (cadr lf2)
+                                                 thereis (string< f1 f2)))))))
+                    
+                    ;; mark +Det reading if one without +Det exists
+                    (setf lemmas+features
+                          (loop with prev-lemma = "" ;; and collected = nil
+                                and prev-features = ()
+                                and prev-filtered-features = ()
+                                for l+f in lemmas+features
+                                for lemma = (car l+f)
+                                and features = (cadr l+f)
+                                and filtered-features = (remove-if (lambda (f)
+                                                                     (find f '("<Relax>") :test #'string=))
+                                                                   (cadr l+f))
+                                ;; do (print (list :pl prev-lemma :l lemma :pf prev-features :f features))
+                                if (and (string= prev-lemma lemma)
+                                        (= (length prev-filtered-features)
+                                           (1- (length filtered-features)))
+                                        (let ((diff (set-difference filtered-features prev-filtered-features
+                                                                    :test #'string=)))
+                                          (and (car diff)
+                                               (null (cadr diff))
+                                               (string= (car diff) "Det"))))
+                                do (setf (cdr prev-features) (append (cdr prev-features) (list "[Det]")))
+                                else if (and (string= prev-lemma lemma)
+                                             (= (length prev-filtered-features) (1- (length filtered-features)))
+                                             (let ((diff (set-difference filtered-features prev-filtered-features
+                                                                         :test #'string=)))
+                                               (and (car diff)
+                                                    (null (cadr diff))
+                                                    (string= (car diff) "LO:3SgNH"))))
+                                do (setf (cdr prev-features)
+                                         (append (cdr prev-features) (list "[LO:3SgNH]")))
+                                else
+                                collect l+f
+                                when (or (string/= lemma prev-lemma)
+                                         (> (length filtered-features) (1+ (length prev-filtered-features))))
+                                do (setf prev-features features
+                                         prev-filtered-features filtered-features
+                                         prev-lemma lemma))) 
+                    
+                    (unless coord
+                      (when (null lemmas+features)
+                        (setf lemmas+features
+                              (lookup-abk-coord-compound word :orthography orthography)))
+                      (loop for lf in lemmas+features
+                            do (setf (cadr lf) (format nil "~{~a~^ ~}" (cadr lf)))))
+	            ))
+	         (mwe ;; don’t recognize foreign stuff as mwe
+	          nil)
+	         (t
+	          (setf lemmas+features (list (list "-" (format nil "Foreign ~a" :abk) nil nil)))))
+           (values lemmas+features stripped-word)))))
 
 (defvar *tagset*)
 
@@ -413,17 +420,19 @@
          lemma)
         ((and (> (length word) 4)
               (find #\- word :start 4))
-         ;;(debug word)
          (let ((hy-pos (position #\- lemma :from-end t :end (- (length lemma) 4))))
-           (setf lemma (remove-if (lambda (c) (find c "-:·")) lemma :start (1+ hy-pos)))
-           (remove-if (lambda (c) (find c "-:·")) lemma :start 3 :end hy-pos)))
+           (cond (hy-pos
+                  (setf lemma (remove-if (lambda (c) (find c "-:·")) lemma :start (1+ hy-pos)))
+                  (remove-if (lambda (c) (find c "-:·")) lemma :start 3 :end hy-pos))
+                 (t
+                  word))))
         (t
          (remove-if (lambda (c) (find c "-:·")) lemma :start 3))))
 
 #+test
 (print (strip-segmentation :abk "а-ҟрым-ҿры́м-ра" "аҟрым-ҿры́мра"))
 #+test
-(print (strip-segmentation :abk "а-гыгшәы́г" "ҩ-гыгшәы́г"))
+(print (strip-segmentation :abk "Леонид-иҧа" "Леонид-иҧа"))
 
 (defmethod morph-to-ud ((language (eql :abk)) morph &key drop-pos lemma)
   (let ((features (u:split morph #\space))
@@ -451,11 +460,13 @@
              (push "Voice=Pass" ud-features))
             ((and (equal f "Cop")
                   (not (equal lemma "а́кә-заа-ра"))
-                  (find "Mood=Conj1" ud-features :test #'string=))
-             (setf ud-features (delete "Mood=Conj1" ud-features :test #'string=))
+                  (find "Mood=Cnd" ud-features :test #'string=))
+             (setf ud-features (delete "Mood=Cnd" ud-features :test #'string=))
              (setf ud-features (delete "VerbForm=NonFin" ud-features :test #'string=))
              (push "Mood=Nec" ud-features)
              (push "VerbForm=Fin" ud-features))
+            ((and (equal f "Q") (not (equal pos "V")))
+             nil)
             (t
              (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
                (when (and ud (not is-pos))
@@ -507,10 +518,13 @@
 (defmethod morph-to-ud-pos ((language (eql :abk)) morph &optional relation)
   (let ((features (u:split morph #\space))
         (pos nil)
+        (v nil)
         (dyn nil))
     (dolist (f features)
-      (when (equal f "Dyn")
-        (setf dyn t))
+      (cond ((equal f "Dyn")
+             (setf dyn t))
+            ((equal f "V")
+            (setf v t)))
       (destructuring-bind (&optional ud is-pos) (gethash f *abnc-to-ud-features*)
         (cond ((null is-pos)
                nil)
@@ -521,6 +535,8 @@
                (setf pos is-pos))
               ((equal relation "AUX")
                (setf pos "AUX"))
+              ((equal relation "COP")
+               (setf pos "AUX"))
               ((not (eq is-pos t))
                (setf pos is-pos))
               #+ignore
@@ -528,7 +544,7 @@
                     (equal f "Dyn"))
                (setf pos "VERB"))
               (ud
-               (unless (and (equal ud "AUX") dyn)
+               (unless (and (equal ud "AUX") (or dyn (not v)))
                  (setf pos ud))))))
     pos))
 
