@@ -2,7 +2,7 @@
 
 (in-package :parse)
 
-(defclass kp::gnc-text (parsed-text)
+(defclass gnc-text (parsed-text)
   ())
 
 (defparameter *tokenizer* nil)
@@ -282,7 +282,7 @@
     lemmas+features))
 
 #+test
-(pprint (lookup-morphology :kat "ჰერ"))
+(pprint (lookup-morphology :kat "უკითხავს"))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) guess-table tmesis-segment mwe
@@ -614,7 +614,7 @@
 
 (defmethod transliterate ((language (eql :kat)) str)
   str
-  (kp::transliterate str :standard :scientific))
+  (encoding::transliterate str :standard :scientific))
 
 (defun transliterate-to-mkhedruli (str)
   (loop for c across str for i from 0
@@ -958,7 +958,7 @@
 (defparameter *depid-array* nil)
 (defparameter *text-array* nil)
 
-(defmethod process-text :after ((text kp::gnc-text) (mode (eql :disambiguate))
+(defmethod process-text :after ((text gnc-text) (mode (eql :disambiguate))
                                 &key dependencies no-postprocessing &allow-other-keys)
   ;; *text*
   (when (and dependencies (not no-postprocessing))
