@@ -23,7 +23,7 @@
    (:file "parse-text")
    (:file "cg3-disambiguate")
    (:file "parse-api")
-   #´+gekko
+   #+gekko
    (:file "precision")
    ))
 
