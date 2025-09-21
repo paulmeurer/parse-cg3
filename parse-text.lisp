@@ -31,7 +31,7 @@
 ;; change this
 (defmethod transliterate ((language (eql :abk)) str)
   str
-  (kp::transliterate str :standard :abkhaz))
+  (encoding::transliterate str :standard :abkhaz))
 
 
 ;; to be overridden
@@ -747,7 +747,7 @@
          (declare (ignore tmesis-msa))
 	 (apply
 	  #'st-json::jso
-	  `("word" ,(kp::transliterate (or dipl word) :standard transliterate)
+	  `("word" ,(encoding::transliterate (or dipl word) :standard transliterate)
 	    ,@(when dependencies 
 		    `("self" ,(or (unless (eql (getf node :self) 0) (getf node :self)) :null)
 		      "parent" ,(or (unless (eql (getf node :parent) -1) (getf node :parent)) :null)
@@ -922,7 +922,7 @@
 		(u:collect (apply #'st-json::jso
 				  `(,@(when lemma `("lemma" ,l))
 				      ,@(when (and lemma transliterate)
-                                          `("trans_lemma" ,(kp::transliterate l :standard transliterate)))
+                                          `("trans_lemma" ,(encoding::transliterate l :standard transliterate)))
 				      ,@(unless suppress-discarded-p
 						`("status" ,(string-downcase flag)))
 				      ,@(when features `("features" ,(u:split f #\Space)))
@@ -932,7 +932,7 @@
                                       ,@(when count `("count" ,count))
                                       ,@(when trace `("trace" ,trace)))))))))))
 
-(defmethod select-reading ((text parsed-text) stream &key wid rid)
+(defmethod select-reading ((text parsed-text) stream &key wid rid transliterate)
   (let* ((token (gethash wid (parse::word-id-table text)))
          (readings (getf token :morphology))
          (reading (nth rid readings)))
@@ -943,7 +943,7 @@
             (format nil "~{~a~^ ~}" (delete "<Sel>" (u:split (cadr reading) #\space) :test #'string=))))
     (setf (caddr reading) :selected-manually
           (cadr reading) (u:concat (cadr reading) " <Sel>"))
-    (json "token" (parse::write-word-json token))))
+    (json "token" (parse::write-word-json token :transliterate transliterate))))
 
 ;; *text*
 ;; *root*
@@ -1741,7 +1741,7 @@ Field number:	Field name:	Description:
 (with-open-file (stream (format nil "projects:ud;abk;precision;precision-~a.txt"
                                 (now :format :timestamp-utc))
                         :direction :output :if-exists :supersede)
-  (calculate-precision :abk stream :write-conll t)
+  (calculate-precision :abk stream :write-conll nil)
   (print :done))
 
 :eof
