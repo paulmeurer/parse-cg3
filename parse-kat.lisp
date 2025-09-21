@@ -35,7 +35,9 @@
 
 (defparameter *ng-guess-verb-analyzer*
   (make-instance 'fst-net
-		 :file "projects:georgian-morph;regex;guessed-verb.fst"
+		 :file (ecase +fst+
+                         (:foma "projects:parse-cg3;regex;guessed-verb.foma")
+                         (:fst "projects:georgian-morph;regex;guessed-verb.fst"))
                  :name :ng-guess-verb))
 
 (defmethod init-transducers ((language (eql :kat))
