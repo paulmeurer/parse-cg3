@@ -409,7 +409,7 @@
 (progn
   (clrhash *abnc-to-ud-features*)
   (u:with-file-fields ((&optional abnc-feature ud-features pos &rest rest)
-                       "projects:abnc;feature-names.tsv" :empty-to-nil t :comment #\#)
+                       "projects:parse-cg3;feature-names-abk.tsv" :empty-to-nil t :comment #\#)
     (declare (ignore rest))
     (when (or ud-features pos)
       (setf (gethash abnc-feature *abnc-to-ud-features*)

@@ -1,0 +1,290 @@
+V	VERB	x		Verb	аҟаҵ	Аҟаҵарба	сцоит	Гл	Глаголь
+#Cop	AUX	x		Verb	аҟаҵ	Аҟаҵарба	ауп	Гл	Глаголь
+EnclCop	AUX	x		Verb	аҟаҵ	Аҟаҵарба	ауп	Гл	Глаголь
+Noun	NOUN	x		Noun	ахьӡ	Ахьыӡҟа	ауаҩы, ашәҟәы	Сущ	Имя существительное
+H	Animacy=Hum		Noun, Pron	Human	ადამ	Ауаҩытәҩса	аӡҕаб, ауаҩы		
+NH	Animacy=Nhum		Noun, Pron	Non-human	არაადამ	Амаҭәар	ала, аҩны		
+#Comp			Noun	Compound	შედგ	შედგენილი არსებითი სახელი, კომპოზიტი			
+Prop	PROPN	PROPN	Noun	Proper noun	საკ-სახ	Ахатәы хыӡҟа	Баҭал, Аҟәа		
+Pron	PRON	x		Pronoun	ნაცვსახ	Ахьыӡцынхәра	сара		
+Pers	PronType=Prs		Pron	Personal	პირ	Ахаҿытә хь.			
+Poss	PronType=Prs Poss=Yes		Pron	Possessive	კუთვნ	Адхаларатә форма/ахаҿытә ҧынгыла	с-напы, р-напы		
+Poss:1Sg	Number[psor]=Sing|Person[psor]=1		Pron Poss	Possessive 1st Sg	კუთვნ-1მხ	Адхаларатә форма, aзаҵә хыҧхьаӡара актәи ахаҿы	с-		
+Poss:2SgM	Number[psor]=Sing|Person[psor]=2|Gender[psor]=Masc		Pron Poss	Possessive 2nd Sg Masc	კუთვნ-2მხ	Адхаларатә форма, aзаҵә хыҧхьаӡара аҩбатәи ахаҿы (ахацәа)	у-		
+Poss:2SgF	Number[psor]=Sing|Person[psor]=2|Gender[psor]=Fem		Pron Poss	Possessive 2nd Sg Fem	კუთვნ-3მხ	Адхаларатә форма, aзаҵә хыҧхьаӡара аҩбатәи ахаҿы (аҳәса)	б-		
+Poss:3SgM	Number[psor]=Sing|Person[psor]=3|Gender[psor]=Masc		Pron Poss	Possessive 3rd Sg Masc	კუთვნ-3მხ	Адхаларатә форма, aзаҵә хыҧхьаӡара ахҧатәи ахаҿы (ахацәа)	и-		
+Poss:3SgF	Number[psor]=Sing|Person[psor]=3|Gender[psor]=Fem		Pron Poss	Possessive 3rd Sg Fem	კუთვნ-3მხ	Адхаларатә форма, aзаҵә хыҧхьаӡара ахҧатәи ахаҿы (аҳәса)	л-		
+Poss:3SgNH	Number[psor]=Sing|Person[psor]=3|Gender[psor]=Neut		Pron Poss	Possessive 3rd Sg Nonhum	კუთვნ-3მხ	Адхаларатә форма, aзаҵә хыҧхьаӡара ахҧатәи ахаҿы (амаҭәар)	а-		
+Poss:1Pl	Number[psor]=Plur|Person[psor]=1		Pron Poss	Possessive 1st Pl	კუთვნ-1მრ	Адхаларатә форма, aрацәа хыҧхьаӡара актәи ахаҿы	ҳ(а)-		
+Poss:2Pl	Number[psor]=Plur|Person[psor]=2		Pron Poss	Possessive 2nd Pl	კუთვნ-2მრ	Адхаларатә форма, aрацәа хыҧхьаӡара аҩбатәи ахаҿы	шә-		
+Poss:3Pl	Number[psor]=Plur|Person[psor]=3		Pron Poss	Possessive 3rd Pl	კუთვნ-3მრ	Адхаларатә форма, aрацәа хыҧхьаӡара ахҧатәи ахаҿы	и-		
+Poss:Rel	Person[psor]=Rel		V	Relative Possessive Marker	სუბ-3მხ				
+Rel			Noun, A, V	Relative	მიმარ	Азыҟашьатә-хьыӡцынхәратә рбага	и-цоз, иҟа-з-ҵоз		
+Refl			V	Reflexive	უკუქც	Асубиекттә версиа			
+Recip			V	Reciprocal	ურთიერთ	Аицҟаҵаратә категориа			
+Indef	PronType=Ind		Pron	Indefinite	განუსაზღ				
+Dem	PronType=Dem		Pron	Demonstrative	ჩვენ	Арбагатә			
+Prox			Pron Dem	Proximal	დეიქ₁				
+Med			Pron Dem	Medial	დეიქ₂				
+Dist			Pron Dem	Distal	დეიქ₃				
+Num	NUM	x		Numeral	რიცხ	Ахыҧхьаӡаратә	акы, хҧа, аҩбатәи		Числителное
+Card	NumType=Card		Num	Cardinal	რაოდ		акы, хҧа, зқьы		
+Ord	NumType=Ord		Num	Ordinal	რიგ		актәи, ҩбатәи		
+NumPfx	Number=Card		Noun	Numeral Prefix	რიგ		актәи, ҩбатәи		
+Alpha			Num	Alphabetic	ანბან		жәохә		
+Digits			Num	Digits	ციფრ		7, 3,1415		
+Roman			Num	Roman	რომ		I, XIV, iv		
+Approx			Num	Approximative	ოდნ		ҩбаҟа		
+Repet	NumType=Mult		Num	Repetitive	ჯერ		ҩынтә		
+Frac	NumType=Frac		Num	Fraction	წილ				
+# Distr	NumType=Dist		Num	Iterative	ჯერობ		ҩба-ҩба		
+Range	NumType=Range		Num	Range	რიგ		2-3, ҩба-хҧа		
+Adj	ADJ	x		Adjective	ზედს	Аҟазшьарба	абзиа, аҟаҧш		Прилагательное
+Adv	ADV	x		Adverb	ზმნსრთ	Ацынгыла	ара, гәыла-ҧсыла, иахьа	Прл	Наречие
+Mann	AdvType=Man		Adv	Manner	რაობ		ибзианы		
+Temp	AdvType=Tim		Adv, N	Temporal	დრო		иахьа, иацы, уажәы		
+Loc	AdvType=Loc		Adv	Local	ადგილ		ара		
+Sent			Adv	Sentential Adverbial	სენტ				
+#Comm			Adv	Comment	კომენტ	მაკომენტირებელი გარემოება			
+#Foc			Adv, Encl	Focus	ფოკ	ფოკუსი			
+#Causal			Adv	Causal	მიზგარ	მიზეზის გარემოება			
+Root			Adv	Root	ძირი		мап, аиeи		
+Int			Pron, Adv	Interrogative	კითხვ		ибдыруеи, изҳәада		
+Det	Definite=Def		Noun, Adj	Determiner			а-ла, а-шәҟәы		
+Q	Mood=Int		V	Question	Азҵ	Азҵааратә форма	уабацо		
+When	VerbForm=NonFin|RelType=Tmp		V	Prefix When	Азҵ	Аҭагылазааратә(-зҵааратә) форма (-ан-, -анба-)	данбаауеи		
+Where	VerbForm=NonFin|RelType=Loc		V	Prefix Where	Азҵ	Аҭагылазааратә(-зҵааратә) форма (-ахь-, -аба-)	бабацо		
+Why	VerbForm=NonFin|RelType=Cause		V	Prefix Why	Азҵ	Аҭагылазааратә(-зҵааратә) форма (-а-з-)			
+How	VerbForm=NonFin|RelType=Mnr		V	Prefix Why	Азҵ	Аҭагылазааратә(-зҵааратә) форма (-а-з-)			
+QWho			V	Suffix Who	Азҵ	Аҭагылазааратә-азыҟашьатә-хьыӡцынхәратә форма (-да, -и) 	издыруада		
+Quant			A	Quantor	კვანტორი		зегьы, доусы		
+Cj		x		Conjunction	კავშ	Аидҳәалага	аха, избанзар, иа … иа		Союз
+Coord		CCONJ	Cj	Coordinating	მაჯგ	Аиҧшратә еидҳә.	ма, мамзар		
+Sub		SCONJ	Cj	Subordinating	მაქვემ	Аиҿагыларатә еидҳә.	избанзар, избан акәзар		
+PP	ADP	x		Postposition (suffix)	თანდ	Ашьҭынгыла	 -да, -ла, -ҿы, -ҟны		Послелог
+Abbrev	Abbr=Yes		Noun, A, Adv	Abbreviation	შემოკლ	Аркьаҿра	Д., ш., шш.	Укорочение	
+Interj	INTJ	x		Interjection	შორისდ	Абыжьҭҟьа 	ҟоҳ, уф, ҳаит		Междометие
+Neg	Polarity=Neg		V	Negated	ნეგ	Аҟаҵарба мапкратәи аформа (-м-)	имаӡа-м		
+Punct	PUNCT	x		Punctuation	პუნქტ		. , : - ? « … »		
+Period			Punct	Period	წერტ		.		
+IntMark			Punct	Question mark	კითხვ	Азҵааратә дырга	?		
+Colon			Punct	Colon	ორწერტ		:		
+Semicolon			Punct	Semicolon	წერტ-მძ		;		
+Comma			Punct	Comma	მძიმე		,		
+Hyphen			Punct	Hyphen	დეფ		-		
+Dash			Punct	Dash	ტირე		–		
+Underscore			Punct	Underscore	ქვედ		_		
+Bracket			Punct	Bracket	ფრჩხ		[ ]		
+Paren			Punct	Parenthesis	ფრჩხ		( )		
+Quote			Punct	Quotation mark	ბრჭყ		« » “ ”		
+Ellipsis			Punct	Ellipsis	მრწერტ		…		
+ExclPoint			Punct	Exclamation point	ძახ		!		
+Star			Symbol	Star	ვარსკ	Аеҵәа	*		
+Advb	Case=Ess		Noun, Adj, Pron	Adverbialis	ვით	Аиагаратә форма	рҵаҩыс		
+Dyn	Dyn=Yes		V	Dynamic	Адин	Адинамикатә	агылара, сгылоит	Дин	Динамический
+Stat	Dyn=No		V	Static	Астат	Астатикатә	агылазаара, сгылоуп	Стат	Статический
+Fin	VerbForm=Fin		V	Finite	Афин	Афиниттә форма	былбоит, иҭ!, ицазаарын	Фин	Финитная форма
+NonFin	VerbForm=NonFin		V	Non-finite	Аинф	Аинфиниттә форма	избо, иҟаҵаны	Инфин	Инфинитная форма
+Abs	VerbForm=Ger		V	Absolutive		Арлахәыра	игыланы		Деепричастие
+#Tr	Trans=Yes		V	Transitive	Еиҭаҵ	Еиҭаҵуа	иҟаиҵеит	Перех	Переходный
+Tr	Subcat=Tran		V	Transitive	Еиҭаҵ	Еиҭаҵуа	иҟаиҵеит	Перех	Переходный
+#Intr	Trans=No		V	Intransitive	Еиҭамҵ	Еиҭамҵуа	сыҧоит, дасуеит	Неперех	НепереходTr	Subcat=Tran		V	Transitive	Еиҭаҵ	Еиҭаҵуа	иҟаиҵеит	Перех	Переходный
+Intr	Subcat=Intr		V	Intransitive	Еиҭамҵ	Еиҭамҵуа	сыҧоит, дасуеит	Неперех	Непереходный
+Sg	Number=Sing		Pron Pers	Singular	Азаҵә	Азаҵә хыҧхьаӡара	ашәҟәы, аҳ, ауаҩы, ҧҳәыск, аҵыс	Ед	Единственное число
+Pl	Number=Plur		Pron Pers	Plural	Арацәа	Арацәа хыҧхьаӡара	ашәҟәқәа, аҳцәа, ауаа, ҳәсақәа, аҵар	Мн	Множественное число
+1Sg	Number=Sing|Person=1		Pron Pers	1st Singular	азаҵә	Азаҵә хыҧхьаӡара актәи ахаҿы	са, сара		
+2SgM	Number=Sing|Person=2|Gender=Masc		Pron Pers	2nd Singular Masculine		Азаҵә хыҧхьаӡара аҩбатәи ахаҿы (ахацәа)	уа, уара		
+2SgF	Number=Sing|Person=2|Gender=Fem		Pron Pers	2nd Singular Feminine		Азаҵә хыҧхьаӡара аҩбатәи ахаҿы (аҳәса)	ба, бара		
+3SgM	Number=Sing|Person=3|Gender=Masc		Pron Pers	3rd Singular Masculine		Азаҵә хыҧхьаӡара ахҧатәи ахаҿы (ахацәа)	иара		
+3SgF	Number=Sing|Person=3|Gender=Fem		Pron Pers	3rd Singular Feminine		Азаҵә хыҧхьаӡара ахҧатәи ахаҿы (аҳәса)	лара		
+1Pl	Number=Plur|Person=1		Pron Pers	1st Plural	арацәа	Арацәа хыҧхьаӡара актәи ахаҿы	ҳара		
+2Pl	Number=Plur|Person=2		Pron Pers	2nd Plural	მრ	Арацәа хыҧхьаӡара аҩбатәи ахаҿы	шәара		
+3Pl	Number=Plur|Person=3		Pron Pers	3rd Plural	მრ	Арацәа хыҧхьаӡара ахҧатәи ахаҿы	дара, урҭ		
+Pred	VERB	x	Noun, Adj,…	Predicative form			дырҵаҩуп		
+Pres	Tense=Pres		V	Present	Уажә	Уажәтәи аамҭа	иҟоуп, игылоит, исыздыруам		
+Fut-I	Tense=Fut		V	Future I	Иҟ-I	Иҟалаша а-I-тәи	иҟалап, игылап, сгыларым		
+Fut-II	Tense=Fut2		V	Future II	Иҟ-II	Иҟалаша а-II-тәи			
+Impf	Tense=Imp		V	Imperfect	უწყვ	Ииасхьоу инагӡам			
+Aor	Tense=Aor		V	Aorist	Аор	Аорист (ииасхьоу инагӡоу)			
+PastIndef	Tense=Past		V	Past Indefinite	უწყვ	Ииасхьоу еилкаам			
+Perf	Tense=Prf		V	Perfect	I.თურმ	Ииасхьоу акрызхыҵуа			
+PluPerf	Tense=Pqp		V	Pluperfect	II.თურმ	Ииасхьоу акрызхыҵуа иаҧынгылоу			
+Cond-I	Tense=Cnd		V	Conditional I	I.ხოლმ	Архьыҧшратә ркьынаа	дызбарын, избарыз		
+Cond-II	Tense=Cnd2		V	Conditional II	I.ხოლმ	Архьыҧшратә ркьынаа	дызбашан, избашаз		
+Conj-I	Mood=Cnd		V	Conjunctive I		Ахьыҧшратә ркьынаа (-зар/-р ала)	иуҭахызар		
+Conj-II	Mood=Cnd2		V	Conjunctive II	მყოფ	Акониунктивтә форма II	иҟасҵазҭгьы		
+Subj	Mood=Sub		V	Subjunctive	მყოფ	Акониунктивтә форма I	даҧхьааит, снахагылааит		
+Purp	Mood=Prp		V	Purposive		Ахьыҧшратә-зкратә ркьынаа (-зар ала)	-зарц		
+Impv	Mood=Imp		V	Imperative	ბრძ	Адҵаратә ркьынаа			
+Opt	Mood=Opt		V	Optative	II.კავშ	Агәаҧхаратә ркьынаа	#NAME?	Усутп	Уступительное наклонение
+Iter	Aspect=Iter		V	Iterative			
+AsIf			V	AsIf	II.კავშ	Азааигәаратә форма	иҟазҵазшәа		
+InferPres	Evident=Nfh		V	Present Inferential	უწყვ	Абламбаратә форма			
+InferPast	Evident=Nfh2		V	Past Inferential	უწყვ	Абламбаратә форма			
+VN	VerbForm=Vnoun	VERB	Noun	Verbal Noun, Masdar	амасд	Амасдар	аҟаҵара, ацара		Масдар
+#Act			V	Active	მოქმ				
+StatPass	Dyn=No|Voice=Pass		V	Passive	ვნებ				
+Pass	Voice=Pass		V	Passive	ვნებ				
+Inv	Voice=Inv		V	Inverted	ინვერს	Аинверсивтә ҟаҵарба			
+Caus	Voice=Cau		V	Causative	კაუზ	Акаузатив	иргылоит, идырбеит		
+FPv			V	Free Preverb	ზმნწ				
+Reln:Invol	Reln=Invol		V	Involitional	ზმნწ	Амхаҟаҵаратә форма	самхафеит		
+Reln:Pot	Reln=Pot		V	Potential	ზმნწ	Амчымхаратә (потенциалис)	исыздыруам		
+Reln:For	Reln=Ben		V	Relation ‘For’	ზმნწ	Аобиекттә версиа (-з-)	иазыҟеиҵеит		
+Reln:With	Reln=Ins		V	Relation ‘With’	ზმნწ	(-ла-)			
+Reln:TogetherWith	Reln=Com		V	Relation ‘Together with’	ზმნწ	(-ц-)			
+Reln:Against	Reln=Mal		V	Relation ‘Against’	ზმნწ	Аобиекттә версиа (-цә-)			
+
+S:1Sg	Number[subj]=Sing|Person[subj]=1		V	1st Person Singular Subject	სუბ-1მხ				
+S:2SgM	Number[subj]=Sing|Person[subj]=2|Gender[subj]=Masc		V	2nd Person Singular Masculine Subject	სუბ-2				
+S:2SgF	Number[subj]=Sing|Person[subj]=2|Gender[subj]=Fem		V	2nd Person Singular Feminine Subject	სუბ-2				
+S:3SgM	Number[subj]=Sing|Person[subj]=3|Gender[subj]=Masc		V	3rd Person Singular Masculine Subject	სუბ-3				
+S:3SgF	Number[subj]=Sing|Person[subj]=3|Gender[subj]=Fem		V	3rd Person Singular Feminine Subject	სუბ-3მრ				
+S:3SgNH	Number[subj]=Sing|Person[subj]=3|Gender[subj]=Neut		V	3rd Person Singular Non-Human Subject	სუბ-3მხ				
+S:3SgH	Number[subj]=Sing|Person[subj]=3|Gender[subj]=Com		V	3rd Person Singular Human Subject	სუბ-3მხ				
+S:3	Person[subj]=3		V	3rd Person Subject	სუბ-3მხ				
+S:1Pl	Number[subj]=Plur|Person[subj]=1		V	1st Person Plural Subject	სუბ-1მრ				
+S:2Pl	Number[subj]=Plur|Person[subj]=2		V	2nd Person Plural Subject	სუბ-2მრ				
+S:3Pl	Number[subj]=Plur|Person[subj]=3		V	3rd Person Plural Subject	სუბ-3მხ				
+S:Rel	Person[subj]=Rel		V	Relative Subject	სუბ-3მხ	Азыҟашьатә-хьыӡцынхәратә рбага			
+S:Rec	Person[subj]=Rec		V	Reciprocal Subject	სუბ-3მხ				
+S:Indef			V	Indefinite Subject (кры-)	სუბ-3მხ				
+S:Ad			V	Adjacent Subject	სუბ-3მხ				
+
+DO:1Sg	Number[obj]=Sing|Person[obj]=1		V	1st Person Singular Direct Object	სუბ-1მხ				
+DO:2SgM	Number[obj]=Sing|Person[obj]=2|Gender[obj]=Masc		V	2nd Person Singular Masculine Direct Object	სუბ-2				
+DO:2SgF	Number[obj]=Sing|Person[obj]=2|Gender[obj]=Fem		V	2nd Person Singular Feminine Direct Object	სუბ-2				
+DO:3	Person[obj]=3		V	3rd Person Direct Object	სუბ-3				
+DO:3SgM	Number[obj]=Sing|Person[obj]=3|Gender[obj]=Masc		V	3rd Person Singular Masculine Direct Object	სუბ-3				
+DO:3SgF	Number[obj]=Sing|Person[obj]=3|Gender[obj]=Fem		V	3rd Person Singular Feminine Direct Object	სუბ-3მრ				
+DO:3SgH	Number[obj]=Sing|Person[obj]=3|Gender[obj]=Com		V	3rd Person Singular Human Direct Object	სუბ-3მხ				
+DO:3SgNH	Number[obj]=Sing|Person[obj]=3|Gender[obj]=Neut		V	3rd Person Singular Non-Human Direct Object	სუბ-3მხ				
+DO:1Pl	Number[obj]=Plur|Person[obj]=1		V	1st Person Plural Direct Object	სუბ-1მრ				
+DO:2Pl	Number[obj]=Plur|Person[obj]=2		V	2nd Person Plural Direct Object	სუბ-2მრ				
+DO:3Pl	Number[obj]=Plur|Person[obj]=3		V	3rd Person Plural Direct Object	სუბ-3მხ				
+DO:Rel	Person[obj]=Rel		V	Relative Direct Object	სუბ-3მხ	Азыҟашьатә-хьыӡцынхәратә рбага			
+DO:Rec	Person[obj]=Rec		V	Reciprocal Direct Object	სუბ-3მხ				
+DO:Indef			V	3rd Person Plural Direct Object	სუბ-3მხ				
+DO:ҿ			V	Incorporated Direct Object ҿ-	სუბ-3მხ				
+DO:ҿа́а			V	Incorporated Direct Object ҿа́а-	სუბ-3მხ				
+
+IO:1Sg	Number[io]=Sing|Person[io]=1		V	1st Person Singular Indirect Object	სუბ-1მხ				
+IO:2SgM	Number[io]=Sing|Person[io]=2|Gender[io]=Masc		V	2nd Person Singular Masculine Indirect Object	სუბ-2				
+IO:2SgF	Number[io]=Sing|Person[io]=2|Gender[io]=Fem		V	2nd Person Singular Feminine Indirect Object	სუბ-2				
+IO:3SgM	Number[io]=Sing|Person[io]=3|Gender[io]=Masc		V	3rd Person Singular Masculine Indirect Object	სუბ-3				
+IO:3SgF	Number[io]=Sing|Person[io]=3|Gender[io]=Fem		V	3rd Person Singular Feminine Indirect Object	სუბ-3მრ				
+IO:3SgNH	Number[io]=Sing|Person[io]=3|Gender[io]=Neut		V	3rd Person Singular Non-Human Indirect Object	სუბ-3მხ				
+IO:1Pl	Number[io]=Plur|Person[io]=1		V	1st Person Plural Indirect Object	სუბ-1მრ				
+IO:2Pl	Number[io]=Plur|Person[io]=2		V	2nd Person Plural Indirect Object	სუბ-2მრ				
+IO:3Pl	Number[io]=Plur|Person[io]=3		V	3rd Person Plural Indirect Object	სუბ-3მხ				
+IO:Rel	Person[io]=Rel		V	Relative Indirect Object	სუბ-3მხ	Азыҟашьатә-хьыӡцынхәратә рбага			
+IO:Rec	Person[io]=Rec		V	Reciprocal Indirect Object	სუბ-3მხ				
+
+LO:1Sg	Number[lo]=Sing|Person[lo]=1		V	1st Person Singular Local Object	სუბ-1მხ				
+LO:2SgM	Number[lo]=Sing|Person[lo]=2|Gender[lo]=Masc		V	2nd Person Singular Masculine Local Object	სუბ-2				
+LO:2SgF	Number[lo]=Sing|Person[lo]=2|Gender[lo]=Fem		V	2nd Person Singular Feminine Local Object	სუბ-2				
+LO:3SgM	Number[lo]=Sing|Person[lo]=3|Gender[lo]=Masc		V	3rd Person Singular Masculine Local Object	სუბ-3				
+LO:3SgF	Number[lo]=Sing|Person[lo]=3|Gender[lo]=Fem		V	3rd Person Singular Feminine Local Object	სუბ-3მრ				
+LO:3SgNH	Number[lo]=Sing|Person[lo]=3|Gender[lo]=Neut		V	3rd Person Singular Non-Human Local Object	სუბ-3მხ				
+[LO:3SgNH]	Number[lo]=Sing|Person[lo]=3|Gender[lo]=Neut		V	3rd Person Singular Non-Human Local Object	სუბ-3მხ				
+LO:1Pl	Number[lo]=Plur|Person[lo]=1		V	1st Person Plural Local Object	სუბ-1მრ				
+LO:2Pl	Number[lo]=Plur|Person[lo]=2		V	2nd Person Plural Local Object	სუბ-2მრ				
+LO:3Pl	Number[lo]=Plur|Person[lo]=3		V	3rd Person Plural Local Object	სუბ-3მხ				
+LO:Rel	Person[lo]=Rel		V	Relative Local Object	სუბ-3მხ	Азыҟашьатә-хьыӡцынхәратә рбага			
+LO:Rec	Person[lo]=Rec		V	Reciprocal Local Object	სუბ-3მხ				
+
+RO:1Sg	Number[ro]=Sing|Person[ro]=1		V	1st Person Singular Relational Object	სუბ-1მხ				
+RO:2SgM	Number[ro]=Sing|Person[ro]=2|Gender[ro]=Masc		V	2nd Person Singular Masculine Relational Object	სუბ-2				
+RO:2SgF	Number[ro]=Sing|Person[ro]=2|Gender[ro]=Fem		V	2nd Person Singular Feminine Relational Object	სუბ-2				
+RO:3SgM	Number[ro]=Sing|Person[ro]=3|Gender[ro]=Masc		V	3rd Person Singular Masculine Relational Object	სუბ-3				
+RO:3SgF	Number[ro]=Sing|Person[ro]=3|Gender[ro]=Fem		V	3rd Person Singular Feminine Relational Object	სუბ-3მრ				
+RO:3SgNH	Number[ro]=Sing|Person[ro]=3|Gender[ro]=Neut		V	3rd Person Singular Non-Human Relational Object	სუბ-3მხ				
+RO:1Pl	Number[ro]=Plur|Person[ro]=1		V	1st Person Plural Relational Object	სუბ-1მრ				
+RO:2Pl	Number[ro]=Plur|Person[ro]=2		V	2nd Person Plural Relational Object	სუბ-2მრ				
+RO:3Pl	Number[ro]=Plur|Person[ro]=3		V	3rd Person Plural Relational Object	სუბ-3მხ				
+RO:Rel	Person[ro]=Rel		V	Relative Relational Object	სუბ-3მხ	Азыҟашьатә-хьыӡцынхәратә рбага			
+RO:Rec	Person[ro]=Rec		V	Reciprocal Relational Object	სუბ-3მხ				
+
+PO:1Sg	Number[po]=Sing|Person[po]=1		V	1st Person Singular Potential Object	სუბ-1მხ				
+PO:2SgM	Number[po]=Sing|Person[po]=2|Gender[po]=Masc		V	2nd Person Singular Masculine Potential Object	სუბ-2				
+PO:2SgF	Number[po]=Sing|Person[po]=2|Gender[po]=Fem		V	2nd Person Singular Feminine Potential Object	სუბ-2				
+PO:3SgM	Number[po]=Sing|Person[po]=3|Gender[po]=Masc		V	3rd Person Singular Masculine Potential Object	სუბ-3				
+PO:3SgF	Number[po]=Sing|Person[po]=3|Gender[po]=Fem		V	3rd Person Singular Feminine Potential Object	სუბ-3მრ				
+PO:3SgNH	Number[po]=Sing|Person[po]=3|Gender[po]=Neut		V	3rd Person Singular Non-Human Potential Object	სუბ-3მხ				
+PO:1Pl	Number[po]=Plur|Person[po]=1		V	1st Person Plural Potential Object	სუბ-1მრ				
+PO:2Pl	Number[po]=Plur|Person[po]=2		V	2nd Person Plural Potential Object	სუბ-2მრ				
+PO:3Pl	Number[po]=Plur|Person[po]=3		V	3rd Person Plural Potential Object	სუბ-3მხ				
+PO:Rel	Person[po]=Rel		V	Relative Potential Object	სუბ-3მხ	Азыҟашьатә-хьыӡцынхәратә рбага			
+PO:Rec	Person[po]=Rec		V	Reciprocal Potential Object	სუბ-3მხ				
+
+Cs:1Sg	Number[cs]=Sing|Person[cs]=1		V	1st Person Singular Causee	სუბ-1მხ				
+Cs:2SgM	Number[cs]=Sing|Person[cs]=2|Gender[cs]=Masc		V	2nd Person Singular Masculine Causee	სუბ-2				
+Cs:2SgF	Number[cs]=Sing|Person[cs]=2|Gender[cs]=Fem		V	2nd Person Singular Feminine Causee	სუბ-2				
+Cs:3SgM	Number[cs]=Sing|Person[cs]=3|Gender[cs]=Masc		V	3rd Person Singular Masculine Causee	სუბ-3				
+Cs:3SgF	Number[cs]=Sing|Person[cs]=3|Gender[cs]=Fem		V	3rd Person Singular Feminine Causee	სუბ-3მრ				
+Cs:3SgNH	Number[cs]=Sing|Person[cs]=3|Gender[cs]=Neut		V	3rd Person Singular Non-Human Causee	სუბ-3მხ				
+Cs:1Pl	Number[cs]=Plur|Person[cs]=1		V	1st Person Plural Causee	სუბ-1მრ				
+Cs:2Pl	Number[cs]=Plur|Person[cs]=2		V	2nd Person Plural Causee	სუბ-2მრ				
+Cs:3Pl	Number[cs]=Plur|Person[cs]=3		V	3rd Person Plural Causee	სუბ-3მხ				
+Cs:Rel	Person[cs]=Rel		V	Relative Causee	სუბ-3მხ	Азыҟашьатә-хьыӡцынхәратә рбага			
+Cs:Rec	Person[cs]=Rec		V	Reciprocal Causee	სუბ-3მხ				
+
+Refl:1Sg	Number[refl]=Sing|Person[refl]=1		V	1st Person Singular Reflexive Marker	სუბ-1მხ				
+Refl:2SgM	Number[refl]=Sing|Person[refl]=2|Gender[refl]=Masc		V	2nd Person Singular Masculine Reflexive Marker	სუბ-2				
+Refl:2SgF	Number[refl]=Sing|Person[refl]=2|Gender[refl]=Fem		V	2nd Person Singular Feminine Reflexive Marker	სუბ-2				
+Refl:3SgM	Number[refl]=Sing|Person[refl]=3|Gender[refl]=Masc		V	3rd Person Singular Masculine Reflexive Marker	სუბ-3				
+Refl:3SgF	Number[refl]=Sing|Person[refl]=3|Gender[refl]=Fem		V	3rd Person Singular Feminine Reflexive Marker	სუბ-3მრ				
+Refl:3SgNH	Number[refl]=Sing|Person[refl]=3|Gender[refl]=Neut		V	3rd Person Singular Non-Human Reflexive Marker	სუბ-3მხ				
+Refl:1Pl	Number[refl]=Plur|Person[refl]=1		V	1st Person Plural Reflexive Marker	სუბ-1მრ				
+Refl:2Pl	Number[refl]=Plur|Person[refl]=2		V	2nd Person Plural Reflexive Marker	სუბ-2მრ				
+Refl:3Pl	Number[refl]=Plur|Person[refl]=3		V	3rd Person Plural Reflexive Marker	სუბ-3მხ				
+Refl:Rel	Person[refl]=Rel		V	Relative Reflexive Marker	სუბ-3მხ	Азыҟашьатә-хьыӡцынхәратә рбага			
+
+# has to be reworked
+Q:1Sg			Pron Int	1st Person Singular Question Marker	სუბ-1მხ				
+Q:2SgM			Pron Int	2nd Person Singular Masculine Question Marker	სუბ-2				
+Q:2SgF			Pron Int	2nd Person Singular Feminine Question Marker	სუბ-2				
+Q:3SgM			Pron Int	3rd Person Singular Masculine Question Marker	სუბ-3				
+Q:3SgF			Pron Int	3rd Person Singular Feminine Question Marker	სუბ-3მრ				
+Q:3SgNH			Pron Int	3rd Person Singular Non-Human Question Marker	სუბ-3მხ				
+Q:3SgH			Pron Int	3rd Person Singular Human Question Marker	სუბ-3მხ				
+Q:3			Pron Int	3rd Person Question Marker	სუბ-3მხ				
+Q:1Pl			Pron Int	1st Person Plural Question Marker	სუბ-1მრ				
+Q:2Pl			Pron Int	2nd Person Plural Question Marker	სუბ-2მრ				
+Q:3Pl			Pron Int	3rd Person Plural Question Marker	სუბ-3მხ				
+Q:Rel			Pron Int	3rd Person Plural Question Marker	სუბ-3მხ	Азыҟашьатә-хьыӡцынхәратә рбага			
+#Meas			Noun	Measure	ზომ		ბოთლი		
+#Encl				Enclitics	ენკლ	Ахәҭаҷ			
+Prt	PART	x		Particle		Ахәҭаҷ	ҳәа, ба		
+#Title			Noun	Work (book etc.) title	წოდ	სახელწოდება	რუსუდანიანი, ვეთხისტყაოსანი		
+#Qual			Noun	Qualifier	კვალიფ	კვალიფიკატორი	პროფესორი, გემი,…		
+Coll			Noun	Collective	კრებ				
+# Mass			Noun	Mass noun	ზომ	ზომა-წონის სახელი			
+Name	NameType=Prs		Noun Prop	Person name	სახელი				
+#FirstName	NameType=Giv		Noun Prop	First name	სახელი				
+LastName	NameType=Sur		Noun Prop	Last name	გვარი		Шьынқәба, Гәлиа		
+Top	NameType=Geo		Noun Prop	Toponym	ტოპო				
+#Area	NameType=Geo		Noun Prop Top	Area	მხარე				
+Place	NameType=Geo		Noun Prop Top	Place	ადგილი	Атыҧ			
+Hydr	NameType=Geo		Noun Prop Top	Hydronym	ჰიდრ				
+Anthr	NameType=Prs		Noun Prop	Anthroponym	ანთროპ	Ахьӡ			
+#Zoon	NameType=Geo		Noun Prop	Zoonym	ზოონ				
+Org	NameType=Oth		Noun Prop	Organization	ორგ	Аиҿкаара			
+Symbol	SYM	x		Symbol	სიმბ				
+#<Null>			V	Null frame	<Null>	ნულოვანი			
+#<S>			V	Intransitive absolute	<S>	გარდაუვალი აბსოლუტური			
+#<S-DO>			V	Transitive absolute	<S-DO>	გარდამავალი აბსოლუტური			
+#<S-IO>			V	Intransitive relative	<S-IO>	გარდაუვალი რელატიური			
+#<S-DO-IO>			V	Transitive relative	<S-DO-DO>	გარდამავალი რელატიური			
+#Encl:Q				Question suffix -ა	ენკლ:ა	კითხვითი ენკლიტიკა -ა			
+#RelDist			Pron Rel	Distant Relative	მიმარ₃	დეიქსისის მესამე საფეხურის მიმართებითი სახელი	რომელ-იგი		
+MWE				Multi-Word Expression	მსგ		избан акәзар		
+<MWE>				Second, third… word of a MWE	<მსგ>
+PP:ла	Case=Ins
+PP:зы	Case=Ben
+PP:ахь	Case=Lat
+PP:ҿы́	Case=Ine
+PP:да	Case=Abe
+PP:нӡа	Case=Ter
+PP:ҟны	Case=Loc
+PP:ан	Case=Ess

@@ -1,0 +1,188 @@
+V	VERB	x		Verb	аҟаҵ	Аҟаҵарба	сцоит	Гл	Глаголь
+Cop	AUX	x		Verb	аҟаҵ	Аҟаҵарба	ауп	Гл	Глаголь
+N	NOUN	x		N	ахьӡ	Ахьыӡҟа	ауаҩы, ашәҟәы	Сущ	Имя существительное
+Hum	Animacy=Anim		N Pron	Human	ადამ	Ауаҩытәҩса	аӡҕаб, ауаҩы		
+Prop	PROPN	x	N	Proper noun	საკ-სახ	Ахатәы хыӡҟа	Баҭал, Аҟәа		
+Pron	PRON	x		Pronoun	ნაცვსახ	Ахьыӡцынхәра	сара		
+Pers	PronType=Prs		Pron	Personal	პირ	Ахаҿытә хь.			
+Poss	PronType=Prs|Poss=Yes		Pron	Possessive	კუთვნ	Адхаларатә форма/ахаҿытә ҧынгыла	с-напы, р-напы		
+Rel	PronType=Rel		Pron	Relative	მიმარ
+Refl			V	Reflexive	უკუქც	Асубиекттә версиа			
+Recip			V	Reciprocal	ურთიერთ	Аицҟаҵаратә категориа			
+Indef	PronType=Ind		Pron	Indefinite	განუსაზღ				
+Dem	PronType=Dem		Pron	Demonstrative	ჩვენ	Арбагатә			
+Prox			Pron Dem	Proximal	დეიქ₁				
+Med			Pron Dem	Medial	დეიქ₂				
+Dist			Pron Dem	Distal	დეიქ₃				
+Num	NUM	x		Numeral	რიცხ	Ахыҧхьаӡаратә	акы, хҧа, аҩбатәи		Числителное
+Card	NumType=Card		Num	Cardinal	რაოდ		акы, хҧа, зқьы		
+Ord	NumType=Ord		Num	Ordinal	რიგ		актәи, ҩбатәи		
+NumPfx	Number=Card		N	Numeral Prefix	რიგ		актәи, ҩбатәи		
+Alpha			Num	Alphabetic	ანბან		жәохә		
+Digits			Num	Digits	ციფრ		7, 3,1415		
+Roman			Num	Roman	რომ		I, XIV, iv		
+Approx			Num	Approximative	ოდნ		ҩбаҟа		
+#Repet	NumType=Mult		Num	Repetitive	ჯერ		ҩынтә		
+Frac	NumType=Frac		Num	Fraction	წილ				
+# Distr	NumType=Dist		Num	Iterative	ჯერობ		ҩба-ҩба		
+Range	NumType=Range		Num	Range	რიგ		2-3, ҩба-хҧа		
+A	ADJ	x		Adjective	ზედს	Аҟазшьарба	абзиа, аҟаҧш		Прилагательное
+Adv	ADV	x		Adverb	ზმნსრთ
+Pp	ADP	x		Adverb	ზმნსრთ
+Modal	AUX	x		Adverb	ზმნსრთ
+Compl	SCONJ	x		Adverb	ზმნსრთ
+#Mann	AdvType=Man		Adv	Manner	რაობ		ибзианы		
+Temp	AdvType=Tim		Adv	Temporal	დრო		иахьа, иацы, уажәы		
+Loc	AdvType=Loc		Adv	Local	ადგილ		ара		
+Sent			Adv	Sentential Adverbial	სენტ				
+#Comm			Adv	Comment	კომენტ	მაკომენტირებელი გარემოება			
+#Foc			Adv Encl	Focus	ფოკ	ფოკუსი			
+#Causal			Adv	Causal	მიზგარ	მიზეზის გარემოება			
+Root			Adv	Root	ძირი		мап, аиeи		
+Int			Pron Adv	Interrogative	კითხვ		ибдыруеи, изҳәада		
+Det	Definite=Def		N A	Determiner			а-ла, а-шәҟәы		
+Q	Mood=Int		V	Question	Азҵ	Азҵааратә форма	уабацо		
+Quant	DET	x	A	Quantor	კვანტორი		зегьы, доусы		
+Cj		x		Conjunction	კავშ	Аидҳәалага	аха, избанзар, иа … иа		Союз
+Coord		CCONJ	Cj	Coordinating	მაჯგ	Аиҧшратә еидҳә.	ма, мамзар		
+Sub		SCONJ	Cj	Subordinating	მაქვემ	Аиҿагыларатә еидҳә.	избанзар, избан акәзар		
+Compar		ADP	Cj	Subordinating	მაქვემ	Аиҿагыларатә еидҳә.	როგორც		
+PP	ADP	x		Postposition (suffix)	თანდ	Ашьҭынгыла	 -да, -ла, -ҿы, -ҟны		Послелог
+Abbrev	Abbr=Yes		N A Adv	Abbreviation	შემოკლ	Аркьаҿра	Д., ш., шш.	Укорочение	
+Interj	INTJ	x		Interjection	შორისდ	Абыжьҭҟьа 	ҟоҳ, уф, ҳаит		Междометие
+#Neg	Polarity=Neg		V	Negated	ნეგ	Аҟаҵарба мапкратәи аформа (-м-)	имаӡа-м		
+Punct	PUNCT	x		Punctuation	პუნქტ		. , : - ? « … »		
+Period			Punct	Period	წერტ		.		
+IntMark			Punct	Question mark	კითხვ	Азҵааратә дырга	?		
+Colon			Punct	Colon	ორწერტ		:		
+Semicolon			Punct	Semicolon	წერტ-მძ		;		
+Comma			Punct	Comma	მძიმე		,		
+Hyphen			Punct	Hyphen	დეფ		-		
+Dash			Punct	Dash	ტირე		–		
+Underscore			Punct	Underscore	ქვედ		_		
+Bracket			Punct	Bracket	ფრჩხ		[ ]		
+Paren			Punct	Parenthesis	ფრჩხ		( )		
+Quote			Punct	Quotation mark	ბრჭყ		« » “ ”		
+Ellipsis			Punct	Ellipsis	მრწერტ		…		
+ExclPoint			Punct	Exclamation point	ძახ		!		
+Star			Symbol	Star	ვარსკ	Аеҵәа	*		
+Fin	VerbForm=Fin		V	Finite
+NonFin	VerbForm=NonFin		V	Non-finite
+#Tr	Trans=Yes		V	Transitive
+Tr	Subcat=Tran		V	Transitive
+#Intr	Trans=No		V	Intransitive
+Intr	Subcat=Intr		V	Intransitive
+Sg	Number=Sing		N A Pron Prop Det	Singular
+Pl	Number=Plur		N A Pron Prop Det	Plural
+1Sg	Number=Sing|Person=1		Pron Pers	1st Singular
+1Pl	Number=Plur|Person=1		Pron Pers	1st Plural
+2Pl	Number=Plur|Person=2		Pron Pers	2nd Plural	მრ
+3Pl	Number=Plur|Person=3		Pron Pers	3rd Plural	მრ
+Abs	Case=Abs		N A Prop	Absolutive
+Nom	Case=Nom		N A Prop Num Pron Det	Nominative
+Erg	Case=Erg		N A Prop Num Pron Det	Ergative
+Dat	Case=Dat		N A Prop Num Pron Det	Dative
+Gen	Case=Gen		N A Prop Num Pron Det	Genitive
+Inst	Case=Ins		N A Prop Num Pron Det	Instrumentalis
+Advb	Case=Ess		N A Prop Num Pron Det	Adverbialis
+Voc	Case=Voc		N A Prop Num Pron Det	Vocative
+Pres	Tense=Pres		V	Present
+Fut	Tense=Fut		V	Future
+Impf	Tense=Imp		V	Imperfect
+Cond	Tense=Pres|Mood=Cnd		V	Conditional
+ConjPres	Tense=Pres|Mood=Sub		V	Conditional
+ConjFut	Tense=Fut|Mood=Sub		V	Conditional
+Opt	Tense=Past|Mood=Sub		V	Optative
+ConjPerf	Tense=PastPerf|Mood=Sub		V	Optative	II.კავშ	Агәаҧхаратә ркьынаа	
+Aor	Tense=Past		V	Aorist	Аор	Аорист (ииасхьоу инагӡоу)			
+Perf	Tense=PastPerf		V	Perfect	I.თურმ	Ииасхьоу акрызхыҵуа			
+PluPerf	Tense=Pqp		V	Pluperfect	II.თურმ	Ииасхьоу акрызхыҵуа иаҧынгылоу			
+Impv	Mood=Imp		V	Imperative	ბრძ	Адҵаратә ркьынаа			
+е наклонение
+#Iter	Aspect=Iter		V	Iterative			
+VN	VerbForm=Vnoun		VERB N	Verbal Noun, Masdar
+#Act			V	Active	მოქმ				
+#StatPass	Dyn=No|Voice=Pass		V	Passive	ვნებ				
+# Pass	Voice=Pass		V	Passive	ვნებ				
+Inv	Voice=Inv		V	Inverted	ინვერს	Аинверсивтә ҟаҵарба			
+Caus	Voice=Cau		V	Causative	კაუზ	Акаузатив	иргылоит, идырбеит		
+S:1Sg	Number[subj]=Sing|Person[subj]=1		V	1st Person Singular Subject	სუბ-1მხ
+S:2Sg	Number[subj]=Sing|Person[subj]=2		V	2nd Person Singular Subject	სუბ-2
+S:3Sg	Number[subj]=Sing|Person[subj]=3		V	3rd Person Singular Subject	სუბ-3
+S:3	Person[subj]=3		V	3rd Person Subject	სუბ-3მხ				
+S:1Pl	Number[subj]=Plur|Person[subj]=1		V	1st Person Plural Subject	სუბ-1მრ
+S:2Pl	Number[subj]=Plur|Person[subj]=2		V	2nd Person Plural Subject	სუბ-2მრ
+S:3Pl	Number[subj]=Plur|Person[subj]=3		V	3rd Person Plural Subject	სუბ-3მხ
+DO:1Sg	Number[obj]=Sing|Person[obj]=1		V	1st Person Singular Direct Object	სუბ-1მხ
+DO:2Sg	Number[obj]=Sing|Person[obj]=2		V	2nd Person Singular Direct Object	სუბ-2
+DO:3	Person[obj]=3		V	3rd Person Direct Object	სუბ-3				
+DO:3Sg	Number[obj]=Sing|Person[obj]=3		V	3rd Person Singular Direct Object	სუბ-3
+DO:1Pl	Number[obj]=Plur|Person[obj]=1		V	1st Person Plural Direct Object	სუბ-1მრ				
+DO:2Pl	Number[obj]=Plur|Person[obj]=2		V	2nd Person Plural Direct Object	სუბ-2მრ				
+DO:3Pl	Number[obj]=Plur|Person[obj]=3		V	3rd Person Plural Direct Object	სუბ-3მხ
+IO:1Sg	Number[io]=Sing|Person[io]=1		V	1st Person Singular Indirect Object	სუბ-1მხ
+IO:2Sg	Number[io]=Sing|Person[io]=2		V	2nd Person Singular Indirect Object	სუბ-2
+IO:3Sg	Number[io]=Sing|Person[io]=3		V	3rd Person Singular Indirect Object	სუბ-3
+IO:3	Person[io]=3		V	3rd Person Indirect Object	სუბ-3
+IO:1Pl	Number[io]=Plur|Person[io]=1		V	1st Person Plural Indirect Object	სუბ-1მრ
+IO:2Pl	Number[io]=Plur|Person[io]=2		V	2nd Person Plural Indirect Object	სუბ-2მრ
+IO:3Pl	Number[io]=Plur|Person[io]=3		V	3rd Person Plural Indirect Object	სუბ-3მხ
+Cs:1Sg	Number[cs]=Sing|Person[cs]=1		V	1st Person Singular Causee	სუბ-1მხ				
+Cs:2Sg	Number[cs]=Sing|Person[cs]=2		V	2nd Person Singular Causee	სუბ-2				
+Cs:3Sg	Number[cs]=Sing|Person[cs]=3		V	3rd Person Singular Causee	სუბ-3მხ				
+Cs:1Pl	Number[cs]=Plur|Person[cs]=1		V	1st Person Plural Causee	სუბ-1მრ				
+Cs:2Pl	Number[cs]=Plur|Person[cs]=2		V	2nd Person Plural Causee	სუბ-2მრ				
+Cs:3Pl	Number[cs]=Plur|Person[cs]=3		V	3rd Person Plural Causee	სუბ-3მხ				
+#Meas			N	Measure	ზომ		ბოთლი		
+#Encl				Enclitics	ენკლ	Ахәҭаҷ			
+#Title			N	Work (book etc.) title	წოდ	სახელწოდება	რუსუდანიანი, ვეთხისტყაოსანი		
+#Qual			N	Qualifier	კვალიფ	კვალიფიკატორი	პროფესორი, გემი,…		
+Coll			N	Collective	კრებ				
+# Mass			N	Mass noun	ზომ	ზომა-წონის სახელი			
+Name	NameType=Prs		N Prop	Person name	სახელი				
+#FirstName	NameType=Giv		N Prop	First name	სახელი				
+LastName	NameType=Sur		N Prop	Last name	გვარი		Шьынқәба, Гәлиа		
+Top	NameType=Geo		N Prop	Toponym	ტოპო				
+#Area	NameType=Geo		N Prop Top	Area	მხარე				
+Place	NameType=Geo		N Prop Top	Place	ადგილი	Атыҧ			
+Hydr	NameType=Geo		N Prop Top	Hydronym	ჰიდრ				
+Anthr	NameType=Prs		N Prop	Anthroponym	ანთროპ	Ахьӡ			
+#Zoon	NameType=Geo		N Prop	Zoonym	ზოონ				
+Org	NameType=Oth		N Prop	Organization	ორგ	Аиҿкаара			
+Symbol	SYM	x		Symbol	სიმბ				
+#<Null>			V	Null frame	<Null>	ნულოვანი			
+#<S>			V	Intransitive absolute	<S>	გარდაუვალი აბსოლუტური			
+#<S-DO>			V	Transitive absolute	<S-DO>	გარდამავალი აბსოლუტური			
+#<S-IO>			V	Intransitive relative	<S-IO>	გარდაუვალი რელატიური			
+#<S-DO-IO>			V	Transitive relative	<S-DO-DO>	გარდამავალი რელატიური			
+#Encl:Q				Question suffix -ა	ენკლ:ა	კითხვითი ენკლიტიკა -ა			
+#RelDist			Pron Rel	Distant Relative	მიმარ₃	დეიქსისის მესამე საფეხურის მიმართებითი სახელი	რომელ-იგი		
+MWE				Multi-Word Expression	მსგ		избан акәзар		
+<MWE>				Second, third… word of a MWE	<მსგ>
+$SCONJ	ExtPos=SCONJ		Adv Cj Pron
+$Prop	ExtPos=PROPN		N Prop
+$Adv	ExtPos=ADV		Adv Cj Pron
+$Interj	ExtPos=INTJ		Interj
+>XCOMP:AUX	VERB	x
+PastPart	VerbForm=Part|Tense=Past		A
+PresPart	VerbForm=Part|Tense=Pres		A
+NegPart	VerbForm=Part|Tense=Pres|Polarity=Neg		A
+FutPart	VerbForm=Part|Tense=Fut		A
+$VERB	VERB	x
+$ADV	ADV	x
+Converb	VerbForm=Conv	VERB
+Poss1Sg	Number[psor]=Sing|Person=1		Pron
+Poss2Sg	Number[psor]=Sing|Person=2		Pron
+Poss3Sg	Number[psor]=Sing|Person=3		Pron
+Poss1Pl	Number[psor]=Plur|Person=1		Pron
+Poss2Pl	Number[psor]=Plur|Person=2		Pron
+Poss3Pl	Number[psor]=Plur|Person=3		Pron
+Encl:ც	Encl=C		
+Encl:ცა	Encl=C		
+Encl:რე	Encl=Re		
+Encl:ვე	Encl=Ve		
+Encl:მცა	Encl=Mca
+Prt	PART	x		Particle		
+IndSp1	Evident=Fh		Prt
+IndSp2	Evident=Nfh		Prt
+IndSp3	Evident=Nfh		Prt

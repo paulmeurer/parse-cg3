@@ -25,7 +25,7 @@
 (progn
   (clrhash *gnc-to-ud-features*)
   (u:with-file-fields ((&optional gnc-feature ud-features pos used-with &rest rest)
-                       "projects:gnc;feature-names.tsv" :empty-to-nil t :comment #\#)
+                       "projects:parse-cg3;feature-names-kat.tsv" :empty-to-nil t :comment #\#)
     (declare (ignore rest))
     (when used-with
       (setf used-with (u:split used-with #\space)))
