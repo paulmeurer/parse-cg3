@@ -808,10 +808,11 @@
   slash-relations
   atts)
 
-;; Takes a txt file as input and outputs a json array.
-;; Make sure there are no line breaks in sentences.
+;; Takes a txt or tsv file as input and outputs a json array or tsv file.
+;; For txt input, make sure there are no line breaks in sentences.
 ;; Each element in the array is a parsed sentence.
-;; If is :file parsing is run in two passes, in the first one frequency information
+;; If guess-scope = :file then parsing is run in two passes;
+;; in the first one frequency information
 ;; is collected for guessed (and other?) words, which is used in the second
 ;; pass to disambiguate guesses
 (defun parse-kat-file (file &key (format :json) (input-format :txt) (write-xml-id t)
