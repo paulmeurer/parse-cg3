@@ -131,6 +131,7 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
             Prt
             IndSp1 IndSp2 IndSp3
             FALSE
+            >PARATAXIS:PROTECTED
             ;
 
 # ========== #
@@ -371,7 +372,7 @@ LIST CCompV = "ფიქრ·ი/ფიქრ" "მი·ხვდომ[ა]/ხ
               "*·ხედვ[ა]/ხედ" "გა·გებ[ა]/გ" "*·წყვეტ[ა]/წყვეტ" "შე·მჩნევ[ა]/მჩნ[ევ]"
               "წინასწარმეტყველებ[ა]/წინასწარმეტყველ" "შიშ·ი/შიშ" "თქმ[ა]/ტყვ" "სწავლებ[ა]/სწავლ"
               "გა·თვალისწინებ[ა]/თვალისწინ" "აღ·ნიშვნ[ა]/ნიშნ"
-              "ჩვენებ[ა]/ჩვენ"
+              "ჩვენებ[ა]/ჩვენ" "მო·ყოლ[ა]/ყ[ე]ვ"
               "ლოდინ·ი/ლოდ" # with IO
               "და·მტკიცებ[ა]/მტკიც" "წამებ[ა]/წამ" "იმედოვნებ[ა]/იმედოვნ" ;
 
@@ -455,6 +456,10 @@ SELECT (<Name>) IF (NOT 0 Punct) ;
 # test
 # REMOVE Nom - Att ;
 
+# remove from morphology!
+REMOVE ("<ჩემს>") + Pers ;
+REMOVE ("<შენს>") + Pers ;
+
 # remove derivations if they are in the main lexicon
 
 REMOVE (<Der:ულ>) ;
@@ -525,6 +530,8 @@ REMOVE ("მერმე" V) ;
 REMOVE ("ბუნებით" Adv) ;
 REMOVE ("წუ") + A ;
 
+REMOVE ("მყოლ·ი/ყოლ") + Encl:Aux ; # მყოლია
+
 REMOVE ("უარე") IF (0 ("უარეს·ი")) ;
 
 REMOVE ("ჯერჯერობით") + Interj IF (NOT 1 ExclPoint) ;
@@ -554,6 +561,8 @@ SELECT <AuxIntr> + S:3Pl ; # არიან
 REMOVE ("დარბაზ·ი") + Prop ;
 REMOVE ("კავშირ·ი") + Prop ;
 REMOVE ("საღამო") + Prop ;
+
+REMOVE ("ხელა") IF (0 ("ხელ·ი")) ;
 
 REMOVE ("შრომა") + Prop ;
 REMOVE ("მხატვ[ა]რ·ი") + Prop ;
@@ -1200,8 +1209,8 @@ REMOVE Advb
        (NOT 1 ("ქცევ[ა]/ქც[ევ]")) 
        (0 Adv) ;
 
-REMOVE N + Advb
-    IF (0 A + Advb - Old)
+REMOVE N + Advb - PP
+    IF (0 A + Advb - PP - Old)
        (NOT -1 PREP + <Advb>)
        (NOT 1 POSTP + <Advb>)
        (NEGATE 0* AdvbVerb BARRIER CLB) ;
@@ -1346,6 +1355,10 @@ REMOVE ("განა" Prop) ;
 select ("სახელ·ი" N) ;
 
 # SELECT ("ყოფნა") ;
+
+SELECT (".*აა>"r) + Guess + Encl:Aux ;
+
+REMOVE (".*ება"r) + Guess IF (0 (".*ებ\[ა\]"r) + Guess) ;
 
 REMOVE ("ს·ი") ;
 REMOVE ("<ზოგი>" Adv) ;
@@ -1836,7 +1849,7 @@ o-SELECT ("რომ[ე]ლ·ი" Pron Rel) IF (NEGATE 1* IntMark BARRIER CLB) 
 # SELECT ("რომ[ე]ლ·ი" Pron Rel) ;
 #SELECT ("რომ[ე]ლ·ი" Pron Rel Gen) IF (1 (Encl:ც)) ;
 
-n-SELECT Pron + Rel + Gen IF (1 Rel:ც) ;
+n-SELECT Pron + Rel + Gen IF (1 Rel:ც) (NOT 0 ("როგორ·ი")) ; # როგორი ტუტუციც უნდა იყოს
 
 REMOVE ("რ[ა]" Att) IF (1 V OR Neg) ;
 
@@ -2030,8 +2043,7 @@ SELECT @NC
 
 SELECT @NC
     IF (-1 Att + $$CASE)
-       (1 Att + $$CASE) ;
-
+       (1* Att + $$CASE BARRIER (*) - Adv) ;
 
 SELECT @NC
     IF (-1 $$PPP)
@@ -2143,18 +2155,32 @@ n-SELECT ("შუ[ა]") IF (1 ("საუკუნ[ე]") + Pl) ;
 
 # Postposition case agreement
 
-LIST LQuote = "„" "»" ;
-LIST RQuote = "”" "“" "«" ;
+LIST LQuote = "„" "«" ;
+LIST RQuote = "”" "“" "»" ;
 
 # quoted word
 ADD $QW TARGET (*) IF (-1 LQuote) (1 RQuote) (NOT 0 $QW) ;
+
+WITH LQuote
+  IF (1 $QW) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >PUNCT (*) ;
+  REMCOHORT IGNORED WITHCHILD (*) (*) ;
+} ;
+
+WITH RQuote
+  IF (-1 $QW) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >PUNCT (*) ;
+  REMCOHORT IGNORED WITHCHILD (*) (*) ;
+} ;
 
 WITH LQuote
   IF (1 (*))
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
    MAP >PUNCT (*) ;
-   REMCOHORT IGNORED WITHCHILD (*) (*) ;
+   #   REMCOHORT IGNORED WITHCHILD (*) (*) ;
 } ;
 
 WITH RQuote
@@ -2162,7 +2188,7 @@ WITH RQuote
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
    MAP >PUNCT (*) ;
-   REMCOHORT IGNORED WITHCHILD (*) (*) ;
+   #   REMCOHORT IGNORED WITHCHILD (*) (*) ;
 } ;
 
 o-SELECT ("<ზედა>" Pp)
@@ -2246,6 +2272,8 @@ SELECT Modal IF (-1 OPT) ;
 # select OPT IF (-1 Modal) ;
 SELECT VN IF (1 Modal) ;
 
+SELECT OPT IF (-1 Modal) ;
+
 SELECT OPT IF (-1* ("რომ") BARRIER CLB LINK -1 ("ნდომ[ა]/ნდ")) ;
 SELECT OPT IF (-1* ("რომ") BARRIER CLB LINK -1 Comma LINK -1 ("ნდომ[ა]/ნდ")) ;
 
@@ -2327,10 +2355,11 @@ REMOVE LastName - Erg
 n-REMOVE A + Att
     IF (1 EOS) ;
 
-n-REMOVE A + Att
+n-REMOVE A + Att + $$CASE
     IF (0 Nom + Sg)
        (1 Comma)
-       (2 Adv) ;
+       (2 Adv)
+       (NOT 3 A + Att + $$CASE) ;
 
 n-REMOVE Part + Att
     IF (1C Pron + Poss + Refl) ;
@@ -2410,7 +2439,8 @@ REMOVE Att IF (1C V) ;
 
 REMOVE Att IF (1 Ellipsis OR Semicolon OR Colon) ;
 
-REMOVE Att + $$CASE IF (1 Punct LINK NOT 1 Att + $$CASE) ;
+REMOVE Att + $$CASE
+    IF (1 Punct LINK NEGATE 1* Att + $$CASE BARRIER (*) - Adv) ;
 
 SELECT Att + Erg
     IF (0C Att)
@@ -3320,6 +3350,9 @@ SELECT <S-DO>
 SELECT <S> + ("დებ[ა]/დ")
     IF (NEGATE 0* Erg BARRIER CLB) ;
 
+# დადის etc.; to avoid wrong selection by next rule
+SELECT ("სიარულ·ი/დი") ;
+
 # გაუწევია წინააღმდეგობა
 SELECT <S-DO>
     IF (0 <S>)
@@ -4020,11 +4053,14 @@ SELECT Dat IF (1 POSTP + <Dat/Gen>) ;
 
 # TODO: check for equal person/number
 # select Pres if all other verbs in the sentence are Pres
-SELECT Pres
+SELECT Pres - Encl:IndSp3 
     IF (0C V)
        (0C* Pres BARRIER (Colon))
        # (NOT 0* Fut)
        ;
+
+# Opt rather than indirect speech
+SELECT Opt IF (0 Encl:IndSp3) ;
 
 # ტანსაცმლის კარადას მივარდება.
 SELECT IO:Dat + IO:3 OR DO:Dat + DO:3
