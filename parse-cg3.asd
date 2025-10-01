@@ -12,7 +12,7 @@
 	       :acl-compat
                :graph
                :st-json
-               :framework-1-2
+               ;:framework-1-2
                :aserve
                :aserve-custom
 	       :cl-vislcg3)
@@ -23,7 +23,7 @@
    (:file "parse-text")
    (:file "cg3-disambiguate")
    (:file "parse-api")
-   #+gekko
+   #+gekkox
    (:file "precision")
    ))
 
