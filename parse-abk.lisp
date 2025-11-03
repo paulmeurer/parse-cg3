@@ -419,7 +419,8 @@
   (cond ((< (length lemma) 5)
          lemma)
         ((and (> (length word) 4)
-              (find #\- word :start 4))
+              (find #\- word :start 4)
+              (find #\- lemma :start 4))
          (let ((hy-pos (position #\- lemma :from-end t :end (- (length lemma) 4))))
            (cond (hy-pos
                   (setf lemma (remove-if (lambda (c) (find c "-:·")) lemma :start (1+ hy-pos)))
@@ -429,6 +430,8 @@
         (t
          (remove-if (lambda (c) (find c "-:·")) lemma :start 3))))
 
+#+test
+(print (strip-segmentation :abk "а-маа́ҭ=маа́ҭ" "мааҭк-мааҭк"))
 #+test
 (print (strip-segmentation :abk "а-ҟрым-ҿры́м-ра" "аҟрым-ҿры́мра"))
 #+test
@@ -475,6 +478,11 @@
                      (setf ud-features (delete "Number=Sing" ud-features :test #'string=)))
                    (pushnew f ud-features :test #'string=
                             :key (lambda (fv) (subseq fv 0 (position #\= fv))))))))))
+    ;; all finite verb forms need Mood
+    (when (and (find-if (lambda (f) (equal (string< "Tense=" f) 6)) ud-features)
+               (find "VerbForm=Fin" ud-features :test #'string=)
+               (not (find-if (lambda (f) (equal (string< "Mood=" f) 5)) ud-features)))
+      (push "Mood=Ind" ud-features))
     (if ud-features
         (format nil "~{~a~^|~}" (sort ud-features #'string-lessp))
         "_")))
@@ -483,7 +491,7 @@
 (print (morph-to-ud :abk "V Dyn Intr Fin Impf Neg S:Rec PO:1Pl"))
 
 #+test
-(print (morph-to-ud "Adv Pl Poss:3Pl"))
+(print (morph-to-ud :abk "Adv Pl Poss:3Pl"))
 
 
 #+test
@@ -569,8 +577,6 @@
                  "V Stat NonFin Pres Q S:3 IO:3SgNH Cop"))
         (t
          word)))
-
-
 
 (process-run-function "init-abk-transducers"
                       (lambda ()
