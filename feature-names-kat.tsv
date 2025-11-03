@@ -78,7 +78,7 @@ Pl	Number=Plur		N A Pron Prop Det	Plural
 1Pl	Number=Plur|Person=1		Pron Pers	1st Plural
 2Pl	Number=Plur|Person=2		Pron Pers	2nd Plural	მრ
 3Pl	Number=Plur|Person=3		Pron Pers	3rd Plural	მრ
-Abs	Case=Abs		N A Prop	Absolutive
+Abs	Case=Nom		N A Prop	Absolutive
 Nom	Case=Nom		N A Prop Num Pron Det	Nominative
 Erg	Case=Erg		N A Prop Num Pron Det	Ergative
 Dat	Case=Dat		N A Prop Num Pron Det	Dative
@@ -86,17 +86,17 @@ Gen	Case=Gen		N A Prop Num Pron Det	Genitive
 Inst	Case=Ins		N A Prop Num Pron Det	Instrumentalis
 Advb	Case=Ess		N A Prop Num Pron Det	Adverbialis
 Voc	Case=Voc		N A Prop Num Pron Det	Vocative
-Pres	Tense=Pres		V	Present
-Fut	Tense=Fut		V	Future
-Impf	Tense=Imp		V	Imperfect
+Pres	Tense=Pres|Mood=Ind		V	Present
+Fut	Tense=Fut|Mood=Ind		V	Future
+Impf	Tense=Imp|Mood=Ind		V	Imperfect
 Cond	Tense=Pres|Mood=Cnd		V	Conditional
 ConjPres	Tense=Pres|Mood=Sub		V	Conditional
 ConjFut	Tense=Fut|Mood=Sub		V	Conditional
 Opt	Tense=Past|Mood=Sub		V	Optative
 ConjPerf	Tense=PastPerf|Mood=Sub		V	Optative	II.კავშ	Агәаҧхаратә ркьынаа	
-Aor	Tense=Past		V	Aorist	Аор	Аорист (ииасхьоу инагӡоу)			
-Perf	Tense=PastPerf		V	Perfect	I.თურმ	Ииасхьоу акрызхыҵуа			
-PluPerf	Tense=Pqp		V	Pluperfect	II.თურმ	Ииасхьоу акрызхыҵуа иаҧынгылоу			
+Aor	Tense=Past|Mood=Ind		V	Aorist	Аор	Аорист (ииасхьоу инагӡоу)			
+Perf	Tense=PastPerf|Mood=Ind		V	Perfect	I.თურმ	Ииасхьоу акрызхыҵуа			
+PluPerf	Tense=Pqp|Mood=Ind		V	Pluperfect	II.თურმ	Ииасхьоу акрызхыҵуа иаҧынгылоу			
 Impv	Mood=Imp		V	Imperative	ბრძ	Адҵаратә ркьынаа			
 е наклонение
 #Iter	Aspect=Iter		V	Iterative			

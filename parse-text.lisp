@@ -487,17 +487,33 @@
                                          (destructuring-bind (&optional w l fl label parent status comment)
                                              reading
                                            (declare (ignore w))
-                                           (let ((reading1 (find-if (lambda (r)
-                                                                      ;; compare lemma and features,
-                                                                      (and (string= (car r) l)
-                                                                           (or (string= (cadr r) fl)
-                                                                               (let ((s-f (u:split fl #\space))
-                                                                                     (d-f (u:split (cadr r) #\space)))
-                                                                                 (loop for f in s-f
-                                                                                       always (or (find f '("<Relax>" "<NoLex>")
-                                                                                                        :test #'string=)
-                                                                                                  (find f d-f :test #'string=)))))))
-                                                                    readings)))
+                                           (let* (#+orig
+                                                  (reading1 (find-if (lambda (r)
+                                                                       ;; compare lemma and features,
+                                                                       (and (string= (car r) l)
+                                                                            (or (string= (cadr r) fl)
+                                                                                (let ((s-f (u:split fl #\space))
+                                                                                      (d-f (u:split (cadr r) #\space)))
+                                                                                  (loop for f in s-f
+                                                                                        always (or (find f '("<Relax>" "<NoLex>")
+                                                                                                         :test #'string=)
+                                                                                                   (find f d-f :test #'string=)))))))
+                                                                     readings))
+                                                  (sel-readings
+                                                   (loop for r in readings
+                                                         ;; compare lemma and features,
+                                                         when (and (string= (car r) l)
+                                                                   (or (string= (cadr r) fl)
+                                                                       (let ((s-f (u:split fl #\space))
+                                                                             (d-f (u:split (cadr r) #\space)))
+                                                                         (loop for f in s-f
+                                                                               always (or (find f '("<Relax>" "<NoLex>")
+                                                                                                :test #'string=)
+                                                                                          (find f d-f :test #'string=))))))
+                                                         collect r))
+                                                  ;; use the shortest matching one
+                                                  (reading1 (car (sort sel-readings #'<
+                                                                       :key (lambda (r) (length (cadr r)))))))
                                              (when reading1
                                                ;; mark found reading as <Sel>
                                                (setf (cadr reading1)
@@ -621,12 +637,16 @@
                               (features t)
                               (disambiguate t)
                               (dependencies nil)
+                              (levels t) ;; facs, dipl, norm
+                              clean
                               start
                               end
                               show-rules
+                              uid ;; external uid if given 
                               rid ;; whether to show rid
                               manual ;; for manual disambiguation
                               transliterate
+                              ignore-subtokens
                               &allow-other-keys)
   (let ((st-json:*output-literal-unicode* t)
         (left-context ())
@@ -639,53 +659,63 @@
 	 do (cond ((if (and start end)
                        (<= start id (+ end sub-count))
                        t)
-      	           (u:collect-into tokens
-                                   (ecase (car node)
-                                     (:word
-                                      (prog1 (write-word-json node
-                                                              :id id ;; (1+ id)
-                                                              :tracep tracep
-                                                              :split-trace split-trace
-                                                              :suppress-discarded-p suppress-discarded-p
-                                                              :lemma lemma
-                                                              :features features
-                                                              :disambiguate disambiguate
-                                                              :dependencies dependencies
-                                                              :show-rules show-rules
-                                                              :rid rid
-                                                              :manual manual
-                                                              :transliterate transliterate)
-                                        (incf id)))
-                                     (:start-element
-                                      (st-json:jso "struct" (getf node :start-element)
-                                                   "type" "start-element"
-                                                   "atts" (or (getf node :atts) :null)))
-                                     (:end-element
-                                      (st-json:jso "struct" (getf node :end-element)
-                                                   "type" "end-element"
-                                                   "atts" (or (getf node :atts) :null)))
-                                     (:empty-element
-                                      (st-json:jso "struct" (getf node :empty-element)
-                                                   "type" "empty-element"
-                                                   "atts" (or (getf node :atts) :null)))))
-                   (dolist (subtoken (getf node :subtokens))
-                     (u:collect-into tokens
-                                     (prog1 (write-word-json subtoken
-                                                             :id id
-                                                             :tracep tracep
-                                                             :split-trace split-trace
-                                                             :suppress-discarded-p suppress-discarded-p
-                                                             :lemma lemma
-                                                             :features features
-                                                             :disambiguate disambiguate
-                                                             :dependencies dependencies
-                                                             :show-rules show-rules
-                                                             :rid rid
-                                                             :manual manual
-                                                             :transliterate transliterate
-                                                             :subtoken t)
-                                       (incf id)))
-                     (incf sub-count)))
+      	           (u:collect-into
+                    tokens
+                    (ecase (car node)
+                      (:word
+                       (prog1 (write-word-json
+                               node
+                               :id id ;; (1+ id)
+                               :tracep tracep
+                               :split-trace split-trace
+                               :suppress-discarded-p suppress-discarded-p
+                               :lemma lemma
+                               :features features
+                               :disambiguate disambiguate
+                               :dependencies dependencies
+                               :show-rules show-rules
+                               :rid rid
+                               :levels levels
+                               :clean clean
+                               :count (not clean)
+                               :manual manual
+                               :transliterate transliterate)
+                         (incf id)))
+                      (:start-element
+                       (st-json:jso "struct" (getf node :start-element)
+                                    "type" "start-element"
+                                    "atts" (or (getf node :atts) :null)))
+                      (:end-element
+                       (st-json:jso "struct" (getf node :end-element)
+                                    "type" "end-element"
+                                    "atts" (or (getf node :atts) :null)))
+                      (:empty-element
+                       (st-json:jso "struct" (getf node :empty-element)
+                                    "type" "empty-element"
+                                    "atts" (or (getf node :atts) :null)))))
+                   (unless ignore-subtokens
+                     (dolist (subtoken (getf node :subtokens))
+                       (u:collect-into tokens
+                                       (prog1 (write-word-json
+                                               subtoken
+                                               :id id
+                                               :tracep tracep
+                                               :split-trace split-trace
+                                               :suppress-discarded-p suppress-discarded-p
+                                               :lemma lemma
+                                               :features features
+                                               :disambiguate disambiguate
+                                               :dependencies dependencies
+                                               :levels levels
+                                               :clean clean
+                                               :show-rules show-rules
+                                               :count (not clean)
+                                               :rid rid
+                                               :manual manual
+                                               :transliterate transliterate
+                                               :subtoken t)
+                                         (incf id)))
+                       (incf sub-count))))
                   ((and start end (<= (- start window) id start))
                    (ecase (car node)
                      (:word
@@ -710,11 +740,15 @@
                       (u:collect-into right (u:concat "‹" (cadr node) "/›")))))
                   ((eq (car node) :word)
                    (incf id))))
-      (json
-       "tokens" tokens
-       "leftContext" left
-       "rightContext" right
-       "tokenCount" (count-if (lambda (node) (eq (car node) :word)) (text-array text))))))
+      (if clean
+          (json
+           "uid" uid
+           "tokens" tokens)
+          (json
+           "tokens" tokens
+           "leftContext" left
+           "rightContext" right
+           "tokenCount" (count-if (lambda (node) (eq (car node) :word)) (text-array text)))))))
 
 (defun write-word-json (node &key id
 			       tracep ;; traces in view mode?
@@ -725,15 +759,17 @@
 			       (disambiguate t)
 			       (dependencies nil)
 			       show-rules
+                               levels
 			       rid
 			       manual
 			       error
+                               clean
 			       (count t)
                                transliterate
 			       no-morphology
 			       no-newlines
                                subtoken)
-  (declare (ignore tracep split-trace no-newlines error disambiguate))
+  (declare (ignore split-trace no-newlines error disambiguate))
   (ecase (car node)
     (:word
      (destructuring-bind (&key word morphology facs dipl norm dipl-xml facs-xml norm-xml
@@ -741,7 +777,7 @@
                                stored-facs computed-facs
                                |id| cpos comment wid status token-status &allow-other-keys)
          node
-       (declare (ignore |id| dipl))
+       (declare (ignore |id|))
        (let* ((morphology (unless no-morphology morphology))
 	      (tmesis-msa (unless no-morphology (getf (cddr node) :tmesis-msa))))
          (declare (ignore tmesis-msa))
@@ -756,17 +792,17 @@
                       "stored_label" ,(or (getf node :stored-label) :null)))
 	    ,@(when count `("count" ,(length morphology)))
 	    ,@(when cpos `("cpos" ,cpos))
-            "norm" ,(or norm :null)
-            "facs" ,(or facs :null)
-            "dipl_xml" ,(or dipl-xml :null)
-            "facs_xml" ,(or facs-xml :null)
-            "norm_xml" ,(or norm-xml :null)
-            "stored_norm" ,(if stored-norm :true :false)
-            "computed_norm" ,(if computed-norm :true :false)
-            "stored_facs" ,(if stored-facs :true :false)
-            "computed_facs" ,(if computed-facs :true :false)
-	    "id" ,id
-            "wid" ,(or wid :null)
+            ,@(when levels `("norm" ,(or norm :null)))
+            ,@(when levels `("facs" ,(or facs :null)))
+            ,@(when levels `("dipl_xml" ,(or dipl-xml :null)))
+            ,@(when levels `("facs_xml" ,(or facs-xml :null)))
+            ,@(when levels `("norm_xml" ,(or norm-xml :null)))
+            ,@(when levels `("stored_norm" ,(if stored-norm :true :false)))
+            ,@(when levels `("computed_norm" ,(if computed-norm :true :false)))
+            ,@(when levels `("stored_facs" ,(if stored-facs :true :false)))
+            ,@(when levels `("computed_facs" ,(if computed-facs :true :false)))
+	    ,@(unless clean `("id" ,id))
+            ,@(unless clean `("wid" ,(or wid :null)))
             ,@(when subtoken `("subtoken" :true))
 	    ,@(when (and lemma features)
 		    `("msa"
@@ -778,6 +814,7 @@
 					      :suppress-discarded-p suppress-discarded-p
 					      :show-rules show-rules
 					      :rid rid
+                                              :dependencies dependencies
 					      :manual manual
                                               :transliterate transliterate))
 			     #+ignore-yet
@@ -792,10 +829,13 @@
 				     :tracep tracep
 				     :split-trace split-trace)
 				 when rest
-				 do #m(gnc:tmesis/))))))
-            "status" ,(or status :null)
-            "token_status" ,(if token-status (string-downcase token-status) :null)
-            "comment" ,(or comment :null))))))))
+				    do #m(gnc:tmesis/))))))
+            ,@(unless clean
+               `("status" ,(or status :null)))
+            ,@(unless clean
+               `("token_status" ,(if token-status (string-downcase token-status) :null)))
+            ,@(unless clean
+               `("comment" ,(or comment :null))))))))))
 
 (defparameter *feature-name-table* (make-hash-table :test #'equal))
 
@@ -809,7 +849,7 @@
 (defun remove-dep-edge-features (features)
   (format nil "~{~a~^ ~}"
 	  (loop for f in (u:split features #\space)
-	     unless (find (char f 0) ">@")
+	     unless (or (string= f "") (find (char f 0) ">@"))
 	     collect f)))
 
 (defparameter *suppressed-features* nil)
@@ -911,26 +951,40 @@
 				    rid
 				    manual
 				    show-rules
+                                    dependencies
                                     transliterate)
   (let ((morphology (filter-morphology morphology :tagset :full-tagset #+orig *tagset*)))
     (u:collecting
       (loop for reading in morphology
-	 for rid from 0
+	 for r-id from 0
 	 do (destructuring-bind (l f &optional flag trace ids nix count) reading
 	      (declare (ignore ids nix)) ;; equivalent readings after filtering; not used here
 	      (unless (and suppress-discarded-p (eq flag :discarded-cg))
-		(u:collect (apply #'st-json::jso
-				  `(,@(when lemma `("lemma" ,l))
-				      ,@(when (and lemma transliterate)
-                                          `("trans_lemma" ,(encoding::transliterate l :standard transliterate)))
-				      ,@(unless suppress-discarded-p
-						`("status" ,(string-downcase flag)))
-				      ,@(when features `("features" ,(u:split f #\Space)))
-				      ,@(when rid `("rid" ,rid))
-				      ,@(when manual `("manual" :null))
-				      ,@(when show-rules `("rules" ,trace))
-                                      ,@(when count `("count" ,count))
-                                      ,@(when trace `("trace" ,trace)))))))))))
+                (let ((features (u:split f #\Space))
+                      (lem (if (eq lemma :simple)
+                               (delete-if (lambda (c) (find c "*[]{}·"))
+                                          (subseq l 0 (position #\/ l)))
+                               l)))
+                  (unless dependencies
+                    (setf features (delete-if (lambda (f) (or (string= f "")
+                                                              (find (char f 0) ">@$")))
+                                              features)))
+		  (u:collect (apply #'st-json::jso
+				    `(,@(when lemma
+                                          `("lemma" ,lem))
+				        ,@(when (and lemma transliterate)
+                                            `("trans_lemma"
+                                              ,(encoding::transliterate
+                                                lem :standard transliterate)))
+				        ,@(unless suppress-discarded-p
+					    `("status" ,(string-downcase flag)))
+				        ,@(when features `("features" ,features))
+				        ,@(when rid `("rid" ,r-id))
+				        ,@(when manual `("manual" :null))
+				        ,@(when show-rules `("rules" ,trace))
+                                        ,@(when count `("count" ,count))
+                                        ;; why do we need rules and trace??
+                                        ,@(when (and show-rules trace) `("trace" ,trace))))))))))))
 
 (defmethod select-reading ((text parsed-text) stream &key wid rid transliterate exact)
   (let* ((token (gethash wid (parse::word-id-table text)))

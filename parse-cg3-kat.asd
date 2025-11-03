@@ -11,6 +11,8 @@
   :depends-on (:parse-cg3)
   :serial t
   :components
-  ((:file "parse-kat")))
+  ((:file "parse-kat")
+   #+gekko
+   (:file "precision")))
 
 :eof
