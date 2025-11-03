@@ -284,12 +284,17 @@
     lemmas+features))
 
 #+test
-(pprint (lookup-morphology :kat "უკითხავს"))
+(pprint (lookup-morphology :kat "მეოთხედი"))
 
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) guess-table tmesis-segment mwe
                                 &allow-other-keys)
-  (cond ((string= word "და")
+  (cond ((string= word "ნახევარი")
+         (list (list "ნახევ[ა]რ·ი" "Num Frac Alpha Nom Sg" NIL NIL)
+               (list "ნახევ[ა]რ·ი" "Num Frac Alpha Nom Att" NIL NIL)
+               (list "ნახევ[ა]რ·ი" "Num Frac Alpha Inst Att" NIL NIL)
+               (list "ნახევ[ა]რ·ი" "Num Frac Alpha Gen Att" NIL NIL)))
+        ((string= word "და")
          (list  (list "და" "Cj Coord @NC" NIL NIL)
                 (list "და" "Cj Coord @CLB" NIL NIL)
                 (list "დ[ა]" "N Hum Voc Sg" NIL NIL)
@@ -300,6 +305,16 @@
                 (list "დ[ა]" "N Hum Qual Dat Att" NIL NIL)
                 (list "დ[ა]" "N Hum Qual Advb Att" NIL NIL)
                 (list "დ[ა]" "N Hum Nom Sg" NIL NIL)))
+        ((string= word "მთელი") ;; remove!
+         (list (list "მთელ·ი" "N Nom Sg" NIL NIL)
+               (list "მთელ·ი" "A Quant Nom Sg" NIL NIL)
+               (list "მთელ·ი" "A Quant Nom Att" NIL NIL)
+               (list "მთელ·ი" "A Quant Inst Att" NIL NIL)
+               (list "მთელ·ი" "A Quant Gen Att" NIL NIL)
+               (list "მთელ·ი" "A Nom Sg" NIL NIL)
+               (list "მთელ·ი" "A Nom Att" NIL NIL)
+               (list "მთელ·ი" "A Inst Att" NIL NIL)
+               (list "მთელ·ი" "A Gen Att" NIL NIL)))
         ((string= word "თუ")
          (list  (list "თუ" "Cj Coord @NC" NIL NIL)
                 (list "თუ" "Cj Coord @CLB" NIL NIL)
@@ -351,6 +366,9 @@
         ((string= word "მაგრამ")
          (list  (list "მაგრამ" "Cj Coord @CLB" NIL NIL)
                 (list "მაგრამ" "Cj Coord @NC" NIL NIL)))
+        ((string= word "მარა")
+         (list  (list "მარა" "Cj Coord @CLB" NIL NIL)
+                (list "მარა" "Cj Coord @NC" NIL NIL)))
         ((string= word "არადა")
          (list  (list "არადა" "Cj Coord @CLB" NIL NIL)))
         ((string= word "თანაც")
@@ -372,7 +390,18 @@
                (list "რ[ე]" "N Rare Gen Sg" NIL NIL)
                (list "რ[ა]" "Pron Int Nonhum Gen" NIL NIL)
                (list "რ[ა]" "Pron Rel Nonhum Gen" NIL NIL))) ;; added
-        #+test
+        ((string= word "რამ")
+         (list (list "რ[ა]" "Pron Int Nonhum Erg" NIL NIL)
+               (list "რამ" "Pron SIndef Nonhum Nom" NIL NIL)
+               (list "რამ" "A Voc Sg" NIL NIL)
+               (list "რამ" "A Nom Sg" NIL NIL)
+               (list "რამ" "A Nom Att" NIL NIL)
+               (list "რამ" "A Inst Att" NIL NIL)
+               (list "რამ" "A Gen Att" NIL NIL)
+               (list "რამ" "A Erg Att" NIL NIL)
+               (list "რამ" "A Dat Att" NIL NIL)
+               (list "რამ" "A Advb Att" NIL NIL)))
+         #+test
         ((string= word "იქნა")
          ((list "ქმნ[ა]/ქ[ე]ნ" "V Pass Opt <S> <S:Nom> S:2Sg" NIL NIL)
           (list "ქმნ[ა]/ქ[ე]ნ" "V Pass Aor <S> <S:Nom> S:3Sg" NIL NIL)))
@@ -389,6 +418,15 @@
                (list "აღმა" "Adv Loc" NIL NIL)))
         ((string= word "ნინააღმდეგ") ;; remove!
          (list (list "წინააღმეგ" "Pp <Gen>" NIL NIL)))
+        #+test
+        ((string= word "ჯვებე") ;; remove!
+         (list (list "ჯვებე" "N Prop Anthr FirstName Nom" NIL NIL)))
+        #+test
+        ((string= word "ჯვებემ") ;; remove!
+         (list (list "ჯვებე" "N Prop Anthr FirstName Erg" NIL NIL)))
+        #+test
+        ((string= word "ჯვებეს") ;; remove!
+         (list (list "ჯვებეს" "N Prop Anthr FirstName Dat" NIL NIL)))
         ((string= word "რომელ")
          (list (list "რომ[ე]ლ·ი" "Pron Rel Gen Att <OldPl>" NIL NIL)
                (list "რომ[ე]ლ·ი" "Pron Int Gen Att <OldPl>" NIL NIL)
@@ -422,6 +460,10 @@
                (list "ეგ" "Pron Dem Erg Att" NIL NIL)
                (list "ეგ" "Pron Dem Dat Att" NIL NIL)
                (list "ეგ" "Pron Dem Advb Att" NIL NIL)))
+        ((string= word "იგი")
+         (list (list "იგი" "Pron Pers 3 Nom Sg" NIL NIL)
+               (list "იგი" "Pron Dem Nom Sg" NIL NIL)
+               (list "იგი" "Pron Dem Nom Att" NIL NIL)))
         ((string= word "ვინმე")
          (list (list "ვინმე" "Pron SIndef Hum Nom" NIL NIL)
                (list "ვინმე" "Pron SIndef Hum Nom Att" NIL NIL)
@@ -1004,6 +1046,7 @@
                                                   (or (string= lemma "ქონ[ა]/ქვ")
                                                       (string= lemma "ქონ[ა]/ქონ")
                                                       (string= lemma "ყოლ[ა]/ყავ")
+                                                      (string= lemma "ყოლ[ა]/ყოლ")
                                                       (string= lemma "ქმნ[ა]/ქ[ე]ნ")
                                                       (string= lemma "ქმნ[ა]/ქმ[ე]ნ")
                                                       (string= lemma "ნდომ[ა]/ნ")
@@ -1079,7 +1122,7 @@
 ;; *text*
   
 (defmethod strip-segmentation ((language (eql :kat)) lemma word)
-  (cond ((find lemma '("ყოფნ[ა]/არ" "ყოფნ[ა]/ყ[ავ]" "ყოფნ[ა]/ქნ") :test #'string=)
+  (cond #+ignore((find lemma '("ყოფნ[ა]/არ" "ყოფნ[ა]/ყ[ავ]" "ყოფნ[ა]/ქნ") :test #'string=)
          "არის") ;; prelim.
         ((or (< (length lemma) 4)
 	     (not (find-if (lambda (c) (find c "[]/{}-·*")) lemma)))
@@ -1126,6 +1169,8 @@
                (push "VerbForm=Part" ud-features)
                (push "Tense=Pres" ud-features)
                (push "Polarity=Neg" ud-features))))
+      (when (equal pos "V")
+        (push "VerbForm=Fin" ud-features))
       (when (and (equal pos "A")
                  (has-feature ">XCOMP:AUX" full-features))
         (push "VerbForm=Part" ud-features)
@@ -1207,7 +1252,9 @@
                (setf pos is-pos))
               ((and (equal pos "ADJ")
                     (equal f "Quant"))
-               (setf pos "DET"))
+               (if t ;; (find "Att" features :test #'string=)
+                   (setf pos "DET")
+                   (setf pos "PRON")))
               ((and pos (equal ud "ADP"))
                nil)
               ((and pos (equal ud "NUM"))
@@ -1240,5 +1287,24 @@
 
 #+test
 (parse::write-text-json (parse::parse-text "აბა" :variety :ng :disambiguate t :lookup-guessed nil) *standard-output*)
+
+#| fix wid mismatch like this:
+
+update corpus.disambiguation d
+set wid = - d.wid - 100
+where document = 'TRANS/1001-ghame/1001-ghame+atas-erti-ghame-1'
+and d.wid > 414550
+
+update corpus.disambiguation d
+set wid = - d.wid
+where document = 'TRANS/1001-ghame/1001-ghame+atas-erti-ghame-1'
+and d.wid < 0
+
+update corpus.disambiguation d
+set parent = d.parent + 100
+where document = 'TRANS/1001-ghame/1001-ghame+atas-erti-ghame-1'
+and d.wid > 414550
+
+|#
 
 :eof
