@@ -487,17 +487,33 @@
                                          (destructuring-bind (&optional w l fl label parent status comment)
                                              reading
                                            (declare (ignore w))
-                                           (let ((reading1 (find-if (lambda (r)
-                                                                      ;; compare lemma and features,
-                                                                      (and (string= (car r) l)
-                                                                           (or (string= (cadr r) fl)
-                                                                               (let ((s-f (u:split fl #\space))
-                                                                                     (d-f (u:split (cadr r) #\space)))
-                                                                                 (loop for f in s-f
-                                                                                       always (or (find f '("<Relax>" "<NoLex>")
-                                                                                                        :test #'string=)
-                                                                                                  (find f d-f :test #'string=)))))))
-                                                                    readings)))
+                                           (let* (#+orig
+                                                  (reading1 (find-if (lambda (r)
+                                                                       ;; compare lemma and features,
+                                                                       (and (string= (car r) l)
+                                                                            (or (string= (cadr r) fl)
+                                                                                (let ((s-f (u:split fl #\space))
+                                                                                      (d-f (u:split (cadr r) #\space)))
+                                                                                  (loop for f in s-f
+                                                                                        always (or (find f '("<Relax>" "<NoLex>")
+                                                                                                         :test #'string=)
+                                                                                                   (find f d-f :test #'string=)))))))
+                                                                     readings))
+                                                  (sel-readings
+                                                   (loop for r in readings
+                                                         ;; compare lemma and features,
+                                                         when (and (string= (car r) l)
+                                                                   (or (string= (cadr r) fl)
+                                                                       (let ((s-f (u:split fl #\space))
+                                                                             (d-f (u:split (cadr r) #\space)))
+                                                                         (loop for f in s-f
+                                                                               always (or (find f '("<Relax>" "<NoLex>")
+                                                                                                :test #'string=)
+                                                                                          (find f d-f :test #'string=))))))
+                                                         collect r))
+                                                  ;; use the shortest matching one
+                                                  (reading1 (car (sort sel-readings #'<
+                                                                       :key (lambda (r) (length (cadr r)))))))
                                              (when reading1
                                                ;; mark found reading as <Sel>
                                                (setf (cadr reading1)
@@ -833,7 +849,7 @@
 (defun remove-dep-edge-features (features)
   (format nil "~{~a~^ ~}"
 	  (loop for f in (u:split features #\space)
-	     unless (find (char f 0) ">@")
+	     unless (or (string= f "") (find (char f 0) ">@"))
 	     collect f)))
 
 (defparameter *suppressed-features* nil)
@@ -950,7 +966,9 @@
                                           (subseq l 0 (position #\/ l)))
                                l)))
                   (unless dependencies
-                    (setf features (delete-if (lambda (f) (find (char f 0) ">@$")) features)))
+                    (setf features (delete-if (lambda (f) (or (string= f "")
+                                                              (find (char f 0) ">@$")))
+                                              features)))
 		  (u:collect (apply #'st-json::jso
 				    `(,@(when lemma
                                           `("lemma" ,lem))
