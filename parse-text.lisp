@@ -932,7 +932,7 @@
                                       ,@(when count `("count" ,count))
                                       ,@(when trace `("trace" ,trace)))))))))))
 
-(defmethod select-reading ((text parsed-text) stream &key wid rid transliterate)
+(defmethod select-reading ((text parsed-text) stream &key wid rid transliterate exact)
   (let* ((token (gethash wid (parse::word-id-table text)))
          (readings (getf token :morphology))
          (reading (nth rid readings)))
@@ -940,9 +940,10 @@
       (when (eq (caddr reading) :selected-manually)
         (setf (caddr reading) :discarded-manually))
       (setf (cadr reading)
-            (format nil "~{~a~^ ~}" (delete "<Sel>" (u:split (cadr reading) #\space) :test #'string=))))
+            (format nil "~{~a~^ ~}" (delete-if (lambda (f) (find f '("<Sel>" "<Exact>") :test #'string=))
+                                               (u:split (cadr reading) #\space)))))
     (setf (caddr reading) :selected-manually
-          (cadr reading) (u:concat (cadr reading) " <Sel>"))
+          (cadr reading) (u:concat (cadr reading) (if exact " <Exact>" "") " <Sel>"))
     (json "token" (parse::write-word-json token :transliterate transliterate))))
 
 ;; *text*
