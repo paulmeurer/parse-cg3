@@ -266,7 +266,7 @@ LIST PPP = PP:გან PP:და PP:დამ PP:დამი PP:დან
 # verbs (optionally) taking a Hum IO
 LIST IOHumV = "და-ბარებ[ა]/ბარ" ;
 
-SET SubCj = ("რომ") OR ("როგორც") + Sub OR ("რათა") OR ("თუ") + Sub OR ("ვაითუ") OR
+SET SubCj = ("რომ") OR ("რომე") OR ("როგორც") + Sub OR ("რათა") OR ("თუ") + Sub OR ("ვაითუ") OR
             ("როცა") OR ("როდესაც") OR ("სანამ") OR ("თითქოს") OR ("თითქოსდა") OR ("თითქო") OR ("თუკი") OR
             ("რამდენადაც") OR ("რადგან") OR ("ვინაიდან") OR ("ვიდრე") OR ("თუმცა") + Cj OR ("თუმც") + Cj OR
             # ("სად") OR
@@ -374,6 +374,7 @@ LIST CCompV = "ფიქრ·ი/ფიქრ" "მი·ხვდომ[ა]/ხ
               "გა·თვალისწინებ[ა]/თვალისწინ" "აღ·ნიშვნ[ა]/ნიშნ"
               "ჩვენებ[ა]/ჩვენ" "მო·ყოლ[ა]/ყ[ე]ვ"
               "ლოდინ·ი/ლოდ" # with IO
+              "*·ხვდომ[ა]/ხვდ" # IO
               "და·მტკიცებ[ა]/მტკიც" "წამებ[ა]/წამ" "იმედოვნებ[ა]/იმედოვნ" ;
 
 # Sets
@@ -483,6 +484,8 @@ n-REMOVE (IterPres) ;
 # n-REMOVE (IterAor) ;
 # n-REMOVE (ImpvAor) ;
 
+n-REMOVE ("იგი") + Att ;
+
 SELECT ("თვით") + Adv + Foc + Encl:ვე ; # თვითვე
 
 REMOVE (Rel Encl:მე) ;
@@ -529,6 +532,8 @@ SELECT ("შორს" Adv) ;
 REMOVE ("მერმე" V) ;
 REMOVE ("ბუნებით" Adv) ;
 REMOVE ("წუ") + A ;
+
+n-SELECT ("კვაჭი") ; # კვაჭი კვაჭანტირაძე
 
 REMOVE ("მყოლ·ი/ყოლ") + Encl:Aux ; # მყოლია
 
@@ -594,6 +599,17 @@ SELECT ("თუნდაც") ;
 
 REMOVE ("გინდ") + L ;
 
+REMOVE ("დიდია") ;
+
+REMOVE ("გულით") ;
+
+REMOVE ("ნიშა") IF (0 ("ნიშ[ა]ნ·ი")) ;
+
+SELECT ("დედიდ[ა]") ;
+SELECT ("ერთიმეორ[ე]") + Pron ;
+
+SELECT ("ავ·ი") + A + Advb ; # ავად
+SELECT ("მიერ") ;
 SELECT ("კვლავ") + Adv ;
 SELECT ("<გარს>" Adv) ;
 # remove ("<ვის>" "ვა") ;
@@ -689,12 +705,16 @@ REMOVE ("საკუთ[ა]რ·ი") + N IF (1 N) ;
 
 REMOVE ("ხევ·ი" Prop) ;
 
+REMOVE ("საშუალ") ;
+
 REMOVE ("როდი") + L ;
 REMOVE ("მაშინ[ა]") + Encl:Aux ;
 REMOVE ("მემკვიდრეობით") + Adv ;
 SELECT ("წარმო·დგენ[ა]/დგენ" Pres) ; # not Fut
 
 SELECT ("ჩუმ·ი") + A + Advb ; # ჩუმად
+
+REMOVE ("გა·ღიმებ[ა]/ღიმ") + Act + OV ;
 
 SELECT ("თომასი") ;
 
@@ -983,6 +1003,8 @@ SELECT Gen + (PP:დმი) ;
 SELECT Dat + (PP:თვის) ; # not Gen if Dat available (ვისთვისაც) 
 
 SELECT ("ვიდრე" Pp) IF (1 PP:მდე) ;
+
+SELECT ("გეგა") + Anthr ;
 
 REMOVE ("თვალებ[ა]/თვალ") + N IF (0 ("თვალ·ი")) ;
 
@@ -1612,8 +1634,20 @@ n-SELECT Impv
     IF (1 ("და"))
        (1* Impv) ;
 
+SELECT Voc + Prop
+    IF (-1 Pron + Poss + Voc) ;
+
 # ცხრამეტი წლისა იყო
 n-REMOVE Temp + DGen + Nom IF (1 <AuxIntr>) ;
+
+#n-REMOVE DGen + Nom
+#    IF (0 Gen + L)
+#       (
+
+# ან… და ან
+SELECT ("და") + @CLB
+    IF (1 ("ან"))
+       (-1* ("ან")) ;
 
 # corrdinate equal POS
 n-SELECT N + $$CASE - Guess # + L
@@ -1628,11 +1662,14 @@ n-SELECT $$CASE + L + Guess
     IF (1 COORD)
        (2C A + $$CASE) ;
 
+SELECT FirstName + Dat
+    IF (0C FirstName + Dat OR FirstName + Gen)
+       (1C FirstName) ;
 
 TEMPLATE NPDat = ? Dat - Att - PP - Cj LINK NOT 1 Pp ;
 TEMPLATE NPDatHum = ? Dat + Hum - Att - PP - Cj LINK NOT 1 Pp ;
 
-REMOVE Dat
+REMOVE Dat - Temp
     IF (0 Gen - <OldPl>)
        (1 N - Prop)
        (NOT 1 Dat)
@@ -2027,8 +2064,8 @@ SELECT @NC
        (1 Gen + OldPl) ;
 
 SELECT @NC
-    IF (-1 Gen + L)
-        (1 Gen) ;
+    IF (-1 $$CASE + L)
+        (1 $$CASE) ;
 
 #ADD @NC ("და" Cj) - @NC
 #      IF (-1 Gen + L)
@@ -2088,6 +2125,13 @@ SELECT @CLB
 
 SELECT @CLB
     IF (1 ("რომ")) ;
+
+SELECT @CLB
+    IF (-1C V)
+       (NEGATE 0 ("თუ") LINK 1 ("<არა>")) ;
+
+REMOVE @CLB + ("და")
+    IF (NOT -1* V OR Encl:Aux) ;
 
 # prelim.
 SELECT @CLB + Comma ;
@@ -2193,6 +2237,8 @@ WITH RQuote
 
 o-SELECT ("<ზედა>" Pp)
       IF (-1 Gen OR Dat) ;
+
+SELECT ("უკან") + Adv IF (1 ("*·ხევ[ა]/ხ[ევ]")) ; # უკან იხევდა
 
 SELECT Gen IF (1 POSTP + <Gen>) (0C N) ;
 SELECT Dat IF (1 POSTP + <Dat>) ;
@@ -2960,6 +3006,9 @@ n-SELECT ("თავ·ი") + Refl ;
 #n-REMOVE Att
 #   IF (1 ("ყველა")) ;
 
+SELECT A + Att + $$CASE
+    IF (1C FirstName + $$CASE) ;
+
 # could go wrong when Gen modifies a Nom. Elaborate!
 n-SELECT ADJ + Gen + Att - <OldPl> - Guess - ("ხელ·ი")
       IF (1C NAPropPart + Gen - Poss)
@@ -3424,6 +3473,14 @@ SELECT <S-IO> + IO:Dat + IO:3
        (NEGATE 0* Nom BARRIER CLB)
        (0* T:NPDat BARRIER CLB) ;
 
+# შედგება -გან
+SELECT ("შე·დგომ[ა]/დგ") + <S> IF (-1 PP:გან) ;
+SELECT ("შე·დგომ[ა]/დგ") + <S> IF (1 PP:გან) ;
+
+# ცხრებოდა, გავარდა
+SELECT ("*·ცხრომ[ა]/ცხრ") + Pass + <S> IF (NEGATE 0C* Dat + Hum OR Dat + Anthr) ;
+SELECT ("გა·ვარდნ[ა]/ვარდ") + Pass + <S> IF (NEGATE 0C* Dat + Hum OR Dat + Anthr) ;
+
 REMOVE <S> + <S:Nom>
     IF (0 <S-IO> + <IO:Dat>)
        (0* T:NPDat BARRIER CLB) ;
@@ -3489,6 +3546,11 @@ SELECT ErgArg3
 
 SELECT DatArg3
     IF (-1* Pron + Rel + Dat BARRIER V) ;
+
+# @@@@@@@@@@@@
+SELECT Dat + Anthr - PP
+    IF (0* <IO:Dat> + IO:3 BARRIER V OR Dat - PP)
+       (NOT 1 Pp) ;
 
 # sentence complements
 
