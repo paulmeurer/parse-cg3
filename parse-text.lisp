@@ -760,7 +760,7 @@
 			       (dependencies nil)
 			       show-rules
                                levels
-			       rid
+			       rid ;; whether to write the rid
 			       manual
 			       error
                                clean
@@ -944,6 +944,22 @@
     (otherwise
      readings)))
 
+;; see lemma-search-form() in korpuskel-import.lisp
+(defun simple-lemma (lemma)
+  (if (or (< (length lemma) 4)
+	  (not (find-if (lambda (c) (find c "[]/{}-·")) lemma)))
+      lemma
+      (let* ((slash-pos (position #\/ lemma))
+	     (lemma (subseq lemma 0 slash-pos))
+	     (lemma (if (< (length lemma) 3)
+			lemma
+			(delete-if (lambda (c) (find c "[]{}·"))
+				   lemma)))
+	     (ei-pos (search "ეჲ" lemma)))
+	(if (eql ei-pos (- (length lemma) 2)) ;; ეჲ -> ჱ
+	    (u:concat (subseq lemma 0 (- (length lemma) 2)) "ჱ")
+	    lemma))))
+
 (defun write-msa-json (morphology &key node
 				    lemma
 				    features
@@ -964,7 +980,8 @@
                       (lem (if (eq lemma :simple)
                                (delete-if (lambda (c) (find c "*[]{}·"))
                                           (subseq l 0 (position #\/ l)))
-                               l)))
+                               l))
+                      (slem (simple-lemma l)))
                   (unless dependencies
                     (setf features (delete-if (lambda (f) (or (string= f "")
                                                               (find (char f 0) ">@$")))
@@ -976,6 +993,8 @@
                                             `("trans_lemma"
                                               ,(encoding::transliterate
                                                 lem :standard transliterate)))
+                                        ,@(when slem ;; Georgian only? 
+                                            `("slemma" ,slem))
 				        ,@(unless suppress-discarded-p
 					    `("status" ,(string-downcase flag)))
 				        ,@(when features `("features" ,features))
@@ -998,7 +1017,9 @@
                                                (u:split (cadr reading) #\space)))))
     (setf (caddr reading) :selected-manually
           (cadr reading) (u:concat (cadr reading) (if exact " <Exact>" "") " <Sel>"))
-    (json "token" (parse::write-word-json token :transliterate transliterate))))
+    (json "token" (parse::write-word-json token
+                                          :rid t ;; write rid
+                                          :transliterate transliterate))))
 
 ;; *text*
 ;; *root*
