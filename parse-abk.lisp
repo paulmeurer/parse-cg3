@@ -123,66 +123,77 @@
 			      (lookup-morphology :abk (subseq word 0 hyphen-pos)
 						 :orthography orthography :coord t))))
 	     (morph2 (lookup-morphology :abk w2 :orthography orthography :coord t)))
-        ;;(print (list morph1 morph2))
-	(u:collecting
-	  (loop for (lemma1 features1) in morph1
-	        do (loop for (lemma2 features2) in morph2
-	                 ;; do (print (list lemma1 lemma2))
-		         when
-		         (labels ((find-feature (f &rest features)
-                                    ;; find f in features (if given) or in features2
-				    (find f (cond ((null features)
-					           features2)
-					          ((listp (car features))
-					           (car features))
-					          (t
-					           features))
-				          :test #'string=)))
-		           (cond ((find "VCoord" features1 :test #'string=)
-			          (and
-                                   (find "V" features2 :test #'string=)
-                                   ;; equal stems
-                                   (equal lemma1 (subseq lemma2 0 (1+ (position #\- lemma2 :from-end t)))) ;; ??
-                                   (loop for f in features1
-				         always (or (equal f "VCoord")
-                                                    (find-feature f)
-						    (and (equal f "FPv:аа")
-						         (find-feature "FPv:на"))))
-				   ;; check for equal prefixes
-				   
-				   ))
-			         (t
-			          (and (loop for f in features1
-				             always (or (find-feature f "CC" "<Relax>" "<Deriv>" "[Det]" "Det")
-						        (find-feature f)))
-				       (loop for f in features2
-				             always (or (not (find-feature f "Poss:Rel" "Why"))
-						        (find-feature f features1)))))))
-		         do (let* ((poss-or-det (find-if (lambda (f)
-                                                           (or (equal f "Det")
-                                                               (search "Poss:" f)))
-                                                         features1))
-                                   (keep-det2 (and poss-or-det (find poss-or-det features2 :test #'string=)))
-                                   (reading (list (u:concat (if hyphen
-							        lemma1
-							        (subseq lemma1 0 (1- (length lemma1))))
-						            "="
-						            (if (and (not keep-det2) ;; always T?
-                                                                     (> (length lemma2) 3)
-                                                                     (find #\- lemma2 :end 3)
-                                                                     #+ignore
-							             (find "<PreAdj>" features2 :test #'string=)
-                                                                     )
-							        (subseq lemma2 (1+ (position #\- lemma2)))
-							        lemma2))
-					          ;; features1
-					          (if print
-					              (format nil "~{+~a~}" (append features2 '("CC")))
-					              (append features2 '("CC")))
-					          nil nil)))
-		              (if print
-			          (u:collect (print reading))
-			          (u:collect reading))))))))))
+        ;;(pprint (list morph1 morph2))
+        (remove-duplicates
+	 (u:collecting
+	   (loop for (lemma1 features1) in morph1
+	         do (loop for (lemma2 features2) in morph2
+	                  ;; do (print (list lemma1 lemma2))
+		          when
+		          (labels ((find-feature (f &rest features)
+                                     ;; find f in features (if given) or in features2
+				     (find f (cond ((null features)
+					            features2)
+					           ((listp (car features))
+					            (car features))
+					           (t
+					            features))
+				           :test #'string=)))
+		            (cond ((find "VCoord" features1 :test #'string=)
+			           (and
+                                    (find "V" features2 :test #'string=)
+                                    ;; equal stems
+                                    (equal lemma1 (subseq lemma2 0 (1+ (position #\- lemma2 :from-end t)))) ;; ??
+                                    (loop for f in features1
+				          always (or (equal f "VCoord")
+                                                     (find-feature f)
+						     (and (equal f "FPv:аа")
+						          (find-feature "FPv:на"))))
+				    ;; check for equal prefixes
+				    
+				    ))
+			          (t
+			           (and (loop for f in features1
+				              always (or (find-feature f "CC" "<Relax>" "<Deriv>" "[Det]" "Det" "DO:Ad" "S:Ad")
+						         (find-feature f)))
+				        (loop for f in features2
+				              always (or (not (find-feature f "Poss:Rel" "Why"))
+						         (find-feature f features1)))))))
+		          do (let* ((poss-or-det (find-if (lambda (f)
+                                                            (or (equal f "Det")
+                                                                (search "Poss:" f)))
+                                                          features1))
+                                    (keep-det2 (and poss-or-det (find poss-or-det features2 :test #'string=)))
+                                    (reading (list (u:concat (if hyphen
+							         lemma1
+							         (subseq lemma1 0 (1- (length lemma1))))
+						             "="
+						             (if (and (not keep-det2) ;; always T?
+                                                                      (> (length lemma2) 3)
+                                                                      (find #\- lemma2 :end 3)
+                                                                      #+ignore
+							              (find "<PreAdj>" features2 :test #'string=)
+                                                                      )
+							         (subseq lemma2 (1+ (position #\- lemma2)))
+							         lemma2))
+					           ;; features1
+					           (if print
+					               (format nil "~{+~a~}" (append features2 '("CC")))
+					               (append features2
+                                                               (cond ((find "DO:Ad" features1 :test #'string=)
+                                                                      '("DO:Ad"))
+                                                                     ((find "S:Ad" features1 :test #'string=)
+                                                                      '("S:Ad"))
+                                                                     (t
+                                                                      ()))
+                                                               '("CC")
+                                                               
+                                                               ))
+					           nil nil)))
+		               (if print
+			           (u:collect (print reading))
+			           (u:collect reading))))))
+         :test #'equal)))))
 
 (defparameter *simple-dictionary* nil)
 
@@ -223,6 +234,9 @@
   (declare (ignore lemma features))
   nil)
 
+#+test
+(pprint (lookup-morphology :abk "сҽанырҵеит"))
+
 (defmethod lookup-morphology ((language (eql :abk)) word 
                               &key mwe variety
                                 coord ;; lookup abk coordinated compound segments?
@@ -260,6 +274,7 @@
                      (lambda (w l+f net)
                        (declare (ignore w net))
                        (dolist (reading (u:split l+f #\newline nil nil t))
+                         ;;(debug reading)
                          (when (find #\+ reading) ;; temp. workaround
                            (setf (dat:string-tree-get reading-tree reading) :relax))))
                      :mode :union)
@@ -288,6 +303,7 @@
                                                                 (setf acc-word acc-w))))
                                              :side :upper)
                         ;; move trailing features behind the lemma
+                        ;; TODO: adapt for forms like агәҽанҵара́ (+Poss:1Sg*а-гә+Refl:1Sg+S:3SgM+LO:3SgNH*ҽ·а·н·ҵа-ра́+V+Aor+Dyn+Tr+Fin)
                         (let* ((lemma-start (or (position #\* reading) -1))
                                (f-start (position #\+ reading :start (max lemma-start 1)))
                                (features (if (= -1 lemma-start)
@@ -338,7 +354,7 @@
                                        lemmas+features :test #'equal))
                           
                           )))
-                    
+                    (debug lemmas+features)
                     (setf lemmas+features
                           (sort lemmas+features
                                 (lambda (lf1 lf2)
@@ -500,7 +516,9 @@
 (print (morph-to-ud-pos "V Stat NonFin Pres Conj-I S:3 IO:3SgNH Cop"))
 
 #+test
-(print (morph-to-ud-pos "Noun Prop Hydr"))
+(print (morph-to-ud-pos :abk "Pron Int Pred NonFin Past Q S:3SgH"))
+#+test
+(print (morph-to-ud :abk "Pron Int Pred NonFin Past Q S:3SgH"))
 #+test
 (print (morph-to-ud-pos "Noun Prop Name <Lemma> >NSUBJ"))
 #+test
