@@ -93,8 +93,6 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
             >OBL:LMOD
             >OBL:FINAL
             >OBL:ARG
-            >NMOD:IOBJ
-            >NMOD:PRED
             >ADVMOD:TMOD
             >ADVMOD:LMOD
             >ADVMOD:NEG
@@ -104,6 +102,8 @@ STRICT-TAGS += 1 2 3 A Abbrev Abs Act Adv Advb Alpha Anim Anthr Aor
             >NMOD:NAME
             >NMOD:AGENT
             >NMOD:ARG
+            >NMOD:IOBJ
+            >NMOD:PRED
             >OBL:AGENT
             >ADVCL
             >ACL
@@ -353,6 +353,8 @@ LIST AdvbVerb = "თვლ\\[.*"r
 	      "მი·ჩნევ\\[.*"r
 	      "მი·ჩენ[ა]/ჩნ"
               "და·სახვ[ა]/სახ"
+              "გამო·ცხადებ[ა]/ცხად"
+              "გან·ცხადებ[ა]/ცხად"
 	      <AuxIntr>
 	      Encl:Aux ;
 
@@ -375,6 +377,7 @@ LIST CCompV = "ფიქრ·ი/ფიქრ" "მი·ხვდომ[ა]/ხ
               "ჩვენებ[ა]/ჩვენ" "მო·ყოლ[ა]/ყ[ე]ვ"
               "ლოდინ·ი/ლოდ" # with IO
               "*·ხვდომ[ა]/ხვდ" # IO
+              "გან·ცხადებ[ა]/ცხად"
               "და·მტკიცებ[ა]/მტკიც" "წამებ[ა]/წამ" "იმედოვნებ[ა]/იმედოვნ" ;
 
 # Sets
@@ -1083,6 +1086,11 @@ SELECT ("ხევ·ი") IF (-1 Prop + Gen) ;
 SELECT ("მისიან·ი") ;
 
 REMOVE ("უბ[ა]ნ·ი") + Prop IF (-1 Prop + Gen) ;
+
+REMOVE ("და·ხევ[ა]/ხ[ევ]") + <S-DO> IF (-1 ("უკან")) ;
+
+# რაც შეეხება
+SELECT ("რ[ა]") + Pron IF (1 ("შე·ხებ[ა]/ხ")) ;
 
 # check syntactic status of რაღაც
 # SELECT ("რაღაც") - Att ??

@@ -240,6 +240,13 @@ WITH <udMWE>
 #  REMCOHORT IGNORED WITHCHILD (*) (*) ;
 } ;
 
+WITH ("News")
+  IF (-1 ("Fox"))
+     (NOT p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >FIXED (*) ;
+} ;
+
 # special phrases first
 
 WITH $QW
@@ -325,6 +332,27 @@ WITH ("თუ") + @NC
    MAP >CC (*) ;
  #  REMCOHORT IGNORED WITHCHILD (*) (*) ;
 } ;
+
+# არ და ვერ
+
+WITH ("და")
+  IF (1 ("ვერ"))
+     (-1 ("არ"))
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >CC (*) ;
+   SELECT @NC ;
+} ;
+
+WITH ("ვერ")
+  IF (-2 ("არ"))
+     (-1 ("და"))
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >CONJ (*) ;
+} ;
+
+# ასე თუ ისე
 
 WITH ("ისე")
     IF (-2 ("ასე"))
@@ -1108,6 +1136,15 @@ WITH Att + $$CASE - Poss - Num - <OldPl> - $Prop - $Adv - $ADV - Meas # was: - I
    SELECT Att ;
 } ;
 
+WITH Att + Gen + <OldPl>
+  IF (1* N + Gen + OldPl)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >AMOD (*) ;
+   SELECT Att ;
+} ;
+
+
 # attributive abbreviation
 WITH Att + Abbrev
   IF (1* NA - Att - Quant
@@ -1349,6 +1386,8 @@ WITH A + Advb
 
 LIST NonXCOMPAdv = Disc Int Mann "მაინც" "კიდევ" "უფრო" Causal "თვითონ" Comm ;
 
+
+# but: გვიანღა იყო სინანული
 # @@@@@@
 # remove other Foc Adv?
 # Mann b/o ბლომად
@@ -2070,7 +2109,14 @@ WITH PP:დმი
    MAP >NMOD (*) ;
 } ;
 
-# ??
+# ოთახში შესვლისას
+WITH PP:ში OR PP:თან OR PP:ზე OR PP:კენ
+  IF (2* Converb BARRIER (*) - Modal - Neg)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >OBL (*) ;
+} ;
+
 WITH PP:ში OR PP:თან OR PP:ზე OR PP:კენ
   IF (2* VN BARRIER (*) - Modal - Neg)
      (NEGATE p (*)) {
@@ -2112,7 +2158,14 @@ WITH PP:ში OR PP:თან OR PP:ზე OR PP:კენ OR Adv + Loc
 } ;
 
 # local oblique
-# what about Converb?
+# what about Converb? should get >OBL!
+WITH PP:ში OR PP:თან OR PP:ზე OR PP:კენ
+  IF (1* Converb + FALSE BARRIER CLBwords OR V OR Cj + Sub OR Comma OR Coord)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >OBL (*) ;
+} ;
+
 WITH PP:ში OR PP:თან OR PP:ზე OR PP:კენ
   IF (1* VN + FALSE BARRIER CLBwords OR V OR Cj + Sub OR Comma OR Coord)
      (NEGATE p (*)) {
@@ -2178,6 +2231,15 @@ WITH Inst - Att
    MAP >OBL (*) ;
 } ;
 
+WITH N + Temp + Inst 
+  IF (1 ("ადრე") OR ("გვიან"))
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >OBL (*) ;
+} ;
+
+
+
 WITH PP OR Inst - Att OR ("<ადგილას>")
   IF (1* V OR Part BARRIER CLBwords OR Cj + Sub OR Comma OR Coord)
      (NEGATE p (*)) {
@@ -2235,11 +2297,19 @@ WITH PP:თვის
 
 WITH NAProp + Gen - Att
   IF (-1* VN
-      BARRIER ROM OR ("როცა") OR @CLB)
+      BARRIER ROM OR ("როცა") OR @CLB OR V)
      (1 ("მიერ"))
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >NMOD:AGENT (*) ;
+} ;
+
+# რამდენიმე დღით ადრე
+WITH PP:მდე
+  IF (2 Num + Card + Att OR A + Quant + Att LINK 1 N + Temp + Inst LINK 1 ("ადრე") OR ("გვიან"))
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >OBL (*) ;
 } ;
 
 # შედგება ვაშლისა და მაღაზიების გამოცნობის ბლოკებისაგან.
@@ -2492,7 +2562,7 @@ SETPARENT Pron + Poss + Refl + $$CASE
 # Postpositions
 
 WITH PREP + <Gen>
-  IF (1* Gen + L - PP)
+  IF (1* Gen + L - PP BARRIER V OR CLB OR Comma)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >CASE (*) ;
@@ -3456,9 +3526,11 @@ WITH N
    MAP >NSUBJ (*) ;
 } ;
 
+# გამოძიების წინაშე_XCOMP არის დანაშაულის ობიექტური მხარე_Subj.
+
 # 3. other nominals
 # არის საკითხები, რომლებიც ყველას აინტერესებს.
-WITH NomHead - Pers - Dem - A
+WITH FALSE + NomHead - Pers - Dem - A
   IF (-1*w W + S:Nom + S:3 + AUX BARRIER CLB OR Rel + Nom OR Comma
       # LINK NOT -1 CSUBJAdj
       LINK NONE Xc >NSUBJ OR >NSUBJ:PASS OR >XCOMP OR >XCOMP:AUX
@@ -3479,6 +3551,15 @@ WITH A + Nom - Att OR Pron + Indef - Att
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >XCOMP (*) ;
+} ;
+
+# repeated further down
+# როგორი გარეგნობის არის დათა თუთაშხია?
+WITH Gen - Att
+  IF (1 <AuxIntr> LINK NONE c >XCOMP OR >XCOMP:AUX)
+     (NEGATE p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >XCOMP (*) ;
 } ;
 
 WITH NomHead #- Dem - Pers
@@ -5643,19 +5724,33 @@ WITH Anthr + Abbrev OR Hum + Qual + Abbrev
 } ;
 
 WITH Advb - Att
-  IF (0*w AdvbVerb BARRIER V OR @CLB LINK NONE c >XCOMP)
+  IF (0*w AdvbVerb - VN BARRIER V OR @CLB LINK NONE c >XCOMP)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >XCOMP (*) ;
 } ;
 
+WITH Advb - Att
+  IF (0*w AdvbVerb + VN BARRIER V OR @CLB LINK NONE c >XCOMP)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >NMOD:PRED (*) ;
+} ;
+
 # obl if xcomp is taken
 # ზარანდიაა გვარად
 WITH Advb - Att
-  IF (0*w AdvbVerb BARRIER V OR @CLB)
+  IF (0*w AdvbVerb - VN BARRIER V OR @CLB)
      (NEGATE p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;   
    MAP >OBL (*) ;
+} ;
+
+WITH Advb - Att
+  IF (0*w AdvbVerb + VN BARRIER V OR @CLB)
+     (NEGATE p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;   
+   MAP >NMOD (*) ;
 } ;
 
 # top-level verbs
@@ -5706,7 +5801,7 @@ WITH PP
 
 # როგორი გარეგნობის არის დათა თუთაშხია?
 WITH Gen - Att
-  IF (1 <AuxIntr>)
+  IF (1 <AuxIntr> LINK NONE c >XCOMP OR >XCOMP:AUX)
      (NEGATE p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
   MAP >XCOMP (*) ;
@@ -6147,7 +6242,7 @@ SETCHILD (*)
 # fix obl vs. nmod
 WITH >OBL
   IF #(c >CASE)
-     (p N - >XCOMP OR VN - >XCOMP) {
+     (p N - Converb - >XCOMP OR VN - Converb - >XCOMP) {
    UNMAP >OBL ;
    MAP >NMOD (*) ;
 } ;

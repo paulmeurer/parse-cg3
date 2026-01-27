@@ -4561,8 +4561,7 @@ WITH NOPARENT ("иара́")
      (NOT p (*)) {
   SETPARENT (*) TO (jC1 (*)) ;
   MAP >ADVMOD (*) ;
-} ;  
-
+} ;
 
 WITH NOPARENT Noun + EPOSTP | VN + EPOSTP | Adj + EPOSTP
   IF (1 COP OR EnclCop)
@@ -5129,14 +5128,14 @@ WITH NOPARENT Pron + Pers + 3Sg OR SgNoun - Hum - Anthr - EPOSTP - PP OR Pron + 
 # Purposive clause
 
 # convert to LIST
-SET PurpVerbs = ("а-ҭах-ра́") | ("а-ҿы́-заа-ра") | ("а́кә-заа-ра")
-    | ("а́-ла·га-ра")
-    # | ("а́-ӡба-ра")
-    | ("а́-л·ша-ра") | ("а́-ҟа-заа-ра") | ("а́-қә·к-ра")
-    | ("а́-г-заа-ра") | ("а-ҭах·ха-ра́") | ("а-ҽ·а·з·к-ра́") | ("а́-шьҭа-заа-ра")
-    | ("аа-ра́") | ("аа́и-ра") | ("а́-д·ҵа-ра") | ("а́-ҳәа-ра") | ("а-ҳәа-ра́")
-    | ("а-ца-ра́") | ("а-ша-ра́") | ("а́-г·ха-ра") | ("а́·ҳәа-ра") | ("а-ҿы́на·ха-ра")
-    | ("а́бжьа·га-ра") | ("а-у-ра́") | ("а-не́и-ра") ;
+LIST PurpVerbs = "а-ҭах-ра́" "а-ҿы́-заа-ра" "а́кә-заа-ра"
+     "а́-ла·га-ра"
+    # "а́-ӡба-ра"
+     "а́-л·ша-ра" "а́-ҟа-заа-ра" "а́-қә·к-ра"
+     "а́-г-заа-ра" "а-ҭах·ха-ра́" "а-ҽ·а·з·к-ра́" "а́-шьҭа-заа-ра"
+     "аа-ра́" "аа́и-ра" "а́-д·ҵа-ра" "а́-ҳәа-ра" "а-ҳәа-ра́"
+     "а-ца-ра́" "а-ша-ра́" "а́-г·ха-ра" "а́·ҳәа-ра" "а-ҿы́на·ха-ра"
+     "а́бжьа·га-ра" "а-у-ра́" "а-не́и-ра" ;
 
 # try to distinguish between object markers that cross-reference the purp!
 
@@ -5362,7 +5361,7 @@ WITH NOPARENT N - Hum - Pl      # subject
      | Pron + Pers + 3Sg
      | Pron + NH
      | Pron + Dem + Sg
-     IF (2 IO:3SgNH + Cop)      # copula
+     IF (2 IO:3SgNH + CopEncl)      # copula
         (1 Noun - EPOSTP)       # predicative
         (NEGATE 2 (*) LINK c >NSUBJ)
         (NOT p (*)) {
@@ -6106,7 +6105,7 @@ WITH Place OR PlaceNoun
 
 # @@@@
 WITH NOPARENT N - H - Pl - PP - Advb - Anthr | VN - PP - Advb | Pron + Dem
-  IF (2**w DO:3 - DO:Ad BARRIER BOP LINK NONE c >OBJ OR >CCOMP:OBJ)
+  IF (2**w DO:3 - DO:Ad BARRIER BOP OR V LINK NONE c >OBJ OR >CCOMP:OBJ)
      (NOT 1 BOP)
      (NOT 1 ("ҳәа́") OR ("уҳәа́"))
      (NOT p (*)) {
@@ -6115,7 +6114,7 @@ WITH NOPARENT N - H - Pl - PP - Advb - Anthr | VN - PP - Advb | Pron + Dem
 } ;
 
 WITH NOPARENT N + NH - PP - Advb | N + Pl - PP - Advb | Pron + Quant
-  IF (2**w DO:3 - DO:Ad BARRIER BOP LINK NONE c >OBJ OR >CCOMP:OBJ)
+  IF (2**w DO:3 - DO:Ad BARRIER BOP OR V LINK NONE c >OBJ OR >CCOMP:OBJ)
      (NOT 1 BOP)
      (NOT 1 ("ҳәа́") OR ("уҳәа́"))
      (NOT p (*)) {
@@ -7388,7 +7387,6 @@ WITH NOPARENT CONJIPF
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-
 WITH NOPARENT CONJIPF
   IF (-1* V - Abs BARRIER CLB OR Comma)
      (NOT p (*)) {
@@ -7396,11 +7394,18 @@ WITH NOPARENT CONJIPF
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
+WITH NOPARENT CONJIPF
+  IF (-1* ("а-гәа·ҧха-ра́") + S:3 - S:Ad BARRIER Ellipsis OR V - Abs)
+     (NOT p (*)) {
+   MAP >CSUBJ (*) ;
+   SETPARENT (*) TO (jC1 (*)) ;
+};
+
 
 # or with comma
 
 WITH NOPARENT CONJIPF
-  IF (1* Comma OR Dash LINK 1* VMain - VSaying OR Conj-I + Cop BARRIER VSaying)
+  IF (1* Comma OR Dash BARRIER Colon OR Ellipsis LINK 1* VMain - VSaying OR Conj-I + Cop BARRIER VSaying)
      (NOT p (*)) {
    MAP >ADVCL (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
@@ -7635,6 +7640,14 @@ WITH VERB - PastIndef
 } ;
 
 WITH VERB - PastIndef
+  IF (3*w VSaying + DO:3 - DO:Ad LINK NEGATE c >OBJ OR >CCOMP:QUOTE)
+     (c Prt + Quote)
+     (NOT p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >CCOMP:QUOTE (*) IF (p (*)) ;
+} ;
+
+WITH VERB - PastIndef
   IF (2w ("аҳа-ра́") + S:Ad LINK NEGATE c >NSUBJ OR >CSUBJ:QUOTE)
      (c Prt + Quote)
      (NOT p (*)) {
@@ -7684,11 +7697,13 @@ LIST QuoteVerb = "а-ҵаа-ра́" "а́-быб-ра" "а-ш-ра́" "а́цә�
 
 # heads of conjoined phrases may be main verbs, or Conj-I with auxiliary
 TEMPLATE ConjHead = (-1**w VMain - PastIndef - >AUX
-                     BARRIER Colon OR Semicolon OR ExclPoint OR IntMark OR PastIndef OR Dash # OR QuoteVerb
+                     BARRIER Colon OR Semicolon OR ExclPoint
+                          OR IntMark OR PastIndef OR Dash # OR QuoteVerb
                      LINK NONE c >MARK)
                     OR
                     (-1**w Conj-I
-                     BARRIER Colon OR Semicolon OR ExclPoint OR IntMark OR PastIndef OR Dash # OR QuoteVerb
+                     BARRIER Colon OR Semicolon OR ExclPoint
+                          OR IntMark OR PastIndef OR Dash # OR QuoteVerb
                      LINK c >AUX)
                     ;
 
