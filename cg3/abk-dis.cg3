@@ -1562,6 +1562,8 @@ SELECT ("а-ха́" Noun) IF (1 ("а́-ма-заа-ра" Neg Emph)) ;
 REMOVE ("а-ха́" Noun) IF (NOT 1 ("а́-ма-заа-ра" Neg Emph)) ;
 
 SELECT ("аха́") + Cj ;
+SELECT ("ма́") + Cj ;      # coordinating conjunction "but / or"
+SELECT ("ма́мзар") + Cj ;  # coordinating conjunction "or else / otherwise"
 SELECT ("зны́") + Cj IF (1* ("зны́")) ;
 SELECT ("зны́") + Cj IF (-1* ("зны́")) ;
 SELECT ("зны") + Adv ;
@@ -7452,6 +7454,7 @@ WITH NOPARENT Abs
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
+
 #WITH NOPARENT Abs
 #  IF (1* VMain - Abs - Connect | Cop BARRIER Connect) #  - PastIndef)
 #     (NOT p (*)) {
@@ -7465,6 +7468,16 @@ WITH NOPARENT Abs - Rel
      (NOT p (*)) {
    MAP >ADVCL:CONV (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+# NEW: Skip an intervening VN (verbal noun as argument) and attach to the
+# following finite verb. e.g. [Cnv+Abs] [VN] [VMain] -> attach to VMain.
+WITH NOPARENT Abs - Rel
+  IF (1 VN)
+     (2* V + Fin - Rel - ConjIPf BARRIER CLB | ("нас") | Connect)
+     (NOT p (*)) {
+  MAP >ADVCL:CONV (*) ;
+  SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
 # иааны иҟаз
@@ -7528,6 +7541,26 @@ WITH NOPARENT Cj + Coord | Cj + Sub
    MAP >CC (*) ;
 } ;
 
+# NEW: CC fallback for conjunctions before a NonFin head verb
+# e.g. "ма саҧырхагоу" where the second conjunct is a NonFin participial verb
+WITH NOPARENT Cj + Coord | Cj + Sub
+  IF (1* VERB - Cop BARRIER CLB)
+     (NOT p (*)) {
+   SETPARENT (*) TO (jC1 (*)) ;
+   MAP >CC (*) ;
+} ;
+
+# NEW: Left-attaching, explicitly exclude VN from backward scan.
+# Handles cases where a VN (verbal noun argument) sits between converb and its
+# finite head to the left, causing the existing rule to land on the VN instead.
+# e.g. [VMain] ... [VN] ... [Cnv+Abs] -> attach to VMain, not VN
+WITH NOPARENT Abs
+  IF (-1* V + Fin - Abs - Rel - ConjIPf - Cop - VN BARRIER CLB OR Cop - Conj-I)
+     (NOT p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >ADVCL:CONV (*) IF (p (*)) ;
+} ;
+
 WITH NOPARENT Abs
   IF (-1* V - Abs - NonFin - Rel - ConjIPf - Cop BARRIER CLB OR Cop - Conj-I)
      (NOT p (*)) {
@@ -7541,6 +7574,20 @@ WITH NOPARENT Abs
      (NOT p (*)) {
    MAP >ADVCL:CONV (*) ;
    SETPARENT (*) TO (jC1 (*)) ;
+} ;
+
+# NEW: Left-attaching fallback – cross soft CLB (comma, dash) but respect hard
+# sentence boundaries (semicolon, colon, ellipsis, !, ?).
+# Only fires when the converb is near sentence end (Period/ExclPoint/IntMark within 2 tokens),
+# to avoid mis-attaching parallel converbs in mid-sentence positions leftward.
+# e.g. иналалеит, « ввы » ҳәа рыбжьы го. -> го attaches left to иналалеит
+WITH NOPARENT Abs
+  IF (-1* VMain - Abs - Rel - ConjIPf
+      BARRIER Semicolon | Colon | Ellipsis | ExclPoint | IntMark)
+     (1 Period OR ExclPoint OR IntMark OR Punct)
+     (NOT p (*)) {
+  SETPARENT (*) TO (jC1 (*)) ;
+  MAP >ADVCL:CONV (*) IF (p (*)) ;
 } ;
 
 
@@ -8013,9 +8060,10 @@ WITH NOPARENT VMain - VSaying - PastIndef
 
 # the rest, except verb of saying, since these take (conjoined) sentence(s) as complement
 
-# coordination of PastIndef and Aor
+# coordination of PastIndef and Aor (or Perf, e.g. Perf+InferPast evidential)
+LIST AorPerf = Aor Perf ;
 WITH PastIndef
-  IF (1* Aor - VSaying - ("а́зҵаа-ра") - ("а-ҵаа-ра́") - ("а́ила·цәажәа-ра") - ("а́а·ҧхьа-ра")
+  IF (1* AorPerf - VSaying - ("а́зҵаа-ра") - ("а-ҵаа-ра́") - ("а́ила·цәажәа-ра") - ("а́а·ҧхьа-ра")
          # - ("а́-ла·га-ра")
          - Cnv # ?
          - Punct 
