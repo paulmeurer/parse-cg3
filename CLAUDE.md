@@ -41,6 +41,7 @@ Grammar files in `cg3/` use VISL CG-3 syntax. Georgian grammars (`geo-dis.cg3`, 
 
 `:cl-fst` (or `:cl-foma`), `:cl-vislcg3`, `:aserve`, `:graph`, `:st-json`, `:framework-1-2`
 
-## Gold corpus
+## Gold corpora
 
-Abkhaz UD treebank at `~/quicklisp/local-projects/ud/UD_Abkhaz-AbNC/` (CoNLL-U format).
+- Georgian UD treebank at `~/quicklisp/local-projects/ud/UD_Georgian-GNC/` (CoNLL-U format)
+- Abkhaz UD treebank at `~/quicklisp/local-projects/ud/UD_Abkhaz-AbNC/` (CoNLL-U format)
