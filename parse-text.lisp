@@ -1,6 +1,43 @@
 ;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: PARSE; Base: 10 -*-
 
+;;;; ====================================================================
+;;;; parse-text.lisp — Core text representation and processing pipeline
+;;;; ====================================================================
+;;;;
+;;;; This file defines the central data structure (parsed-text) and the
+;;;; two-phase processing pipeline that all text goes through:
+;;;;
+;;;;   1. :analyze — tokenize, look up morphological readings via FST
+;;;;      transducers, handle multi-word expressions (MWEs), tmesis
+;;;;      (Old Georgian infixed particles), and stored manual readings.
+;;;;
+;;;;   2. :disambiguate — pass the morphological readings to the CG3
+;;;;      constraint grammar engine (via cl-vislcg3), then extract
+;;;;      dependency relations from the CG3 output.
+;;;;
+;;;; The file also provides JSON and CoNLL-U serialization of the results,
+;;;; dependency graph construction for the web-based tree editor, and
+;;;; reading selection for manual disambiguation.
+;;;;
+;;;; Language-specific morphological lookup, transducer initialization,
+;;;; and UD feature mapping live in parse-kat.lisp (Georgian) and
+;;;; parse-abk.lisp (Abkhaz); this file holds the language-independent
+;;;; skeleton.
+;;;; ====================================================================
+
 (in-package :parse)
+
+;; ====================================================================
+;; parsed-text — the central text container
+;; ====================================================================
+;;
+;; A parsed-text holds the token array (words plus structural XML
+;; elements), per-word morphological analyses, disambiguation results,
+;; and dependency structure.  The text-array is an adjustable vector of
+;; property lists, each tagged :word, :start-element, :end-element, or
+;; :empty-element.  For :word tokens, the plist carries :morphology,
+;; :self/:parent (dependency ids), :label (dep relation), and optional
+;; :subtokens (for addcohort-split words like enclitic copulae).
 
 (defclass parsed-text ()
   ((name :initform nil :initarg :name :reader name)
@@ -34,7 +71,8 @@
   (encoding::transliterate str :standard :abkhaz))
 
 
-;; to be overridden
+;; Allows language-specific subclasses (e.g. gnc-text for Georgian)
+;; to be instantiated by parse-text based on the variety keyword.
 (defmethod text-class ((variety t))
   'parsed-text)
 
@@ -52,6 +90,20 @@
 
 (defparameter *sentence-end-strings-kat* '("." "?" "!" "…" ";" ))
 (defparameter *sentence-end-strings-abk* '("." "?" "!" "…" ";" )) ;;":"))
+
+;; ====================================================================
+;; parse-text — main entry points (three specializations)
+;; ====================================================================
+;;
+;; parse-text dispatches on first argument type:
+;;   string      → tokenize with FST tokenizer, then analyze + disambiguate
+;;   list        → pre-tokenized input (each element is (word . rest))
+;;   parsed-text → re-analyze or re-disambiguate an existing text object
+;;
+;; All variants feed into the two-phase process-text pipeline (:analyze
+;; then :disambiguate).  The :variety keyword selects the language period
+;; (:og Old Georgian, :mg Middle Georgian, :ng New Georgian, :abk Abkhaz,
+;; etc.) which determines which FST transducer and CG3 grammar to use.
 
 (defmethod parse-text ((text string) &key variety load-grammar (disambiguate t) corpus
                                        orthography
@@ -117,7 +169,10 @@
                                        no-postprocessing
                                        &allow-other-keys)
   (assert variety)
-  (when (eq variety :kat) (setf variety :ng))
+  (case variety
+    (:kat
+     (setf variety :ng)))
+        
   (let ((parsed-text (make-instance (text-class variety))))
     (dolist (tl tokens)
       (destructuring-bind (token . rest) tl
@@ -200,8 +255,14 @@
                                             *sentence-end-strings-kat*)))
   text)
 
-;; remove subsumption:
-;; removes reading with specific preverb if equal form with preverb wildcard * is found
+;; ====================================================================
+;; Morphological analysis helpers
+;; ====================================================================
+
+;; Preverb subsumption: the FST may return both a reading with a
+;; specific preverb and a wildcard reading (prefix "*").  The wildcard
+;; subsumes the specific one, so we drop the specific reading to avoid
+;; spurious ambiguity.
 (defun remove-subsumed-preverbs (readings)
   (let ((wc-readings
 	 (loop for r in readings
@@ -236,9 +297,12 @@
 (print (split-tmesis "ცასა-მე-ა")) ;; -ა should be Q
 
 
-;; splits tmesis into list of infixes plus concatenation of prefix and suffix
-;; if infixes are in *infix-table*.
-;; returns NIL if no tmesis found
+;; Old Georgian tmesis: particles like "ხოლო", "თუ" etc. can be infixed
+;; into verb forms.  split-tmesis recognizes known infixes (from
+;; *infix-table*, loaded from tmesis.txt) and splits the word into a list
+;; of infix strings plus the concatenated verb stem, so each part can be
+;; looked up and disambiguated separately.
+;; Returns NIL if no tmesis pattern is found.
 (defun split-tmesis (word)
   (when (find #\- word)
     (let ((segments (u:split word #\-)))
@@ -281,8 +345,18 @@
 
 ;; *text*
 
-;; lexicon is stored in .lex file in save-all-new-words() (obsolete!)
-;; it stores the values of :new-morphology
+;; ====================================================================
+;; process-text :analyze — morphological lookup phase
+;; ====================================================================
+;;
+;; Walks the token array, looks up each word token in the FST
+;; transducer (via lookup-morphology), and stores the resulting
+;; readings in the token's :morphology property.  Also handles:
+;;   - MWE lookup (2- and 3-word expressions)
+;;   - tmesis splitting for Old Georgian
+;;   - xml:lang-based variety switching within a single text
+;;   - wid-table integration for pre-stored manual readings
+;;   - ambiguity counting for statistics
 (defmethod process-text ((text parsed-text) (mode (eql :analyze))
                          &key (variety :og)
                            (normalize t) ;; unknown-tree
@@ -565,6 +639,16 @@
 #+test
 (process-text *text* :analyze)
 
+;; ====================================================================
+;; process-text :disambiguate — CG3 disambiguation + dependency phase
+;; ====================================================================
+;;
+;; Delegates to cg3-disambiguate-text (in cg3-disambiguate.lisp), which
+;; feeds the morphological readings to the CG3 engine sentence by
+;; sentence.  After disambiguation, this method extracts dependency
+;; relations (>NSUBJ, >OBJ, etc.) from the surviving readings' feature
+;; strings and stores them in :label.  It also resolves stored-parent
+;; wids to node ids for the tree editor.
 (defmethod process-text ((text parsed-text) (mode (eql :disambiguate))
                          &key (variety :og) (load-grammar t) mode
                            (sentence-end-strings vislcg3::*sentence-end-strings*)
@@ -629,6 +713,17 @@
                             (getf subnode :label))))))))))
 
 ;; kp::*text*
+
+;; ====================================================================
+;; JSON serialization — for the web-based parsing/treebanking interface
+;; ====================================================================
+;;
+;; write-text-json produces the JSON consumed by the GNC text tool
+;; frontend.  It emits an object with "tokens" (array of word objects),
+;; plus optional "leftContext"/"rightContext" when a subrange is requested.
+;; Each word object is built by write-word-json, which includes the word
+;; form, morphological analyses (via write-msa-json), dependency edges,
+;; and editorial metadata (status, comment).
 
 (defmethod write-text-json ((text parsed-text) stream
                             &key tracep split-trace
@@ -837,6 +932,15 @@
             ,@(unless clean
                `("comment" ,(or comment :null))))))))))
 
+;; ====================================================================
+;; Feature filtering and tagset reduction
+;; ====================================================================
+;;
+;; Several views of the morphological features are needed: UD features
+;; (for CoNLL export), reduced tagsets (for concordance display), or
+;; features with dependency edge labels stripped.  filter-morphology
+;; applies the requested :tagset reduction to a reading list.
+
 (defparameter *feature-name-table* (make-hash-table :test #'equal))
 
 (defun gnc-to-ud-features (features)
@@ -944,7 +1048,9 @@
     (otherwise
      readings)))
 
-;; see lemma-search-form() in korpuskel-import.lisp
+;; Strips morphological segmentation markers ([], {}, ·, /) from a
+;; lemma to produce a searchable form.  Must stay in sync with
+;; lemma-search-form() in korpuskel-import.lisp.
 (defun simple-lemma (lemma)
   (if (or (< (length lemma) 4)
 	  (not (find-if (lambda (c) (find c "[]/{}-·")) lemma)))
@@ -1005,6 +1111,14 @@
                                         ;; why do we need rules and trace??
                                         ,@(when (and show-rules trace) `("trace" ,trace))))))))))))
 
+;; ====================================================================
+;; Manual reading selection — used by the web-based disambiguation UI
+;; ====================================================================
+;;
+;; select-reading marks a specific reading (identified by wid + rid) as
+;; :selected-manually, and clears any previous manual selection on the
+;; same token.  Returns the updated token as JSON for the frontend.
+
 (defmethod select-reading ((text parsed-text) stream &key wid rid transliterate exact)
   (let* ((token (gethash wid (parse::word-id-table text)))
          (readings (getf token :morphology))
@@ -1028,8 +1142,22 @@
 (parse-text "მიდის ; მოვა."
             :stream *standard-output* :variety :ng :dependencies t)
 
-;; todo: remove duplication of get-val here and in function below
-;; todo: allow initialization of one sentence stretch alone
+;; ====================================================================
+;; Dependency graph construction
+;; ====================================================================
+;;
+;; The dependency structure produced by CG3 uses per-token :self/:parent
+;; integer ids.  These functions build an in-memory tree (dep-node /
+;; dep-linear-node from the graph library) that the web frontend renders
+;; as an interactive tree diagram and that CoNLL-U export serializes.
+;;
+;; initialize-depid-array creates a mapping from dep node-ids to
+;; token-array indices and child lists.  get-token-table and
+;; build-dep-graph then walk this array to construct the full tree,
+;; remapping ids to sentence-relative 1-based numbering.
+
+;; TODO: remove duplication of get-val here and in function below
+;; TODO: allow initialization of one sentence stretch alone
 (defmethod initialize-depid-array ((text parsed-text) &key (diff (list nil)) stored (subtoken-count 0))
   (let ((token-array (token-array text)))
     (labels ((get-val (token att stored-att &optional reg)
@@ -1435,10 +1563,21 @@ Field number:	Field name:	Description:
 #+test
 (setf *graph* (nth 14 *graphs*))
 
+;; ====================================================================
+;; CoNLL-U export
+;; ====================================================================
+;;
+;; Serializes the dependency trees to CoNLL-U format for UD treebank
+;; distribution.  write-dependencies-conll iterates over root nodes in
+;; the token array, builds a dep-graph for each sentence, and delegates
+;; to write-dependency-conll for the per-sentence output.  Abkhaz
+;; enclitic copulae are split into separate CoNLL tokens (abk-split-clitics).
+
 (defmethod write-dependencies-conll ((text parsed-text) stream
                                      &key ;; (start 1)
                                        document-id language
                                        all ;; include also analyses that are not stored; used for on-the-fly parsing
+                                       parsed ;; write the newly parsed, not the stored version of the analyses
                                        &allow-other-keys)
   (print :hier)
   (debug document-id)
@@ -1452,7 +1591,7 @@ Field number:	Field name:	Description:
           do
           (let ((graph (build-dep-graph text
                                         :node-id (getf node :self)
-                                        :stored (not all))))
+                                        :stored (and (not all) (not parsed)))))
             (setf *graph* graph)
             ;;(push graph *graphs*)
             (when (or all (graph-is-complete graph))

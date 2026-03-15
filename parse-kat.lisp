@@ -1,9 +1,38 @@
 ;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: PARSE; Base: 10 -*-
 
+;;;; ====================================================================
+;;;; parse-kat.lisp — Georgian (Kartvelian) language support
+;;;; ====================================================================
+;;;;
+;;;; Georgian-specific morphological lookup, transducer initialization,
+;;;; UD feature/POS mapping, and TSV/file-based parsing.  Covers all
+;;;; historical varieties: Old Georgian (OG/XM/HM), Middle Georgian (MG),
+;;;; New Georgian (NG), and Judeo-Georgian (JG).
+;;;;
+;;;; Key responsibilities:
+;;;;   - init-transducers :kat — load the FST morphological analyzers
+;;;;     (separate transducers per variety, plus guess transducers for
+;;;;     unknown words)
+;;;;   - lookup-morphology :kat — the main morphological lookup, which
+;;;;     chains through base analyzer → guess analyzer → reduplication
+;;;;     handling → MWE lookup, and returns a list of (lemma features)
+;;;;     readings
+;;;;   - morph-to-ud / morph-to-ud-pos — map GNC tagset features to UD
+;;;;   - write-text-tsv / parse-kat-file — batch parsing of text files
+;;;;   - process-text :after — post-disambiguation normalization
+;;;; ====================================================================
+
 (in-package :parse)
 
 (defclass gnc-text (parsed-text)
   ())
+
+;; ====================================================================
+;; FST transducer parameters
+;; ====================================================================
+;;
+;; One tokenizer and one morphological analyzer per variety.  The
+;; analyzers are loaded lazily by init-transducers.
 
 (defparameter *tokenizer* nil)
 (defparameter *ng-tokenizer* nil)
@@ -443,16 +472,29 @@
          (list (list "ეს" "Pron Dem Nom Sg" NIL NIL)
                (list "ეს" "Pron Dem Nom Att" NIL NIL)
                (list "ეს" "Adv Sent" NIL NIL)))
-        ((string= word "მას")
+        ((and (string= word "მას") (eq variety :ng))
          (list (list "ის" "Pron Pers 3 Dat Sg" NIL NIL)))
         ((string= word "მათ")
-         (list (list "მათ·ი" "Pron Poss Poss3Pl Gen Att <OldPl>" NIL NIL)
+         (case variety
+           (:og
+            (list (list "მათ·ი" "Pron Poss Poss3Pl Gen Att <OldPl>" NIL NIL)
                (list "მათ·ი" "Pron Poss Poss3Pl Dat Att" NIL NIL)
                (list "მათ·ი" "Pron Poss Poss3Pl Advb Att" NIL NIL)
                (list "მად" "Adv Mann Dialect" NIL NIL)
                (list "ის" "Pron Pers 3 Gen Pl" NIL NIL)
                (list "ის" "Pron Pers 3 Erg Pl" NIL NIL)
-               (list "ის" "Pron Pers 3 Dat Pl" NIL NIL)))
+               (list "ის" "Pron Pers 3 Dat Pl" NIL NIL)
+               (list "იგი" "Pron Dem Gen Pl" NIL NIL)
+               (list "იგი" "Pron Dem Erg Pl" NIL NIL)
+               (list "იგი" "Pron Dem Dat Pl" NIL NIL)))
+           (otherwise
+            (list (list "მათ·ი" "Pron Poss Poss3Pl Gen Att <OldPl>" NIL NIL)
+               (list "მათ·ი" "Pron Poss Poss3Pl Dat Att" NIL NIL)
+               (list "მათ·ი" "Pron Poss Poss3Pl Advb Att" NIL NIL)
+               (list "მად" "Adv Mann Dialect" NIL NIL)
+               (list "ის" "Pron Pers 3 Gen Pl" NIL NIL)
+               (list "ის" "Pron Pers 3 Erg Pl" NIL NIL)
+               (list "ის" "Pron Pers 3 Dat Pl" NIL NIL)))))
         ((string= word "მაგ")
          (list (list "ეგ" "Pron Dem Nom" NIL NIL)
                (list "ეგ" "Pron Dem Inst Att" NIL NIL)
@@ -500,6 +542,9 @@
                (list "ჰერ" "N Hum Qual Dat Att Foreign" NIL NIL)
                (list "ჰერ" "N Hum Qual Advb Att Foreign" NIL NIL)
                (list "ჰერ" "N Hum Voc Sg Foreign" NIL NIL)))
+        ((and (string= word "მსგავსად") (eq variety :og))
+         (list (list "მსგავსად" "Pp <Gen>" nil nil))
+         )
         (t
          (let ((lemmas+features ())
                (stripped-word
@@ -507,7 +552,7 @@
 		             (find c "ՙ‹›{}\\|")) ;; #\Armenian_Modifier_Letter_Left_Half_Ring in numbers
 		           word))
 	       (analyzer (case variety
-		           (:og *og-analyzer*)
+		           ((:og :oge) *og-analyzer*)
 		           (:xm *xm-analyzer*)
 		           (:hm *hm-analyzer*) ;; redundant?
 		           (:mg *mg-analyzer*)
@@ -1039,6 +1084,7 @@
                               (find-if (lambda (lemma)
                                          (or (string= lemma "ყოფნ[ა]/ყ[ავ]")
                                              (string= lemma "ყოფნ[ა]/არ")
+                                             (string= lemma "ყოფ[ა]/არ") ;; OG
                                              (string= lemma "ყოფნ[ა]/ყოფნ")
                                              (string= lemma "ყოფნ[ა]/ქნ")
                                              (string= lemma "ყოფნ[ა]/ყოფ")

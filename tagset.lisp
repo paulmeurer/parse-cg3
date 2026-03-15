@@ -1,14 +1,20 @@
 
+;;;; ====================================================================
+;;;; tagset.lisp — Feature and tagset frequency tables
+;;;; ====================================================================
+;;;;
+;;;; Loads feature frequencies (from features.txt) and tagset frequencies
+;;;; (from tagset.txt) into hash tables.  The tagset is filtered to only
+;;;; include features present in *features-table*, and counts are
+;;;; aggregated.  Used for statistical analysis of tagset distribution.
+;;;; ====================================================================
+
 (in-package :fst)
 
 (defparameter *features-table* (make-hash-table :test #'equal))
 
 (defparameter *tag-table* (make-hash-table :test #'equal))
 
-;; 11954
-
-
-;; 6175
 (progn
   (clrhash *features-table*)
   (u:with-file-lines (line "projects:parse-cg3;features.txt")

@@ -1,10 +1,17 @@
 ;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: PARSE; Base: 10 -*-
 
-(in-package :parse)
+;;;; ====================================================================
+;;;; extract.lisp — Lemma extraction and morphological database import
+;;;; ====================================================================
+;;;;
+;;;; Utility scripts (mostly #+test forms) for validating FST-generated
+;;;; lemma lists against the morphological database, cleaning up
+;;;; erroneous entries, and batch-importing new lemmas (nouns, proper
+;;;; names, abbreviations, chemical terms, etc.) from external word
+;;;; lists into the morph.noun-features table.
+;;;; ====================================================================
 
-;; Fehler:
-;; ის არგადამხდელია.
-;; არა- +Prop
+(in-package :parse)
 
 #+test
 (u:with-file-fields ((lemma code pos features &rest rest) "projects:georgian-morph;regex;lemmas-2023-04-01.tsv")

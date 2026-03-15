@@ -1,4 +1,42 @@
+;; ====================================================================
+;; cg3-disambiguate.lisp — CG3 grammar loading and disambiguation
+;; ====================================================================
+;;
+;; This file bridges the parse-cg3 system with the VISL CG-3 engine
+;; (via the cl-vislcg3 FFI bindings).  It handles:
+;;
+;;   1. Grammar management — loading, splitting, and caching CG3
+;;      grammars for different Georgian varieties (OG/MG/NG) and Abkhaz.
+;;      The unified grammar files (geo-dis.cg3, geo-dep.cg3) are split
+;;      into variety-specific files at load time because CG3 needs a
+;;      single coherent grammar; the split is driven by variety prefixes
+;;      (o-, m-, n-, on-, om-, etc.) at the start of rule lines.
+;;
+;;   2. Text disambiguation — cg3-disambiguate-text walks the token
+;;      array sentence by sentence, builds CG3 cohorts from the
+;;      morphological readings, runs the CG3 rules, and writes back
+;;      the selected/discarded status and rule traces into the token
+;;      plists.  It also extracts dependency parent pointers when the
+;;      grammar includes SETPARENT/SETCHILD rules.
+;;
+;;   3. Chunk disambiguation — cg3-disambiguate-chunk and
+;;      cg3-parse-sentence provide a simpler interface for running CG3
+;;      on isolated token lists (used for NE classification and testing).
+;;
+;; Thread safety: all CG3 operations are serialized via
+;; +disambiguate-lock+ because the CG3 C library is not reentrant.
+;; ====================================================================
+
 (in-package :vislcg3)
+
+;; ====================================================================
+;; Grammar parameters and loading
+;; ====================================================================
+;;
+;; Each variety has its own compiled grammar pointer.  load-grammar
+;; splits the unified grammar, validates it via the vislcg3 binary,
+;; and loads it into the CG3 library.  Grammars are cached and only
+;; reloaded when :force is true (or on first use).
 
 (defparameter *og-grammar*
   nil #+ignore
@@ -47,30 +85,44 @@
 #+test
 (load-grammar :ng)
 
-(defun split-grammar-file ()
-  (let ((og-file "projects:parse-cg3;cg3;geo-og-dis.cg3")
-	(mg-file "projects:parse-cg3;cg3;geo-mg-dis.cg3")
-	(ng-file "projects:parse-cg3;cg3;geo-ng-dis.cg3")
+;; Splits a unified grammar (geo-dis.cg3 or geo-dep.cg3) into three
+;; variety-specific files (og, mg, ng).  Rules prefixed with variety
+;; codes (e.g. "o-SELECT", "mn-REMOVE") are included only in the
+;; corresponding output files; unprefixed rules go into all three.
+;; This allows maintaining a single source file while CG3 requires
+;; a monolithic grammar.
+(defun split-grammar-file (&key (type :dis)) ;; or :dep
+  (let ((og-file (format nil "projects:parse-cg3;cg3;geo-og-~(~a~).cg3" type))
+	(mg-file (format nil "projects:parse-cg3;cg3;geo-mg-~(~a~).cg3" type))
+	(ng-file (format nil "projects:parse-cg3;cg3;geo-ng-~(~a~).cg3" type))
 	(in-og t)
 	(in-mg t)
 	(in-ng t)
+        (in-curly nil)
 	(in-rule nil))
     (with-open-file (og-stream og-file :direction :output :if-exists :supersede)
       (with-open-file (mg-stream mg-file :direction :output :if-exists :supersede)
 	(with-open-file (ng-stream ng-file :direction :output :if-exists :supersede)
-	  (u:with-file-lines (line "projects:parse-cg3;cg3;geo-dis.cg3")
+	  (u:with-file-lines (line (format nil "projects:parse-cg3;cg3;geo-~(~a~).cg3" type))
+            ;; (print (list (if in-curly :c) (if in-rule :r) (if in-og :og) (if in-ng :ng) line))
 	    (cond (in-rule
 		   (write-line (if in-og line "") og-stream)
 		   (write-line (if in-mg line "") mg-stream)
 		   (write-line (if in-ng line "") ng-stream)
-		   (when (find #\; line :end (position #\# line))
+                   (when (find #\{ line)
+                     (setf in-curly t))
+                   (when (find #\} line)
+                     (setf in-curly nil))
+		   (when (and (find #\; line :end (position #\# line))
+                              (not in-curly))
 		     (setf in-rule nil in-og t in-mg t in-ng t)))
-		  ((and (not (eq 0 (position #\# line)))
+		  ((and (not (eq 0 (position #\# (string-trim  " 	" line))))
 			(or (search "o-" line :end2 (min 4 (length line)))
 			    (search "m-" line :end2 (min 4 (length line)))
 			    (search "n-" line :end2 (min 4 (length line)))))
-		   (setf in-rule (not (find #\; line))
-			 in-og nil
+		   (setf in-rule (or (not (find #\; line)) in-curly)
+                         in-curly (find #\{ line)
+                         in-og nil
 			 in-mg nil
 			 in-ng nil)
 		   (let ((var-end (position #\- line :end (min 4 (length line)))))
@@ -82,17 +134,23 @@
 		     (write-line (if in-mg line "") mg-stream)
 		     (write-line (if in-ng line "") ng-stream)))
 		  (t
+                   (when (find #\{ line)
+                     (setf in-curly t))
+                   (when (find #\} line)
+                     (setf in-curly nil))
 		   (write-line line og-stream)
 		   (write-line line mg-stream)
 		   (write-line line ng-stream)))))))))
 
 #+test
-(split-grammar-file)
+(split-grammar-file :type :dis)
+#+test
+(split-grammar-file :type :dep)
 
 (defun load-grammar (variety &key (force t))
   (when (or force
 	    (not (ecase variety
-		   ((:og :xm :hm) *og-grammar*)
+		   ((:og :xm :hm :oge) *og-grammar*)
 		   (:mg *mg-grammar*)
 		   ((:ng :jg)
 		    *ng-grammar*)
@@ -100,11 +158,12 @@
 		    *abk-grammar*)
                    (:non
 		    *non-grammar*))))
-    (when (find variety '(:og :xm :hm :mg :ng :jg))
-      (split-grammar-file))
+    (when (find variety '(:og :xm :hm :mg :ng :jg :oge))
+      (split-grammar-file :type :dis)
+      (split-grammar-file :type :dep))
     (let ((grammar-file
-	   (ecase variety
-	     ((:og :xm :hm)
+	   (ecase (debug variety)
+	     ((:og :xm :hm :oge)
 	      "geo-og-dis.cg3")
 	     (:mg
 	      "geo-mg-dis.cg3")
@@ -118,7 +177,7 @@
 	(when error-message
 	  (error error-message)))
       (ecase variety
-	((:og :xm :hm)
+	((:og :xm :hm :oge)
 	 (when *og-grammar* (cg3-grammar-free *og-grammar*))
 	 (setf *og-grammar*
 	       (cg3-grammar-load (u:concat (namestring *grammar-path*) grammar-file))))
@@ -139,6 +198,9 @@
 	 (setf *non-grammar*
 	       (cg3-grammar-load (u:concat (namestring *grammar-path*) grammar-file))))))))
 
+;; Maps CG3 internal rule-type integers to human-readable names for
+;; rule trace display.  The integers come from the CG3 library's
+;; internal enum.
 (defun rule-name (ruletype &optional line discarded)
   (let ((name (ecase ruletype
 		(15 "add")
@@ -173,7 +235,10 @@
     (:hydronym "Top Hydr")
     (:other "Name")))
 
-;; Adds name tags from TEI name tagging
+;; When a word falls inside a TEI <name type="…"> element, we enrich
+;; its morphological readings with the corresponding proper-noun tag
+;; (Anthr, Top, Ethn, etc.) and a <Name> marker.  This lets the CG3
+;; grammar treat named-entity context as a feature for disambiguation.
 (defun augment-morphology (word morphology &key name-type)
   (let* ((prop-tag (name-type-to-prop-tag name-type))
 	 (punct-p
@@ -246,7 +311,25 @@
   (declare (ignore token))
   nil)
 
-;; todo: check if grammar has changed
+;; ====================================================================
+;; cg3-disambiguate-text — main disambiguation entry point
+;; ====================================================================
+;;
+;; Walks the token array, grouping tokens into sentences (delimited by
+;; sentence-ending punctuation or structural XML elements like </p>).
+;; For each sentence:
+;;   1. Build CG3 cohorts from the morphological readings
+;;   2. Run the CG3 grammar rules
+;;   3. Read back the selected/discarded readings and rule traces
+;;   4. Optionally read back dependency parent pointers
+;;
+;; Sentence segmentation has special handling for right punctuation
+;; ("»", """, etc.), quotation dashes followed by quote verbs, and
+;; an optional uppercase-start heuristic (used for Abkhaz).
+;; The 100-word safety limit prevents runaway sentences from blocking
+;; the CG3 engine.
+
+;; TODO: check if grammar has changed
 (defmethod cg3-disambiguate-text ((text parse::parsed-text)
 				  &key (variety :og) (tracep t) (load-grammar t) mode remove-brackets
 				    (sentence-end-strings *sentence-end-strings*)
@@ -261,7 +344,7 @@
   (with-process-lock (+disambiguate-lock+)
     (load-grammar variety :force load-grammar)
     (let* ((grammar (ecase variety
-		      ((:og :xm :hm) *og-grammar*)
+		      ((:og :xm :hm :oge) *og-grammar*)
 		      (:mg *mg-grammar*)
 		      ((:ng :jg) *ng-grammar*)
 		      (:abk *abk-grammar*)
@@ -580,6 +663,19 @@
 	          (setf (getf subtoken :parent) (1+ (or (position (getf subtoken :parent) ids) -2)))))))
       text)))
 
+;; ====================================================================
+;; msa-set-disambiguation — map CG3 output back to reading plists
+;; ====================================================================
+;;
+;; After CG3 has run, each cohort's readings are either selected or
+;; deleted.  This function matches them back to the original morphology
+;; list (by reading-id encoded as a [N] tag), records the rule traces,
+;; and handles appended readings (from APPEND/ADDCOHORT rules).
+;; For Georgian (:kat), it also updates feature strings from the CG3
+;; output, since MAP/SUBSTITUTE rules may have modified them.
+;; Returns (values added-p added-count) when ADDCOHORT created new
+;; subtokens (e.g. splitting an enclitic copula).
+
 (defun msa-set-disambiguation (word cohort morphology language guess-table)
   (let* ((added nil)
          (added-count 0)
@@ -718,11 +814,14 @@
 		       (cadddr reading) (cdr disc)))))
     (values added added-count)))
 
-;; frequency-based disambiguation
-
-;; …
-
-;; chunk disambiguation for NE classification
+;; ====================================================================
+;; Chunk disambiguation — for isolated token lists
+;; ====================================================================
+;;
+;; cg3-disambiguate-chunk and cg3-parse-sentence provide a simpler
+;; interface for running CG3 on a list of (word lemmas features) tuples
+;; rather than a full parsed-text.  Used for NE classification (guessing
+;; POS and proper-noun type for unknown words) and testing.
 
 
 #+test
@@ -746,6 +845,9 @@
 #+test
 (grammar-initialization-error-message "ng-guess-pos-ne.cg3")
 
+;; Convenience macro: loads a grammar, creates an applicator, runs body,
+;; and ensures cleanup.  Used by code that needs a one-shot grammar
+;; (e.g. NE classification with a specialized grammar file).
 (defmacro with-cg3-grammar ((APPLICATOR &key grammar-file (tracep nil))
 			    &body body)
   (with-gensyms (error-message grammar)

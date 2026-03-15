@@ -1,6 +1,26 @@
 ;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: PARSE; Base: 10 -*-
 
+;;;; ====================================================================
+;;;; parse-abk.lisp — Abkhaz language support
+;;;; ====================================================================
+;;;;
+;;;; Abkhaz-specific morphological lookup, transducer initialization,
+;;;; UD feature/POS mapping, and special handling for:
+;;;;   - Coordination compounds (e.g. "ишнеи-шнеиуа"): two joined words
+;;;;     that share morphological features, analyzed by matching readings
+;;;;     of each part
+;;;;   - Old-to-new orthography normalization via a separate FST
+;;;;   - Relaxed analysis (with arbitrary schwa insertion) as fallback
+;;;;   - Dictionary-based lemma validation (<NoLex>, <Lemma> markers)
+;;;;   - Enclitic copula splitting for CoNLL-U export
+;;;;   - Feature sorting according to a canonical order
+;;;; ====================================================================
+
 (in-package :parse)
+
+;; ====================================================================
+;; FST transducer parameters
+;; ====================================================================
 
 (defparameter *abk-analyzer* nil)
 (defparameter *abk-relax-analyzer* nil)
@@ -107,10 +127,19 @@
 #+test
 (print (lookup-abk-coord-compound "О-о"))
 
-;; two types of coordination compounds:
-;; 1. two complete words with comparable features
-;;    e.g., …гьы-…гьы coordinations, ихы-игәы, иҟаз-ианиз
-;; 2. verb-verb, first part is prefixes + root
+;; ====================================================================
+;; Coordination compound analysis
+;; ====================================================================
+;;
+;; Abkhaz has two types of hyphenated coordination compounds:
+;;   1. Two complete words with comparable features
+;;      (e.g. …гьы-…гьы, ихы-игәы, иҟаз-ианиз)
+;;   2. Verb-verb where the first part is prefixes + root only (VCoord)
+;;
+;; Each half is looked up independently, then readings are paired
+;; where the feature sets are compatible (same POS, matching person/number,
+;; etc.).  The result is a single reading with lemma "X=Y" and combined
+;; features plus "CC" tag.
 (defun lookup-abk-coord-compound (word &key (orthography :abk-cyr) print)
   (let ((hyphen-pos (position #\- word)))
     (when hyphen-pos
@@ -237,7 +266,19 @@
 #+test
 (pprint (lookup-morphology :abk "сҽанырҵеит"))
 
-(defmethod lookup-morphology ((language (eql :abk)) word 
+;; ====================================================================
+;; lookup-morphology :abk — main Abkhaz morphological lookup
+;; ====================================================================
+;;
+;; Chains through: old-orth normalization → base FST → relaxed FST
+;; (with schwa insertion) → coordination compound fallback.
+;; The relaxed analyzer catches words where schwas have been dropped
+;; in informal writing; its readings are tagged with <Relax>.
+;; Results are sorted by lemma, then by feature-set length, and
+;; redundant +Det readings are marked with [Det] when a non-Det
+;; reading with the same features exists.
+
+(defmethod lookup-morphology ((language (eql :abk)) word
                               &key mwe variety
                                 coord ;; lookup abk coordinated compound segments?
                                 (orthography :abk-cyr)
@@ -354,7 +395,7 @@
                                        lemmas+features :test #'equal))
                           
                           )))
-                    (debug lemmas+features)
+                    ;;(debug lemmas+features)
                     (setf lemmas+features
                           (sort lemmas+features
                                 (lambda (lf1 lf2)
@@ -452,6 +493,16 @@
 (print (strip-segmentation :abk "а-ҟрым-ҿры́м-ра" "аҟрым-ҿры́мра"))
 #+test
 (print (strip-segmentation :abk "Леонид-иҧа" "Леонид-иҧа"))
+
+;; ====================================================================
+;; UD feature and POS mapping for Abkhaz
+;; ====================================================================
+;;
+;; Maps ABNC tagset features to UD feature=value pairs.  The mapping
+;; table is loaded from feature-names-abk.tsv.  Special cases:
+;;   - StatPass overrides Dyn=Yes and Voice=Cau → Dyn=No + Voice=Pass
+;;   - Cop + Cnd → Mood=Nec (necessitative), except for а́кә-заа-ра
+;;   - Missing Mood defaults to Ind for finite verb forms
 
 (defmethod morph-to-ud ((language (eql :abk)) morph &key drop-pos lemma)
   (let ((features (u:split morph #\space))

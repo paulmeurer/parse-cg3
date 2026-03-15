@@ -3,32 +3,38 @@
 ;; Copyright (c) 2017, Paul Meurer, University of Bergen
 ;; https://clarino.uib.no
 ;; All rights reserved.
-;; 
+;;
 
-;; A REST/JSON API for GNC parsing
-
-;; See api-client.lisp for an example client in Common Lisp
+;;;; ====================================================================
+;;;; parse-api.lisp — REST/JSON API for morphosyntactic parsing
+;;;; ====================================================================
+;;;;
+;;;; Exposes the parse-cg3 pipeline as an HTTP endpoint at /parse-api.
+;;;; The API is session-based: clients first call :get-session to obtain
+;;;; a session id, then set per-session parameters (e.g. whether to
+;;;; return features or dependencies), and finally call :parse with a
+;;;; text string to receive tokenized, morphologically analyzed, and
+;;;; disambiguated output as JSON.
+;;;;
+;;;; The server side uses AllegroServe (aserve) via the framework-1-2
+;;;; session infrastructure.
+;;;;
+;;;; The second half of this file contains an API *client* (api-session,
+;;;; run-parse-command, get-api-session) that calls the same endpoint
+;;;; via Drakma, used for testing and integration from other Lisp systems.
+;;;; ====================================================================
 
 (in-package :parse)
 
-;; request: http://clarino.uib.no/gnc/parse-api?command=<command>&…
-;; examples:
-
-;; https://clarino.uib.no/gnc/parse-api?command=get-session
-;; returns: 
-;; {"session-id":"242097204858072","user-id":[],"user-name":[]}
-
-
-
-;; attributes: features, dependencies
-;; https://clarino.uib.no/gnc/parse-api?session-id=242097204858072&command=parameter&attribute=features&value=false
-;; returns:
-;; {"success":true}
-
-;; https://clarino.uib.no/gnc/parse-api?session-id=242097204858072&command=parse&text=გამარჯობა.
-;; returns:
-;; {"tokens":[{"word":"გამარჯობა","msa":[{"lemma":"გამარჯობა","features":"Interj"}]},{"word":".","msa":[{"lemma":".","features":"Punct Period"}]}]}
-
+;; ====================================================================
+;; Server-side API handler
+;; ====================================================================
+;;
+;; Commands:
+;;   :get-session  — create a new session, return session-id
+;;   :parameter    — set session attribute (readings, lemma, disambiguate,
+;;                   features, dependencies, suppress-discarded-p)
+;;   :parse        — parse text, return JSON with tokens + MSA
 
 (define-url-function parse-api-json
     (request ((session-id integer)
@@ -46,7 +52,7 @@
 	     :path "/parse-api"
 	     :base-url nil ;; (base-url *framework*)
 	     :type :json)
-  (debug (request-query request))
+  ;;(debug (request-query request))
   (progn ;; clsql:with-database-connection ()
     (block rest
       (multiple-value-bind (user-id user-name login-type expired-p)
@@ -96,7 +102,9 @@
 
 
 
-;;; client
+;; ====================================================================
+;; API client — for testing and Lisp-to-Lisp integration
+;; ====================================================================
 
 (defclass api-session ()
   ((session-id :initform nil :initarg :session-id :reader session-id)))

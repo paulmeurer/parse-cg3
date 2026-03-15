@@ -3,7 +3,16 @@
 ;; Copyright (c) 2021, Paul Meurer, University of Bergen
 ;; https://clarino.uib.no
 ;; All rights reserved.
-;; 
+;;
+
+;;;; ====================================================================
+;;;; parse-package.lisp — PARSE package definition (cl-fst backend)
+;;;; ====================================================================
+;;;;
+;;;; Defines the PARSE package used by all parse-cg3 source files.
+;;;; This variant uses CL-FST for finite-state transducer operations;
+;;;; parse-package-foma.lisp is the alternative using CL-FOMA.
+;;;; ====================================================================
 
 (in-package "CL-USER")
 

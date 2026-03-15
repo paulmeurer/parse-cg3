@@ -1,5 +1,16 @@
 ;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: PARSE; Base: 10 -*-
 
+;;;; ====================================================================
+;;;; extract-unknown.lisp — Unknown word analysis and recall measurement
+;;;; ====================================================================
+;;;;
+;;;; Scripts for measuring morphological analyzer recall on specific
+;;;; text collections (Abuserisdze, Tinatin, NGO texts, Gazetebi, etc.)
+;;;; and extracting unknown words for manual review and lexicon expansion.
+;;;; Also includes batch parsing of text files with guessed-word export
+;;;; and proper-name validation against the FST lexicon.
+;;;; ====================================================================
+
 (in-package :parse)
 
 (init-transducers :kat :plain-og t)

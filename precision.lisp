@@ -1,8 +1,19 @@
 ;; -*- Mode: lisp; Syntax: ansi-common-lisp; Package: PARSE; Base: 10 -*-
 
-(in-package :parse)
+;;;; ====================================================================
+;;;; precision.lisp — Dependency parsing evaluation
+;;;; ====================================================================
+;;;;
+;;;; Compares automatically parsed dependency trees against manually
+;;;; annotated gold-standard trees stored in the corpus database.
+;;;; Reports head attachment errors, relation label errors, and combined
+;;;; errors (LAS/UAS-style).  The korpuskel-side method iterates over
+;;;; all annotated sentences in a corpus, re-parses each page, and
+;;;; accumulates precision counts.  CoNLL files can optionally be
+;;;; written for external evaluation tools.
+;;;; ====================================================================
 
-;; precision calculation
+(in-package :parse)
 
 #+test
 (calculate-precision *text* *standard-output*)
@@ -103,10 +114,11 @@
       (do-query ((corpus-name document wid)
                  [select [corpus] [document] [wid]
                          :from [corpus disambiguation]
-                         :where [and [like [corpus]
-                                           (ecase language
-                                             (:kat "g%-%")
-                                             (:abk "abnc"))]
+                         :where [and [in [corpus]
+                                         (ecase language
+                                           (:kat '("gnc-kat" "gnc-trans" "grc-rt"))
+                                           (:oge '("gnc-oshki" "gnc-oge"))
+                                           (:abk '("abnc")))]
                                      [not [null [label]]]
                                      [null [parent]]]
                          :order-by '([corpus] [document] [wid])])
@@ -135,7 +147,6 @@
                                          (multiple-value-setq (start-cpos end-cpos)
                                            (get-containing-element-cpositions corpus cpos (list "text")
                                                                               :milestonep nil :complete-text t)))
-                                       ;;(print (list start-cpos end-cpos))
                                        (let ((text (parse-corpus-context corpus
                                                                          :start-cpos start-cpos
                                                                          :end-cpos end-cpos
@@ -189,13 +200,16 @@
       (debug count))))
 
 ;; diff $(ls -t | head -n 2)
-;; diff of 3rd newest and newest:
+;; > is old, < is new
+
+;; diff of 3rd newest and newest (etc.):
 ;; diff $(ls -t | head -n 3 | tail -n 1) $(ls -t | head -n 1)
+
 #+main
 (with-open-file (stream (format nil "projects:ud;kat;precision;precision-~a.txt"
                                 (now :format :timestamp-utc))
                         :direction :output :if-exists :supersede)
-  (calculate-precision :kat stream :write-conll t)
+  (calculate-precision :kat stream :write-conll nil)
   (print :done))
 
 #+main
