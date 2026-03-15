@@ -315,6 +315,7 @@
 #+test
 (pprint (lookup-morphology :kat "მეოთხედი"))
 
+;; hard-coded look-ups that override the fst and eventually should be integrated into the fst
 (defmethod lookup-morphology ((language (eql :kat)) word
                               &key (variety :ng) guess-table tmesis-segment mwe
                                 &allow-other-keys)
@@ -1084,10 +1085,12 @@
                               (find-if (lambda (lemma)
                                          (or (string= lemma "ყოფნ[ა]/ყ[ავ]")
                                              (string= lemma "ყოფნ[ა]/არ")
-                                             (string= lemma "ყოფ[ა]/არ") ;; OG
                                              (string= lemma "ყოფნ[ა]/ყოფნ")
                                              (string= lemma "ყოფნ[ა]/ქნ")
                                              (string= lemma "ყოფნ[ა]/ყოფ")
+                                             ;; OG
+                                             (string= lemma "ყოფ[ა]/არ")
+                                             (string= lemma "ყოფ[ა]/ყ[ავ]")
                                              (and xcomp-aux
                                                   (or (string= lemma "ქონ[ა]/ქვ")
                                                       (string= lemma "ქონ[ა]/ქონ")
