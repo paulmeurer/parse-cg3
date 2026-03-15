@@ -1,9 +1,54 @@
 # ============================================ #
 # Abkhaz disambiguator                         #
 # ============================================ #
-
+#
+# CG3 grammar for morphological disambiguation and dependency parsing
+# of Abkhaz text.  Input comes from the Abkhaz FST (abkhaz-noun.fst,
+# abkhaz-verb.fst) via parse-abk.lisp, which produces all possible
+# morphological readings for each token.
+#
+# The grammar has four phases, ordered by decreasing confidence:
+#
+#   Phase 1 — Lexical disambiguation (SELECT/REMOVE for specific lemmas)
+#     Hardcoded choices for words where the FST produces spurious
+#     readings.  These fire first because they are certain and reduce
+#     noise for later rules.
+#
+#   Phase 2 — Syntactic disambiguation (agreement, collocations, context)
+#     Proper names, pronoun–postposition agreement, argument marker
+#     agreement (Abkhaz verbs cross-reference S, DO, IO, LO, RO, PO
+#     via prefixes), finiteness, tense sequencing, and semantic
+#     restrictions (body parts, sounds, weather).
+#
+#   Phase 3 — Heuristic fallbacks
+#     Low-confidence rules that resolve remaining ambiguity using
+#     broad patterns (<Lemma>/<LemmaLC>, unspecified feature removal).
+#
+#   Phase 4 — Dependency relations
+#     Builds the dependency tree by attaching each token to its head
+#     and assigning UD dependency labels.  The strategy is:
+#     (a) attach local modifiers first (names, adjectives, numerals,
+#         postpositions, determiners);
+#     (b) attach verb arguments using agreement between the verb's
+#         cross-reference prefixes and adjacent nouns/pronouns;
+#     (c) attach clausal dependents (converbs, conditionals, purpose
+#         clauses, quotations, relative clauses);
+#     (d) coordinate/parataxis of main verbs;
+#     (e) punctuation and structural cleanup.
+#
+# Abkhaz-specific challenges addressed by this grammar:
+#   - Polysynthetic verb morphology: a single verb can cross-reference
+#     up to 4 arguments (S, DO, IO, and a locative/relational slot),
+#     which the grammar uses to link NPs to their head verb.
+#   - Coordination via enclitics -и and -гьы rather than free conjunctions.
+#   - Postpositions encoded as possessive suffixes on the postposition
+#     (e.g. ашьҭахь 'after' with Poss:3SgNH agrees with a NH noun).
+#   - Quotation particle ҳәа marks reported speech boundaries.
+#   - PastIndef (narrative background) + Aorist (foreground event)
+#     sequencing in storytelling.
+#
 # see https://edu.visl.dk/cg3/single/ for CG documentation
-
+#
 # CG-3 always applies rules in the order they occur in the grammar,
 # and will try the current rule on all cohorts in the window before
 # moving on to the next rule. This yields a far more predictable
@@ -27,7 +72,8 @@
 
 # мацара advmod to the left only?
 
-# tags taken from abkhaz-noun.fst and abkhaz-verb.fst Sigma lists
+# Tags taken from abkhaz-noun.fst and abkhaz-verb.fst Sigma lists.
+# STRICT-TAGS ensures only these tags are accepted; typos cause errors.
 STRICT-TAGS += Abbrev Abs Cnv Adhort 
        Adj Adv Advb Again AgainPfx Agit Alas Anthr Aor Approx
        AsIf AsLongAs Bracket Card Caus Cj Coll Colon Comma 
@@ -176,11 +222,36 @@ DELIMITERS = "<.>" "<!>" "<?>" "<…>" "<;>" "<–>" ;
 # ============= #
 # Tags and sets #
 # ============= #
+#
+# The tagset mirrors the FST's Sigma alphabet.  Key design choices:
+#
+# Argument markers (S:, DO:, IO:, LO:, RO:, PO:, Cs:) encode the
+# person/number/gender of each verb argument slot, reflecting Abkhaz
+# polysynthetic morphology.  The ":Ad" suffix (S:Ad, DO:Ad) marks
+# the 3rd-person absolutive slot — an "addressable" argument that
+# can be cross-referenced by an overt NP.  The ":Rel" suffix marks
+# relativized arguments (used in relative clauses).
+#
+# Dependency labels use the ">" prefix (>NSUBJ, >OBJ, >CASE, etc.)
+# and extend standard UD relations with language-specific subtypes:
+#   >IOBJ:LO / >IOBJ:RO / >IOBJ:PO — locative, relational, potentialis
+#     indirect objects, reflecting Abkhaz's distinct applicative slots
+#   >ADVCL:CONV — converb (absolutive non-finite form)
+#   >ADVCL:SEQ  — narrative tense sequencing (PastIndef → Aorist)
+#   >ADVCL:COND — conditional (Conj-I / Conj-II verb forms)
+#   >CCOMP:QUOTE / >ADVCL:QUOTE — direct/indirect speech with ҳәа
+#   >CONJ:Q — question-word coordination (мариоу имариаму)
+#
 
 
 # ========
    SETS
 # ========
+#
+# Set definitions group related tags for use in rule conditions.
+# The argument-marker sets (AM:*) are central: they collect all verb
+# slots that can cross-reference a given person/number/gender, so a
+# single rule can check whether *any* argument slot matches a given NP.
 
 SET BOS = (>>>) | (<s>) ;
 SET BOP = (>>>) | Comma | Semicolon | Colon | Punct | ("–") ;
@@ -314,9 +385,20 @@ LIST VSaying = "а-ҳәа-ра́" "а́·ҳәа-ра" "а́иц·ҳәа-ра" "�
 LIST PlNoun = "а́-жәлар" "а-мили́циа" "а-ҭаацәа́" "а-ҭаацәара́"
               "а́-рахә" "а́-рахә=а́-шәахә" "а-ҿа́р" "а-уахьа́д" "а-шьамаҟа́" ;
 
-# ======== #
-  SECTION  #
-# ======== #
+# ================================================ #
+  SECTION — Lexical disambiguation                 #
+# ================================================ #
+#
+# Phase 1: Hardcoded SELECT/REMOVE for specific lemmas.
+#
+# These rules resolve ambiguities where the FST produces multiple
+# readings but only one is correct regardless of context.  They fire
+# first to reduce noise for subsequent context-sensitive rules.
+#
+# The enclitic copula (оуп/оума) is split off as a separate cohort
+# via ADDCOHORT, because the FST treats Noun+Cop as a single token
+# but the dependency grammar needs them as separate nodes.
+# E.g. "аҧсуоуп" → аҧсуа + _оуп (copula)
 
 SELECT <Sel> ; # select manually disambiguated reading
 
@@ -324,6 +406,8 @@ SELECT ("а́уп") + Adv IF (-1C V + Fin) ;
 REMOVE ("а́уп") + Adv ;
 SELECT ("а́кә-заа-ра") IF (NOT 0 ("изакәы́зеи")) ; # too rigid?
 
+# Split enclitic copula into its own cohort for dependency parsing.
+# The copula agrees in IO with the subject (IO:3SgNH for non-human).
 ADDCOHORT ("<_оуп>" "а́кә-заа-ра" [0] V Stat Fin Pres S:3 IO:3SgNH EnclCop)
     AFTER Cop - V - Q
        IF (0C Cop - V)
@@ -1654,6 +1738,13 @@ SELECT Ord IF (0 ("а-тәы́")) ; # 20-тәи
 
 # Lexical disambiguation
 # ========================
+#
+# Context-sensitive disambiguation of proper names, collocations, and
+# semantically restricted constructions.  Many Abkhaz words are ambiguous
+# between a proper noun reading and a common noun/adjective reading
+# (e.g. "Ду" = proper name vs. "ду" = 'big').  These rules use the
+# surrounding context (e.g. preceding noun "а-нцәа́" 'God' disambiguates
+# "Ду" as adjective 'great', not a name).
 
 # upper case
 
@@ -1735,6 +1826,13 @@ SELECT ("а-р:у-ра́") + Tr + Ad
 
 # иазгәасымҭар ауам/ауеит
 SELECT ("а-у-ра́") IF (-1 Conj-I) ;
+
+# ---- Semantic lists for collocational disambiguation ----
+#
+# Abkhaz has many verbs that are ambiguous between readings that are
+# resolved by the semantic class of their arguments.  E.g. а·у-ра́
+# means 'to rain/snow' with precipitation nouns, but 'to do/make'
+# elsewhere.  These lists encode the relevant noun classes.
 
 LIST Precipitation = "а-қәа́" "а-сы́" "а-сду́" "а-кы́рцх" "а-қәаршаҩы́" ;
 
@@ -2012,10 +2110,23 @@ LIST PriceAdj = "а-ду́" "á-ҳарак" "а́-мариа" "а́-цәгьа"
 # зыхә мариоу
 SELECT ("а́-хә") + NH IF (1 PriceAdj) ;
 
-# ========================
+# ================================================
+# Pronoun–postposition agreement
+# ================================================
+#
+# Abkhaz postpositions carry possessive suffixes that agree in person,
+# number, and gender with the preceding noun or pronoun.  E.g.:
+#   сара сахь   'to me'     (1Sg pronoun + PP with Poss:1Sg)
+#   Ҧыҭрак ашьҭахь  'after a while'  (NH noun + PP with Poss:3SgNH)
+# These rules SELECT the correct possessive form on the postposition
+# when the preceding pronoun unambiguously determines agreement.
+#
+# Gold: Ҧыҭрак ашьҭахь илақәа неиқәиҧсан дыҵәеит.
+#       (adzhindzhal-sh+djavol+w1468800)
+#       ашьҭахь → case, head=Ҧыҭрак
 
 SELECT PP + Poss:1Sg
-    IF (-1 Pron + Pers + 1Sg) ; 
+    IF (-1 Pron + Pers + 1Sg) ;
 SELECT PP + Poss:2SgM
     IF (-1 (Pron Pers 2SgM)) ; 
 SELECT PP + Poss:2SgF
@@ -2060,7 +2171,10 @@ SELECT AD
 
 REMOVE POSTP IF (1C AD) ;
 
-# use barrier?
+# Argument marker agreement: if a pronoun precedes a verb, select the
+# pronoun reading whose person/number matches a verb argument slot.
+# This exploits Abkhaz polysynthetic morphology — the verb's prefixes
+# cross-reference arguments, so agreement disambiguates pronouns.
 SELECT (Pron Pers 1Pl)
     IF (1* AM:1Pl) ;
 SELECT (Pron Pers 2Pl)
@@ -2090,6 +2204,19 @@ SELECT V + AM:2Pl
 #SELECT (DO:3)
 #    IF (-1 Pl)
 #       (0 (DO:Ad)) ;
+
+# ================================================
+# Finiteness and tense disambiguation
+# ================================================
+#
+# Abkhaz verb forms are often ambiguous between finite and non-finite
+# readings.  These rules use syntactic position to disambiguate:
+#   - A finite verb or absolutive cannot be a direct object (DO:Ad),
+#     except under verbs of saying (а-ҳәа-ра́ 'to say').
+#   - Absolutives in narratives match the tense of the main verb
+#     (e.g. Abs+Aor when a finite Aor follows).
+#   - Non-finite forms are removed when no finite verb is present
+#     in the clause.
 
 # finite forms and absolutives cannot be direct objects
 # except if subordinate to а-ҳәа-ра́
@@ -2191,6 +2318,16 @@ REMOVE <Deriv> ;
 
 # Syntactic disambiguation
 # ========================
+#
+# Abkhaz coordinates NPs using the enclitics -и and -гьы suffixed
+# directly to each conjunct, rather than free coordinating conjunctions.
+# E.g. аҧсҳареи, амчреи, аҳаракыреи 'power-and, strength-and, greatness-and'
+# The Coord tag marks these forms; the rules below select the correct
+# POS when a word is ambiguous between coordinated and non-coordinated
+# readings.
+#
+# Gold: Избан акәзар, Уара иутәуп наӡаӡа аҧсҳареи, амчреи, аҳаракыреи.
+#       (life-of-jesus+w6000) — coordination via -и enclitic
 
 # coordinate equal POS
 SELECT Noun + COORD
@@ -3035,6 +3172,15 @@ SELECT LHP IF (1C RHP) ;
 
 # Heuristics
 # ========================
+#
+# Phase 3: Low-confidence fallback rules that fire after all context-
+# sensitive disambiguation has been attempted.  These use broad patterns:
+#   - Select the <Lemma> (dictionary form) over <LemmaLC> (lowercase)
+#   - Remove remaining ambiguity based on general tendencies
+#   - Clean up features that are unlikely in isolation
+#
+# Rules here are deliberately placed late to avoid overriding the
+# more precise rules in earlier sections.
 
 # Remove Poss:3SgNH at sentence start
 
@@ -3398,11 +3544,38 @@ REMOVE StatPass IF (0 V - StatPass) ;
 
 # END
 
-# ==================== #
-  SECTION	       #
-# 	   	       #
-# Dependency relations #
-# ==================== #
+# ================================================ #
+  SECTION                                           #
+#                                                   #
+# Dependency relations                              #
+# ================================================ #
+#
+# Phase 4: Builds the dependency tree.  Each rule uses WITH/IF to
+# identify an unattached token (NOPARENT) and its likely head, then
+# SETPARENT attaches it and MAP assigns the UD dependency label.
+#
+# REMCOHORT IGNORED WITHCHILD hides tokens (with their dependents)
+# from subsequent rules, making them invisible to positional tests
+# and barriers.  Without hiding, an already-attached modifier would
+# still occupy a position slot and could block or misdirect rules
+# that scan for adjacent tokens or use barriers.
+#
+# The rules are ordered from most local/certain to most distant/uncertain:
+#   1. Punctuation: quotes, brackets
+#   2. Names: flat:name for first+last name sequences
+#   3. Numerals: nummod for cardinal/ordinal numbers
+#   4. Coordination: conj for -и/-гьы enclitics
+#   5. Adjectives: amod for pre- and post-nominal adjectives
+#   6. Postpositions: case for possessive-agreeing postpositions
+#   7. Possessors: nmod:poss using possessive suffixes
+#   8. Copula predicates: xcomp for copula complements
+#   9. Adverbs: advmod
+#  10. Verb arguments: nsubj/obj/iobj using agreement markers
+#  11. Clausal dependents: advcl, ccomp, csubj
+#  12. Quotation: ccomp:quote/advcl:quote with ҳәа
+#  13. Clause coordination: conj/parataxis for main verbs
+#  14. Converbs and conditionals: advcl:conv, advcl:cond
+#  15. Final punctuation and structural cleanup
 
 LIST RELS = /^>/r ;
 
@@ -3472,6 +3645,15 @@ ADD (Pl) Anthr + MF
      (1 LastName + Coord)
      (3 LastName + Coord) ;
 
+# ---- Name sequences (flat:name) ----
+#
+# Abkhaz person names follow the pattern: LastName FirstName [Patronymic].
+# The grammar attaches last names and patronymics to the first name
+# (Anthr) as flat:name, then hides the compound from later rules.
+#
+# Gold: Пиатаков Георги Леонид-иҧа … (adzhindzhal-sh+djavol+w2862400)
+#       Георги → flat:name, head=Пиатаков
+
 WITH NOPARENT LastName OR Patr
   IF (-1 Anthr + MF)
      (NOT p (*)) {
@@ -3515,6 +3697,16 @@ WITH Num + Card
    SETPARENT (*) TO (jC1 (*)) ;
    MAP >NUMMOD (*) ;
 } ;
+
+# ---- Coordination (conj) ----
+#
+# Abkhaz NP coordination uses the enclitics -и and -гьы suffixed to
+# each conjunct.  The second (and subsequent) conjuncts are attached
+# as >CONJ to the first.  Plural is added to the first conjunct
+# when two coordinated NPs form a plural subject.
+#
+# Gold: …аҧсҳареи, амчреи, аҳаракыреи (life-of-jesus+w6000)
+#       амчреи → conj, head=аҧсҳареи
 
 # not: аӡәгьы акгьы
 ADD (Pl) CoordEnc - Indef
@@ -3637,8 +3829,17 @@ WITH Num + Mult
  #  REMCOHORT IGNORED WITHCHILD (*) (*) ;
 } ;
 
-# attach Adj to Noun, hide Adj
-# not sure using REMCOHORT is correct here
+# ---- Adjective attachment (amod) ----
+#
+# Abkhaz has both pre-nominal adjectives (<PreAdj>, e.g. даҽа 'other')
+# and post-nominal adjectives (the default).  Pre-nominal adjectives
+# are attached and hidden first; post-nominal adjectives are attached
+# to the immediately preceding noun.  Hiding (REMCOHORT IGNORED) is
+# used because the adjective has already been incorporated into the
+# noun phrase and should not interfere with later verb-argument rules.
+#
+# Gold: ҟаҧшь аҧаҵа 'red ant' (adzhindzhal-sh+djavol+w2654000)
+#       ҟаҧшь → amod, head=аҧаҵа
 
 WITH NOPARENT Adj + <PreAdj>
      IF (1C Noun OR ("хәыҷы́к") + Adv) # даҽа хәыҷык
@@ -3681,7 +3882,16 @@ WITH NOPARENT ("зегьы́") + Quant
 } ;
 
 
-# attach POSTP with >CASE to head noun
+# ---- Postposition attachment (case) ----
+#
+# Abkhaz postpositions carry possessive agreement suffixes matching
+# the person, number, and gender of their complement noun.  The rules
+# below attach a postposition to its preceding noun when agreement
+# holds.  This is split by agreement class (3SgNH, 3SgM, 3SgF, 3Pl,
+# 1Sg, 2Sg, etc.) because each requires different NP constraints.
+#
+# Gold: Ҧыҭрак ашьҭахь 'after a while' (adzhindzhal-sh+djavol+w1468800)
+#       ашьҭахь (PP+Poss:3SgNH) → case, head=Ҧыҭрак (NH noun)
 
 WITH NOPARENT PP + Poss:3SgNH | ("нахы́с") | ("инаркны́")
      IF (-1 Noun + Sg + NH - Abs |
@@ -3865,7 +4075,13 @@ WITH NOPARENT PP + Poss:2Pl
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-# attach Num to Noun!
+# ---- Numeral attachment (nummod) ----
+#
+# Cardinal and ordinal numerals attach to their head noun.  Abkhaz
+# numerals distinguish human (H) and non-human (NH) noun classes.
+#
+# Gold: Жәацуха 400 мааҭ … (adzhindzhal-sh+djavol+w3176300)
+#       400 → nummod, head=мааҭ
 
 WITH NOPARENT Num + H + Indet + Card OR Num + H + Card + ("ҩы́џьа")
   IF (1C Noun + H + Pl OR ("а-хша́ра"))
@@ -3958,7 +4174,14 @@ WITH Adv + Int + NH
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-# complex predicates
+# ---- Complex predicates (compound:pred) ----
+#
+# Abkhaz has light verb constructions where a noun/adjective (LHP,
+# left-hand part) combines with a light verb (RHP, right-hand part)
+# to form a single predicate.  The LHP carries the argument marker
+# prefixes (S:, DO:, IO:, etc.) and the RHP carries tense and other
+# suffixal markers.
+
 WITH RHP
   IF (-1 LHP)
      (NOT p (*)) {
@@ -3974,10 +4197,14 @@ WITH NOPARENT ("акы́р")
    MAP >ADVMOD (*) ;
 } ;
 
-# Aux
+# ---- Auxiliary verbs (aux) ----
+#
+# Modal verbs like ҟалоит 'can/is possible', акәхап 'probably',
+# and алшоит 'can/be able' attach as >AUX to their Conj-I/Purp
+# complement.  They carry S:3 (3rd person subject marker).
 
 # лхы акы азылур ҟалоит “sie kann sich etwas antun”
-WITH NOPARENT ("а́-ҟа·ла-ра") + S:Ad
+WITH NOPARENT (“а́-ҟа·ла-ра”) + S:Ad
   IF (-1 Conj-I) # OR WhEver)
      (NOT p (*)) {
    SETPARENT (*) TO (jC1 (*)) ;
@@ -4211,6 +4438,17 @@ WITH ("а-капита́н")
    MAP >APPOS (*) ;
   REMCOHORT IGNORED WITHCHILD (*) (*) ;
 } ;
+
+# ---- Possessor attachment (nmod:poss) ----
+#
+# Abkhaz nouns carry possessive prefixes agreeing with their possessor.
+# A noun with Poss:3SgNH preceded by a non-human noun is interpreted
+# as a possessive construction: NP[possessor] + N[Poss:3SgNH] → nmod:poss.
+# The rule excludes postpositions (which also carry possessive morphology
+# but are attached via >CASE instead).
+#
+# The pattern is repeated for each agreement class (3SgM, 3SgF, 3Pl, etc.)
+# to handle human masculine, feminine, and plural possessors.
 
 WITH NOPARENT Pron + Dem + Sg - POSTP | Noun - Pl - H - POSTP | VN - POSTP | Pron + NH
   IF (1 Poss:3SgNH - >CASE)
@@ -4796,6 +5034,15 @@ WITH S:Rel
    MAP >CCOMP:RO (*) ;
 };
 
+# ---- Relative clauses (acl:relcl) ----
+#
+# Abkhaz relative clauses are typically prenominal: the relative verb
+# form (Rel) tends to precede its head noun, though postnominal
+# placement also occurs.  The relativized argument is marked by
+# possessive or argument prefixes with :Rel suffix (S:Rel, DO:Rel, etc.).
+# Nouns that are part of compound predicates (а-хы́, а-гәы́, хры́ҩ)
+# are excluded as potential heads.
+
 WITH Rel - QUEST
      # exclude nouns that probably are part of compound verb (or how to call it?)
      IF (1 Noun - ("а-хы́") - ("а-гәы́") - ("хры́ҩ") - Pred
@@ -4852,7 +5099,33 @@ WITH ("а́кә-заа-ра") + Neg
    MAP >ACL (*) ;
 };
 
-# Verb arguments
+# ================================================
+# Verb arguments (nsubj, obj, iobj)
+# ================================================
+#
+# The core of Abkhaz dependency parsing: linking NPs to their head
+# verb using cross-referencing agreement.  Abkhaz verbs can encode
+# up to 4 argument slots via prefixes:
+#   S:  — subject (absolutive for intransitive, ergative for transitive)
+#   DO: — direct object
+#   IO: — indirect object (dative)
+#   LO: — locative argument (spatial/goal)
+#   RO: — relational argument (comitative, instrumental, etc.)
+#   PO: — potentialis argument (in potential constructions, the DO
+#         becomes the subject and the original subject is demoted to
+#         an indirect object cross-referenced by PO: markers)
+#   Cs: — causee
+#
+# The strategy is layered by distance and confidence:
+#   (a) Adjacent attachment: NP immediately before verb → nsubj/obj
+#   (b) Near attachment: NP within clause, with BARRIER at CLB/Comma
+#   (c) Distant attachment: NP anywhere in sentence (last resort)
+#
+# Each layer is further split by agreement class (3SgM, 3SgF, 3SgNH,
+# 3Pl, 1Sg, 2SgM, etc.) to ensure correct person/number/gender match.
+#
+# Gold: Иисус ахәыҷқәа зегьы дырҩызоуп! (life-of-jesus+w7300)
+#       Иисус → nsubj (PROPN, agrees with S:3SgM on verb)
 
 SET SgNoun = Noun - Pl - POSTP | Noun - Hum - POSTP ;
 
@@ -4941,7 +5214,15 @@ WITH NOPARENT Noun + Hum - EPOSTP OR Pron + Dem
 
 
 
-# Vocative
+# ---- Vocative ----
+#
+# Vocative nouns are set off by commas and typically followed by
+# exclamation marks.  After attachment, the vocative and its
+# punctuation are hidden (REMCOHORT IGNORED) so they do not
+# interfere with verb argument attachment.
+#
+# Gold: Алахша, унапы анҵа сҳәеит! (adzhindzhal-sh+djavol+w3093400)
+#       Алахша → vocative
 
 LIST VOC = "а́-хаара" "а́-иашьа" ;
 
@@ -5144,9 +5425,15 @@ WITH NOPARENT Pron + Pers + 3Sg OR SgNoun - Hum - Anthr - EPOSTP - PP OR Pron + 
    SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-# Purposive clause
+# ---- Purposive clauses (advcl:purp, ccomp:obj) ----
+#
+# Abkhaz purposive verb forms (Purp) can function as adverbial purpose
+# clauses or as clausal arguments.  The grammar first tries to attach
+# to verbs that lexically select purposive complements (PurpVerbs),
+# then falls back to other verbs.  Verbs like а-ҭах-ра́ 'to want' and
+# а́-ӡба-ра 'to decide' take purposive direct objects (ccomp:obj),
+# while motion verbs take adverbial purpose clauses (advcl:purp).
 
-# convert to LIST
 LIST PurpVerbs = "а-ҭах-ра́" "а-ҿы́-заа-ра" "а́кә-заа-ра"
      "а́-ла·га-ра"
     # "а́-ӡба-ра"
@@ -5598,7 +5885,13 @@ WITH Rel
 } ;
 
 
-# 1/2 Pron + S
+# ---- 1st/2nd person pronoun attachment ----
+#
+# Unlike 3rd person NPs (which are disambiguated by gender/number
+# agreement), 1st and 2nd person pronouns directly match their
+# person slot on the verb.  E.g. сара 'I' matches S:1Sg, DO:1Sg,
+# IO:1Sg etc.  The rules try subject first, then object, then
+# indirect object, for each person/number combination.
 
 # prelim
 WITH Pron + Pers + 1Sg
@@ -7446,7 +7739,17 @@ WITH NOPARENT CONJIPF
    SETPARENT (*) TO (jC1 (*)) ;
 };
 
-# ??
+# ---- Converb attachment (advcl:conv) ----
+#
+# The absolutive (Abs/Cnv) is Abkhaz's primary converb form, expressing
+# simultaneous or sequential background events.  Converbs attach to the
+# nearest finite verb, either forward or backward, with progressively
+# relaxed barriers.  Multiple converbs can chain before a main verb.
+#
+# Gold: …дхәыцуа, игәалашәаз игәалаҟара аабжьнахит…
+#       (adzhindzhal-sh+djavol+w2640700)
+#       дхәыцуа (Cnv+Abs) → advcl:conv
+
 WITH NOPARENT Abs
   IF (1 Abs - Connect | Cop) # BARRIER Connect | Comma)
      (NOT p (*)) {
@@ -7625,7 +7928,13 @@ WITH Punct - Comma - Dash
 
 SETPARENT IntMark IF (NEGATE p (*)) TO (-1 Pron + Int) ;
 
-# conditional phrase
+# ---- Conditional clauses (advcl:cond) ----
+#
+# Abkhaz conditional clauses use the verb forms Conj-I (realis 'when/if')
+# and Conj-II (irrealis 'if/would').  These are attached as advcl:cond
+# to the main verb, either following or preceding it.
+# Necessitive copula forms (-роуп) must be excluded.
+
 WITH Conj-I - Cop
      OR Conj-II - Cop # have to exclude -роуп forms (necessitives),
      OR Conj-I + ("а́кә-заа-ра")    # but not copula verb with Conj-I/II
@@ -7648,10 +7957,13 @@ WITH Conj-I - Cop
   SETPARENT (*) TO (jC1 (*)) ;
 } ;
 
-# cleft sentence
-# Cop (Focus) + Rel (given Topic)
-
-# Det er en semantisk subjektegenskap å være gitt i konteksten og bli tilskrevet en egenskap. (Helge)
+# ---- Cleft sentences ----
+#
+# Abkhaz cleft construction: Cop(Focus) + Rel(Topic).
+# The relative clause (Rel) provides given/topic information, while
+# the copula carries the focused constituent as its complement.
+# E.g. Афароуп сара сзызку 'To eat is what I am all about'
+#       → Rel clause attaches as csubj to the copula.
 
 # амла уаганы аҧсроуп иузыҧшу
 # Афароуп сара сзызку
@@ -7701,6 +8013,25 @@ WITH N + Hum - Pl - F
 
 SET DO:Ad:ҿ = DO:Ad | DO:ҿ ;
 
+# ---- Quotation / reported speech ----
+#
+# Abkhaz marks direct speech with the particle ҳәа 'saying' (Quote),
+# which attaches as >MARK to the quoted verb.  The quoted clause
+# attaches to the verb of saying as either:
+#   >CCOMP:QUOTE — if the saying verb takes the quote as a DO argument
+#     (transitive verbs of saying like а-ҳәа-ра́)
+#   >ADVCL:QUOTE — if the saying verb is intransitive
+#     (e.g. а-ҵаа-ра́ 'to ask', а-хәы́ц-ра 'to think')
+#
+# The rules handle multiple patterns:
+#   V + ҳәа + VSaying  (quote precedes verb of saying)
+#   VSaying + : + « V »  (quote follows verb of saying)
+#   V + » + – + ҳәа + VSaying  (dash-separated dialogue)
+#
+# Gold: – Сара Аҧсны сиит, … – иҳәеит аҧшәма.
+#       (adzhindzhal-sh+djavol+w2660500)
+#       сиит → ccomp:quote, head=иҳәеит
+
 # quote phrase
 WITH VERB - PastIndef
   IF (2w VSaying + DO:Ad LINK NEGATE c >OBJ OR >CCOMP:QUOTE)
@@ -7725,6 +8056,17 @@ WITH VERB - PastIndef
   SETPARENT (*) TO (jC1 (*)) ;
   MAP >CSUBJ:QUOTE (*) IF (p (*)) ;
 } ;
+
+# ---- Clause coordination vs. parataxis ----
+#
+# Multiple main verbs in the same sentence are related as either:
+#   >CONJ — coordination (same tense, linked by conjunction or -гьы)
+#   >PARATAXIS — juxtaposition (different tense, or separated by : ; )
+#
+# The heuristic: if verbs share the same tense ($$TENSE) and one has
+# a CC dependent or an argument with Encl:гьы, they are conjoined.
+# Otherwise, verbs separated by colon/semicolon are parataxis.
+# Verbs of saying are excluded because they take quoted clauses.
 
 # dependents in which to look for Encl:гьы, to decide if phrases are conjoined or we have parataxis
 LIST conjDep = >OBJ >NSUBJ >IOBJ ; # more
@@ -8060,7 +8402,17 @@ WITH NOPARENT VMain - VSaying - PastIndef
 
 # the rest, except verb of saying, since these take (conjoined) sentence(s) as complement
 
-# coordination of PastIndef and Aor (or Perf, e.g. Perf+InferPast evidential)
+# ---- Tense sequencing (advcl:seq) ----
+#
+# In Abkhaz narrative, PastIndef provides background ('was doing')
+# while Aorist/Perfective marks foregrounded events ('did').
+# PastIndef verbs are attached to the following Aorist as advcl:seq,
+# reflecting their discourse function as setting the scene.
+#
+# Gold: Ҧыҭрак ашьҭахь илақәа неиқәиҧсан дыҵәеит.
+#       (adzhindzhal-sh+djavol+w1468800)
+#       неиқәиҧсан (PastIndef) → advcl:seq, head=дыҵәеит (Aorist)
+
 LIST AorPerf = Aor Perf ;
 WITH PastIndef
   IF (1* AorPerf - VSaying - ("а́зҵаа-ра") - ("а-ҵаа-ра́") - ("а́ила·цәажәа-ра") - ("а́а·ҧхьа-ра")
@@ -8220,6 +8572,17 @@ WITH NOPARENT VMain
   SETPARENT (*) TO (jC1 (*)) ;
   MAP >CCOMP:QUOTE (*) ;
 } ;
+
+# ---- Late attachment and structural cleanup ----
+#
+# These final sections handle tokens that could not be attached by
+# earlier, more specific rules.  They also fix structural issues:
+#   - Re-attach >CONJ chains so they all point to the first conjunct
+#   - Balance quote marks (« ») and dashes
+#   - Move sentence-final punctuation up to the root verb
+#   - Assign >ROOT to unattached tokens
+#   - Lift possessors from nmod:poss to nsubj when the possessor
+#     is actually the subject of a higher verb (experimental)
 
 # bug: ироман ҿыц « Шаҟа еицәыхарахоз аҟара еизааигәахон » азкуп.
 # the problem is the combination of REMCOHORT IGNORED WITHCHILD and PARENTHESES
